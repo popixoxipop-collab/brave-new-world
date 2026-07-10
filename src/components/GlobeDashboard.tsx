@@ -47,6 +47,7 @@ import {
   expandTransportPaths,
 } from "@/lib/compactData";
 import { dataPath } from "@/lib/dataProfile";
+import { runWhenIdle } from "@/lib/deferIdle";
 import { isClientApiStubMode } from "@/lib/apiStubMode";
 import {
   TELEGRAM_CHANNEL_COUNT,
@@ -1283,29 +1284,42 @@ export function GlobeDashboard({
 
     async function loadData() {
       try {
-        const response = await fetch(dataPath("app-data.json"), { cache: "no-store" });
+        const response = await fetch(dataPath("app-data.json"));
         if (!response.ok) throw new Error(`app-data.json 로드 실패: ${response.status}`);
         const raw = (await response.json()) as AppData;
         const nextData: AppData = {
           ...raw,
           events: [],
-          places: expandPlaces(raw.places),
+          places: [],
         };
 
         if (!mounted) return;
         setData(nextData);
         setLoadError(null);
+        setIsLoading(false);
+
+        const cancelPlaces = runWhenIdle(() => {
+          if (!mounted) return;
+          setData((prev) => ({
+            ...prev,
+            places: expandPlaces(raw.places),
+          }));
+        });
+        return cancelPlaces;
       } catch (error) {
         if (!mounted) return;
         setLoadError(error instanceof Error ? error.message : "데이터 로드 실패");
-      } finally {
-        if (mounted) setIsLoading(false);
+        setIsLoading(false);
       }
     }
 
-    loadData();
+    let cancelPlaces: (() => void) | undefined;
+    void loadData().then((cancel) => {
+      cancelPlaces = cancel;
+    });
     return () => {
       mounted = false;
+      cancelPlaces?.();
     };
   }, [syncGeneration]);
 
@@ -1322,11 +1336,15 @@ export function GlobeDashboard({
   }, [data.generatedAt, isLoading, loadError, syncInfo]);
 
   useEffect(() => {
-    if (!showUkraineControl) return;
+    if (!showUkraineControl || !globeReady) return;
     if (ukraineControl.length > 0 || ukraineControlStatus === "loading") return;
     if (!viinaMeta?.available) return;
-    void refreshUkraineControl();
+    const cancel = runWhenIdle(() => {
+      void refreshUkraineControl();
+    }, 4000);
+    return cancel;
   }, [
+    globeReady,
     refreshUkraineControl,
     showUkraineControl,
     ukraineControl.length,
@@ -1468,7 +1486,7 @@ export function GlobeDashboard({
   const isVectorBaseMap = globeTextures.vectorBase;
 
   const [resolvedGlobeImageUrl, setResolvedGlobeImageUrl] = useState<string | null>(
-    globeTextures.globeImageUrl,
+    TEXTURE_CDN_FALLBACK.night,
   );
   const [resolvedBumpImageUrl, setResolvedBumpImageUrl] = useState<string | null>(
     globeTextures.bumpImageUrl,
@@ -1483,10 +1501,8 @@ export function GlobeDashboard({
 
     const localGlobe = globeTextures.globeImageUrl;
     const cdnGlobe = TEXTURE_CDN_FALLBACK[mapStyle];
-    if (!localGlobe) {
-      setResolvedGlobeImageUrl(cdnGlobe);
-      return;
-    }
+    setResolvedGlobeImageUrl(cdnGlobe);
+    if (!localGlobe) return;
 
     let cancelled = false;
     const probe = new Image();
@@ -1567,7 +1583,7 @@ export function GlobeDashboard({
     viewState: layerViewState,
     globeTier: globeLod.tier,
     radiusDeg: pathRadiusDeg,
-    showDisputeBoundaries: showDisputes,
+    showDisputeBoundaries: showDisputes && globeReady,
     showShippingLanes,
     showSubmarineCables,
     showOilPipelines,
@@ -1587,7 +1603,7 @@ export function GlobeDashboard({
     showSanctionsEntities,
     showSpaceLaunches,
     showIntelHotspots,
-    showConflictZones,
+    showConflictZones: showConflictZones && globeReady,
     showArmsEmbargo,
     coastlineMaxByTier,
     countryBorderMaxByTier: COUNTRY_BORDER_MAX_BY_TIER,
@@ -2869,8 +2885,9 @@ export function GlobeDashboard({
   }, [refreshMilAircraft, showMilitaryActivity]);
 
   useEffect(() => {
+    if (!showUsCarriers) return;
     void refreshUsCarriers();
-  }, [refreshUsCarriers]);
+  }, [refreshUsCarriers, showUsCarriers]);
 
   useEffect(() => {
     if (!showCyberIncidents) return;
@@ -2883,22 +2900,27 @@ export function GlobeDashboard({
   }, [refreshElectionEvents, showElectionEvents]);
 
   useEffect(() => {
-    if (!showGdeltLayers) {
-      setGdeltEvents([]);
-      setGdeltError(null);
-      setGdeltFetchedAt(null);
+    if (!showGdeltLayers || !globeReady) {
+      if (!showGdeltLayers) {
+        setGdeltEvents([]);
+        setGdeltError(null);
+        setGdeltFetchedAt(null);
+      }
       return;
     }
-    void refreshGdeltEvents();
-  }, [refreshGdeltEvents, showGdeltLayers]);
+    const cancel = runWhenIdle(() => {
+      void refreshGdeltEvents();
+    });
+    return cancel;
+  }, [globeReady, refreshGdeltEvents, showGdeltLayers]);
 
   useEffect(() => {
-    if (!showGdeltLayers) return;
+    if (!showGdeltLayers || !globeReady) return;
     const timer = window.setInterval(() => {
       void refreshGdeltEvents();
     }, 15 * 60 * 1000);
     return () => window.clearInterval(timer);
-  }, [refreshGdeltEvents, showGdeltLayers]);
+  }, [globeReady, refreshGdeltEvents, showGdeltLayers]);
 
   const refreshTelegramAlerts = useCallback(async () => {
     if (!showTelegramOsint) return;
@@ -2943,30 +2965,35 @@ export function GlobeDashboard({
   }, [refreshTelegramAlerts, showTelegramOsint]);
 
   useEffect(() => {
-    if (!showTelegramOsint) {
-      setTelegramAlerts([]);
-      setTelegramLive(false);
-      setTelegramStatus("idle");
+    if (!showTelegramOsint || !globeReady) {
+      if (!showTelegramOsint) {
+        setTelegramAlerts([]);
+        setTelegramLive(false);
+        setTelegramStatus("idle");
+      }
       return;
     }
-    void syncTelegramEmbed();
-  }, [showTelegramOsint, syncTelegramEmbed]);
+    const cancel = runWhenIdle(() => {
+      void syncTelegramEmbed();
+    }, 3500);
+    return cancel;
+  }, [globeReady, showTelegramOsint, syncTelegramEmbed]);
 
   useEffect(() => {
-    if (!showTelegramOsint) return;
+    if (!showTelegramOsint || !globeReady) return;
     const timer = window.setInterval(() => {
       void syncTelegramEmbed();
     }, 60_000);
     return () => window.clearInterval(timer);
-  }, [showTelegramOsint, syncTelegramEmbed]);
+  }, [globeReady, showTelegramOsint, syncTelegramEmbed]);
 
   useEffect(() => {
-    if (!showTelegramOsint) return;
+    if (!showTelegramOsint || !globeReady) return;
     const timer = window.setInterval(() => {
       void refreshTelegramAlerts();
     }, 12_000);
     return () => window.clearInterval(timer);
-  }, [refreshTelegramAlerts, showTelegramOsint]);
+  }, [globeReady, refreshTelegramAlerts, showTelegramOsint]);
 
   const refreshTzevaAdom = useCallback(async () => {
     if (!showTzevaAdom) return;

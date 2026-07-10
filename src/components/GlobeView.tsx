@@ -11,8 +11,7 @@ type GlobeComponent = ComponentType<
 >;
 
 function loadGlobeModule(retries = 3, delayMs = 3000): Promise<{ default: GlobeComponent }> {
-  // eager: 별도 lazy 청크 대신 부모 번들에 포함 → 2차 청크 로드 타임아웃 방지
-  return import(/* webpackMode: "eager" */ "react-globe.gl").catch((error: unknown) => {
+  return import("react-globe.gl").catch((error: unknown) => {
     const isChunkError =
       error instanceof Error &&
       (error.name === "ChunkLoadError" || error.message.includes("Loading chunk"));
@@ -132,7 +131,7 @@ export const GlobeView = forwardRef<GlobeMethods, GlobeViewProps>(function Globe
         className="flex h-full items-center justify-center text-sm text-slate-400"
         style={{ backgroundColor }}
       >
-        지구본 엔진 로딩 중... (최초 실행 시 1~2분 걸릴 수 있습니다)
+        지구본 엔진 준비 중…
       </div>
     );
   }

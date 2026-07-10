@@ -52,12 +52,12 @@ export type LayerPrefs = {
   labelLanguage: LabelLanguage;
 };
 
-/** v17: NEPTUN 기본 OFF · stub/lite·뷰포트 LOD 정책 */
-export const LAYER_PREFS_KEY = "geowatch-layers-v17";
+/** v18: 모든 레이어 체크박스 기본 OFF */
+export const LAYER_PREFS_KEY = "geowatch-layers-v18";
 
-/** 스펙 13 — 토글 가능 레이어는 기본 OFF (핵심 분쟁·GDELT는 별도 state) */
+/** 토글 가능 레이어는 전부 기본 OFF — 사용자가 켤 때만 로드·렌더 */
 export const DEFAULT_LAYER_PREFS: LayerPrefs = {
-  showDisputes: true,
+  showDisputes: false,
   showCityLabels: false,
   showRailGlow: false,
   showAis: false,
@@ -82,16 +82,16 @@ export const DEFAULT_LAYER_PREFS: LayerPrefs = {
   showEconomicCenters: false,
   showSanctionsEntities: false,
   showArmsEmbargo: false,
-  showConflictZones: true,
+  showConflictZones: false,
   showCyberIncidents: false,
   showElectionEvents: false,
   showFirmsFires: false,
-  showUkraineControl: true,
-  showGdeltWar: true,
-  showGdeltDiplomatic: true,
+  showUkraineControl: false,
+  showGdeltWar: false,
+  showGdeltDiplomatic: false,
   showGdeltAlliance: false,
-  showGdeltProtests: true,
-  showTelegramOsint: true,
+  showGdeltProtests: false,
+  showTelegramOsint: false,
   showTzevaAdom: false,
   showNeptun: false,
   showNeptunPreviousTrails: false,
@@ -99,80 +99,75 @@ export const DEFAULT_LAYER_PREFS: LayerPrefs = {
   labelLanguage: "ko",
 };
 
+const LEGACY_LAYER_KEYS = [
+  "geowatch-layers-v17",
+  "geowatch-layers-v16",
+  "geowatch-layers-v15",
+  "geowatch-layers-v14",
+  "geowatch-layers-v13",
+  "geowatch-layers-v11",
+  "geowatch-layers-v10",
+  "geowatch-layers-v9",
+  "geowatch-layers-v8",
+  "geowatch-layers-v7",
+  "geowatch-layers-v6",
+  "geowatch-layers-v4",
+  "geowatch-layers-v3",
+] as const;
+
+function parseMapStyle(value: unknown): MapStyleMode {
+  if (value === "satellite" || value === "topo" || value === "night") return value;
+  return DEFAULT_LAYER_PREFS.mapStyle;
+}
+
+function parseLabelLanguage(value: unknown): LabelLanguage {
+  if (value === "en" || value === "ko") return value;
+  return DEFAULT_LAYER_PREFS.labelLanguage;
+}
+
+/** v18 이전 저장값 — 지도 스타일·언어만 이전, 레이어는 전부 OFF */
+function migrateLegacyLayerPrefs(parsed: Partial<LayerPrefs>): LayerPrefs {
+  return {
+    ...DEFAULT_LAYER_PREFS,
+    mapStyle: parseMapStyle(parsed.mapStyle),
+    labelLanguage: parseLabelLanguage(parsed.labelLanguage),
+  };
+}
+
+function mergeSavedPrefs(parsed: Partial<LayerPrefs>): LayerPrefs {
+  const { showRoadCityGlow, ...rest } = parsed;
+  delete (rest as { showCoastlines?: boolean }).showCoastlines;
+  delete (rest as { showCountryBorders?: boolean }).showCountryBorders;
+
+  return {
+    ...DEFAULT_LAYER_PREFS,
+    ...rest,
+    showCityLabels:
+      typeof rest.showCityLabels === "boolean"
+        ? rest.showCityLabels
+        : typeof showRoadCityGlow === "boolean"
+          ? showRoadCityGlow
+          : DEFAULT_LAYER_PREFS.showCityLabels,
+    mapStyle: parseMapStyle(rest.mapStyle),
+    labelLanguage: parseLabelLanguage(rest.labelLanguage),
+  };
+}
+
 export function loadLayerPrefs(): LayerPrefs {
   if (typeof window === "undefined") return DEFAULT_LAYER_PREFS;
   try {
-    const hasV17 = Boolean(localStorage.getItem(LAYER_PREFS_KEY));
-    const hasV16 = Boolean(localStorage.getItem("geowatch-layers-v16"));
-    const hasV15 = Boolean(localStorage.getItem("geowatch-layers-v15"));
-    const hasV14 = Boolean(localStorage.getItem("geowatch-layers-v14"));
-    const hasV13 = Boolean(localStorage.getItem("geowatch-layers-v13"));
-    const raw =
-      localStorage.getItem(LAYER_PREFS_KEY) ||
-      localStorage.getItem("geowatch-layers-v16") ||
-      localStorage.getItem("geowatch-layers-v15") ||
-      localStorage.getItem("geowatch-layers-v14") ||
-      localStorage.getItem("geowatch-layers-v13") ||
-      localStorage.getItem("geowatch-layers-v11") ||
-      localStorage.getItem("geowatch-layers-v10") ||
-      localStorage.getItem("geowatch-layers-v9") ||
-      localStorage.getItem("geowatch-layers-v8") ||
-      localStorage.getItem("geowatch-layers-v7") ||
-      localStorage.getItem("geowatch-layers-v6") ||
-      localStorage.getItem("geowatch-layers-v4") ||
-      localStorage.getItem("geowatch-layers-v3");
-    if (!raw) return DEFAULT_LAYER_PREFS;
-    const parsed = JSON.parse(raw) as Partial<LayerPrefs> & {
-      showRoadCityGlow?: boolean;
-      showCoastlines?: boolean;
-      showCountryBorders?: boolean;
-      showUkraineControl?: boolean;
-    };
-    const { showRoadCityGlow, ...rest } = parsed;
-    delete (rest as { showCoastlines?: boolean }).showCoastlines;
-    delete (rest as { showCountryBorders?: boolean }).showCountryBorders;
-    return {
-      ...DEFAULT_LAYER_PREFS,
-      ...rest,
-      showUsCarriers:
-        typeof rest.showUsCarriers === "boolean"
-          ? rest.showUsCarriers
-          : DEFAULT_LAYER_PREFS.showUsCarriers,
-      showCityLabels:
-        typeof rest.showCityLabels === "boolean"
-          ? rest.showCityLabels
-          : typeof showRoadCityGlow === "boolean"
-            ? showRoadCityGlow
-            : DEFAULT_LAYER_PREFS.showCityLabels,
-      showUkraineControl:
-        hasV16 || hasV15
-          ? typeof rest.showUkraineControl === "boolean"
-            ? rest.showUkraineControl
-            : DEFAULT_LAYER_PREFS.showUkraineControl
-          : true,
-      showNeptun:
-        hasV17 || hasV16 || hasV15
-          ? typeof rest.showNeptun === "boolean"
-            ? rest.showNeptun
-            : DEFAULT_LAYER_PREFS.showNeptun
-          : false,
-      showGdeltProtests: hasV17 || hasV16 || hasV15 || hasV14 || hasV13
-        ? typeof rest.showGdeltProtests === "boolean"
-          ? rest.showGdeltProtests
-          : DEFAULT_LAYER_PREFS.showGdeltProtests
-        : true,
-      showNeptunPreviousTrails: hasV17 || hasV16
-        ? typeof rest.showNeptunPreviousTrails === "boolean"
-          ? rest.showNeptunPreviousTrails
-          : DEFAULT_LAYER_PREFS.showNeptunPreviousTrails
-        : typeof rest.showNeptunPreviousTrails === "boolean"
-          ? rest.showNeptunPreviousTrails
-          : DEFAULT_LAYER_PREFS.showNeptunPreviousTrails,
-      labelLanguage:
-        typeof rest.labelLanguage === "string"
-          ? rest.labelLanguage
-          : DEFAULT_LAYER_PREFS.labelLanguage,
-    };
+    const v18Raw = localStorage.getItem(LAYER_PREFS_KEY);
+    if (v18Raw) {
+      return mergeSavedPrefs(JSON.parse(v18Raw) as Partial<LayerPrefs>);
+    }
+
+    for (const legacyKey of LEGACY_LAYER_KEYS) {
+      const legacyRaw = localStorage.getItem(legacyKey);
+      if (!legacyRaw) continue;
+      return migrateLegacyLayerPrefs(JSON.parse(legacyRaw) as Partial<LayerPrefs>);
+    }
+
+    return DEFAULT_LAYER_PREFS;
   } catch {
     return DEFAULT_LAYER_PREFS;
   }

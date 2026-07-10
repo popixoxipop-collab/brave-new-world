@@ -179,7 +179,7 @@ public/data/neptun-seed.json
 |------|------|
 | **stub 모드** | 외부 API 대신 `public/data/*-seed.json` · 프로필 JSON 사용 |
 | **lite / full** | `NEXT_PUBLIC_DATA_PROFILE` — 지오메트리·이벤트 밀도 분리 |
-| **레이어 기본 OFF** | `layerPrefs` v17 — NEPTUN 등 무거운 레이어는 사용자가 켤 때만 fetch |
+| **레이어 기본 OFF** | `layerPrefs` v18 — 모든 레이어 체크박스 기본 해제 |
 | **뷰포트 LOD** | NEPTUN·VIINA·정적 포인트 — tier별 최대 개수·반경 |
 | **NEPTUN fetch** | 우크라 극동부 뷰 또는 전선 레이어 ON 시에만 |
 | **궤적 렌더** | 모드별 점 budget(6~14), elevated 캐시, path 애니메이션 OFF |
@@ -251,7 +251,7 @@ src/
   lib/
     neptun*.ts            # NEPTUN 타입·LOD·궤적·표시
     viinaLod.ts
-    layerPrefs.ts         # localStorage 레이어 설정 (v17)
+    layerPrefs.ts         # localStorage 레이어 설정 (v18)
     globeLod.ts
     apiStubMode.ts
     licensing/            # VIINA·Telegram 정책
@@ -398,5 +398,5 @@ VIINA 정책: `src/lib/licensing/viinaPolicy.ts` · IRONSIGHT: `src/lib/licensin
 
 - Windows·OneDrive 경로에서는 `next.config.mjs`가 dev 시 webpack 메모리 캐시를 사용합니다 (청크 404 방지).
 - `npm run dev:clean` — `.next` 삭제 후 dev 재시작.
-- 레이어 설정은 브라우저 `localStorage` 키 `geowatch-layers-v17`에 저장됩니다.
+- 레이어 설정은 브라우저 `localStorage` 키 `geowatch-layers-v18`에 저장됩니다. v17 이하에서 올라오면 레이어는 모두 꺼진 상태로 시작합니다.
 - TypeScript·ESLint는 Next.js 기본 설정을 따릅니다.

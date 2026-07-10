@@ -267,6 +267,7 @@ export function useGlobeStaticLayers(options: {
   );
 
   useEffect(() => {
+    if (!options.vectorBaseMap) return;
     if (loadedRef.current.coastlines) return;
     const profile = getDataProfile();
     const candidates =
@@ -282,7 +283,7 @@ export function useGlobeStaticLayers(options: {
       .catch(() => {
         // optional layer
       });
-  }, [reloadToken]);
+  }, [options.vectorBaseMap, reloadToken]);
 
   useEffect(() => {
     if (loadedRef.current.borders) return;
@@ -455,8 +456,9 @@ export function useGlobeStaticLayers(options: {
   }, [loadOnceApiZones, options.showArmsEmbargo, reloadToken]);
 
   useEffect(() => {
+    if (!options.showDisputeBoundaries) return;
     let mounted = true;
-    fetch(dataPath("dispute-overviews.json"), { cache: "no-store" })
+    fetch(dataPath("dispute-overviews.json"))
       .then(async (res) => (res.ok ? res.json() : null))
       .then((payload: { items?: DisputeOverview[] } | null) => {
         if (!mounted || !payload?.items) return;
@@ -466,7 +468,7 @@ export function useGlobeStaticLayers(options: {
     return () => {
       mounted = false;
     };
-  }, [reloadToken]);
+  }, [options.showDisputeBoundaries, reloadToken]);
 
   const visibleCoastlines = useMemo(() => {
     if (options.vectorBaseMap) return coastlinePaths;
