@@ -48,8 +48,6 @@ export type LayerPrefs = {
   showNeptun: boolean;
   /** 사라진 드론·미사일의 지나간 이동 경로 (WebSocket delta 보존) */
   showNeptunPreviousTrails: boolean;
-  /** 공중 곡선(입체) 궤적 — 끄면 멀리서 평면 선만 */
-  showNeptunArcTrails: boolean;
   mapStyle: MapStyleMode;
   labelLanguage: LabelLanguage;
 };
@@ -97,7 +95,6 @@ export const DEFAULT_LAYER_PREFS: LayerPrefs = {
   showTzevaAdom: false,
   showNeptun: false,
   showNeptunPreviousTrails: false,
-  showNeptunArcTrails: true,
   mapStyle: "night",
   labelLanguage: "ko",
 };
@@ -171,10 +168,6 @@ export function loadLayerPrefs(): LayerPrefs {
         : typeof rest.showNeptunPreviousTrails === "boolean"
           ? rest.showNeptunPreviousTrails
           : DEFAULT_LAYER_PREFS.showNeptunPreviousTrails,
-      showNeptunArcTrails:
-        typeof rest.showNeptunArcTrails === "boolean"
-          ? rest.showNeptunArcTrails
-          : DEFAULT_LAYER_PREFS.showNeptunArcTrails,
       labelLanguage:
         typeof rest.labelLanguage === "string"
           ? rest.labelLanguage

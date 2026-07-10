@@ -13,7 +13,7 @@ type FlightProfile = {
 };
 
 const EARTH_RADIUS_KM = 6371;
-const ALT_VIS_SCALE = 3.2;
+const ALT_VIS_SCALE = 2.1;
 
 const FLIGHT_PROFILES: Record<NeptunThreatType, FlightProfile> = {
   ballistic: { maxAltKm: 95, shape: "ballistic", subdivisions: 8, maxPoints: 12 },

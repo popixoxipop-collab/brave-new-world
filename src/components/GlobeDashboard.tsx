@@ -1113,7 +1113,6 @@ export function GlobeDashboard({
     showTzevaAdom,
     showNeptun,
     showNeptunPreviousTrails,
-    showNeptunArcTrails,
     mapStyle,
     labelLanguage,
   } = layerPrefs;
@@ -1210,10 +1209,6 @@ export function GlobeDashboard({
   const setShowNeptunPreviousTrails = (v: boolean) => {
     if (v && !showNeptun) return;
     togglePref("showNeptunPreviousTrails", v);
-  };
-  const setShowNeptunArcTrails = (v: boolean) => {
-    if (v && !showNeptun) return;
-    togglePref("showNeptunArcTrails", v);
   };
 
   const showGdeltLayers =
@@ -1402,19 +1397,9 @@ export function GlobeDashboard({
       showUkraineControl || isNeptunTheaterInView(layerViewState, globeLod.tier),
     [globeLod.tier, layerViewState, showUkraineControl],
   );
-  const neptunCameraAltitude = useMemo(
-    () => Math.min(layerAltitude, viewState.altitude),
-    [layerAltitude, viewState.altitude],
-  );
   const neptunRenderMode = useMemo(
-    () =>
-      getNeptunRenderMode(
-        neptunCameraAltitude,
-        neptunInTheater,
-        showNeptun,
-        showNeptunArcTrails,
-      ),
-    [neptunCameraAltitude, neptunInTheater, showNeptun, showNeptunArcTrails],
+    () => getNeptunRenderMode(globeLod.tier, neptunInTheater, showNeptun),
+    [globeLod.tier, neptunInTheater, showNeptun],
   );
 
   const visibleNeptunThreats = useMemo(() => {
@@ -2078,7 +2063,7 @@ export function GlobeDashboard({
   ]);
 
   const neptunProjectionPaths = useMemo(() => {
-    if (!showNeptun || !neptunShowsProjection(neptunRenderMode, showNeptunArcTrails)) return [];
+    if (!showNeptun || !neptunShowsProjection(neptunRenderMode)) return [];
     return buildNeptunProjectionPaths(
       visibleNeptunThreats,
       neptunPathElevation,
@@ -2090,7 +2075,6 @@ export function GlobeDashboard({
     neptunProjectionSignature,
     neptunRenderMode,
     showNeptun,
-    showNeptunArcTrails,
     visibleNeptunThreats,
   ]);
 
@@ -3144,23 +3128,6 @@ export function GlobeDashboard({
             accent: "orange",
           },
           {
-            id: "neptun-arc-trails",
-            label: "입체 궤적 (공중 곡선)",
-            detail: !showNeptun
-              ? "드론·미사일을 먼저 켜세요"
-              : !showNeptunArcTrails
-                ? "꺼짐 · 평면 선만"
-                : neptunRenderMode === "elevated"
-                  ? `입체 곡선 · ${visibleNeptunThreats.length.toLocaleString()}건`
-                  : neptunRenderMode === "low"
-                    ? `저고도 곡선 · ${visibleNeptunThreats.length.toLocaleString()}건`
-                    : `곡선 대기 · 우크라이나 근처로 이동`,
-            checked: draftPrefs.showNeptunArcTrails,
-            onChange: setShowNeptunArcTrails,
-            accent: "orange",
-            disabled: !showNeptun,
-          },
-          {
             id: "neptun-previous-trails",
             label: "지나간 드론·미사일 궤적",
             detail: !showNeptun
@@ -3341,7 +3308,6 @@ export function GlobeDashboard({
           toggleCategoryPrefs({
             showUkraineControl: enabled,
             showNeptun: enabled,
-            showNeptunArcTrails: enabled,
             showNeptunPreviousTrails: enabled,
             showDisputes: enabled,
             showConflictZones: enabled,
@@ -3700,7 +3666,6 @@ export function GlobeDashboard({
     showTelegramOsint,
     showTzevaAdom,
     showNeptun,
-    showNeptunArcTrails,
     showNeptunPreviousTrails,
     showUcdpEvents,
     showUkraineControl,
@@ -5060,10 +5025,10 @@ export function GlobeDashboard({
                     ? "우크라이나 극동부로 이동하거나 전선 레이어를 켜면 데이터를 불러옵니다."
                     : neptunRenderMode === "hidden"
                       ? "우크라이나 극동부로 이동하면 궤적이 표시됩니다."
-                      : !showNeptunArcTrails && neptunRenderMode === "flat"
-                        ? "입체 궤적을 켜거나 더 가까이 줌인하면 공중 곡선이 나타납니다."
-                        : showNeptunArcTrails && neptunRenderMode === "low"
-                          ? "저고도 곡선 궤적. 더 가까이 줌인하면 전체 입체 곡선이 표시됩니다."
+                      : neptunRenderMode === "flat"
+                        ? "개요 모드: 가벼운 평면 궤적. 더 가까이 줌인하면 상세 궤적이 나타납니다."
+                        : neptunRenderMode === "low"
+                          ? "저고도 궤적. 더 가까이 줌인하면 예측 항로가 표시됩니다."
                           : null
                 }
                 onSelectThreat={handleNeptunThreatSelect}

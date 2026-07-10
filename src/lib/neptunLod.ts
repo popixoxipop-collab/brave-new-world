@@ -1,6 +1,5 @@
 import type { NeptunArchivedThreat, NeptunLiveThreat } from "@/lib/neptun";
 import type { GlobeLodTier } from "@/lib/globeLod";
-import { getGlobeLod } from "@/lib/globeLod";
 import { isInUkraineTheater } from "@/lib/ukraineSettlementLabels";
 import { centerDistanceDeg, type ViewPoint } from "@/lib/viewportCull";
 import type { NeptunPathElevationMode } from "@/lib/neptunFlightArc";
@@ -58,22 +57,12 @@ export function shouldFetchNeptunData(
   return isNeptunTheaterInView(view, tier);
 }
 
-/** 실제 카메라 고도 기준 — layerAltitude 지연과 무관하게 곡선 전환 */
 export function getNeptunRenderMode(
-  cameraAltitude: number,
+  tier: GlobeLodTier,
   inTheater: boolean,
   layerOn: boolean,
-  arcTrailsOn: boolean,
 ): NeptunRenderMode {
   if (!layerOn || !inTheater) return "hidden";
-
-  if (arcTrailsOn) {
-    if (cameraAltitude <= 0.9) return "elevated";
-    if (cameraAltitude <= 1.35) return "low";
-    return "low";
-  }
-
-  const tier = getGlobeLod(cameraAltitude).tier;
   if (tier === "global" || tier === "continent") return "flat";
   if (tier === "regional") return "low";
   return "elevated";
@@ -126,9 +115,8 @@ export function filterNeptunThreatsForViewport<T extends NeptunLiveThreat | Nept
   return filtered.slice(0, maxCount);
 }
 
-export function neptunShowsProjection(mode: NeptunRenderMode, arcTrailsOn: boolean): boolean {
-  if (!arcTrailsOn) return mode === "elevated";
-  return mode === "elevated" || mode === "low";
+export function neptunShowsProjection(mode: NeptunRenderMode): boolean {
+  return mode === "elevated";
 }
 
 export function neptunShowsPaths(mode: NeptunRenderMode): boolean {
