@@ -1,0 +1,36 @@
+{
+  "running": false,
+  "lastSuccessAt": "2026-07-08T14:06:32.450Z",
+  "lastError": null,
+  "source": "never-synced",
+  "note": "Run npm run data:sync or POST /api/data-sync to refresh SIGINT snapshots + regional tensions.",
+  "lastStartAt": "2026-07-08T14:06:20.589Z",
+  "mode": "default",
+  "sources": {
+    "sigint": "https://github.com/Skytuhua/SIGINT",
+    "tensions": "scripts/data/*-tensions-seed.json (curated)",
+    "viina": "skipped",
+    "gdelt": "skipped"
+  },
+  "updatedAt": "2026-07-08T14:06:32.450Z",
+  "lastDurationMs": 11861,
+  "steps": [
+    {
+      "name": "sigint:fetch",
+      "ok": true
+    },
+    {
+      "name": "sigint:convert",
+      "ok": true
+    },
+    {
+      "name": "static:build",
+      "ok": true
+    },
+    {
+      "name": "tensions:regional",
+      "ok": true
+    }
+  ],
+  "nextRecommendedAt": "2026-07-08T20:06:32.450Z"
+}

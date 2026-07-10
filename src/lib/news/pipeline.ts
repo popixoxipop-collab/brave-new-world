@@ -1,0 +1,261 @@
+import { ALL_NEWS_FEEDS, isFeedItemRelevant, type NewsFeedDef } from "@/lib/news/feedCatalog";
+import { classifyMediaTier } from "@/lib/news/mediaTiers";
+import { fetchRssFeed } from "@/lib/news/rssParser";
+import type {
+  HeroBreakingItem,
+  HeroStatus,
+  MediaTrustTier,
+  NewsStreamItem,
+  NewsStreamPayload,
+  NewsTheater,
+} from "@/lib/news/types";
+
+const URGENCY =
+  /\b(breaking|urgent|just\s?in|live|attack|strike|missile|drone|explosion|war|invasion|ceasefire|nuclear|killed|dead|shelling|airstrike|bomb|blockade|escalat|retaliat|offensive|clash|troops|carrier|hormuz)\b/i;
+
+const THEATER_URGENCY: Record<NewsTheater, number> = {
+  "middle-east": 1.15,
+  "russia-ukraine": 1.1,
+  "korea": 1.05,
+  "china-taiwan": 1.05,
+  japan: 1.0,
+  "south-asia": 1.0,
+  global: 0.95,
+};
+
+function stableId(title: string, link: string, theater: NewsTheater): string {
+  const key = `${theater}:${title.toLowerCase().slice(0, 80)}:${link.slice(0, 60)}`;
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) | 0;
+  return `news-${Math.abs(hash).toString(36)}`;
+}
+
+function clusterKey(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 3)
+    .slice(0, 6)
+    .sort()
+    .join("-");
+}
+
+function isValidPubDate(pubDate: string | undefined): boolean {
+  if (!pubDate) return false;
+  const ts = Date.parse(pubDate);
+  return Number.isFinite(ts) && ts <= Date.now() + 3_600_000;
+}
+
+const SKIP_URL = /\/live-news\/|\/specials\/|\/videos?\//i;
+const SKIP_TITLE = /^(israel|ukraine|russia|iran)$/i;
+
+function parseAgeMinutes(pubDate: string): number {
+  const ts = Date.parse(pubDate);
+  if (!Number.isFinite(ts)) return 9999;
+  return Math.max(0, Math.round((Date.now() - ts) / 60_000));
+}
+
+function recencyScore(ageMinutes: number): number {
+  if (ageMinutes <= 5) return 40;
+  if (ageMinutes <= 15) return 35;
+  if (ageMinutes <= 60) return 28;
+  if (ageMinutes <= 180) return 18;
+  if (ageMinutes <= 720) return 10;
+  return 4;
+}
+
+function urgencyScore(item: NewsStreamItem, clusterSize: number): number {
+  let score = recencyScore(parseAgeMinutes(item.pubDate));
+  score *= THEATER_URGENCY[item.theater];
+  if (URGENCY.test(item.title)) score += 22;
+  if (clusterSize >= 3) score += 18;
+  else if (clusterSize >= 2) score += 10;
+  if (item.trustTier === 1) score += 6;
+  if (item.trustTier === 3) score += 12; // speed bonus for hero signal
+  return score;
+}
+
+function resolveHeroStatus(
+  candidate: NewsStreamItem,
+  cluster: NewsStreamItem[],
+): HeroStatus {
+  const hasTier1 = cluster.some((c) => c.trustTier === 1);
+  const hasTier2 = cluster.some((c) => c.trustTier === 2);
+
+  if (candidate.trustTier === 3) {
+    if (hasTier1) return "breaking";
+    return "unverified";
+  }
+  if (hasTier1 && cluster.length >= 2) return "confirmed";
+  if (candidate.trustTier === 1) return "confirmed";
+  if (hasTier1 || hasTier2) return "breaking";
+  return "breaking";
+}
+
+function pickHero(items: NewsStreamItem[]): HeroBreakingItem | null {
+  const eligible = items.filter(
+    (item) =>
+      isValidPubDate(item.pubDate) &&
+      !SKIP_URL.test(item.link) &&
+      !SKIP_TITLE.test(item.title.trim()) &&
+      (URGENCY.test(item.title) || item.trustTier === 3),
+  );
+  if (eligible.length === 0) return null;
+
+  const clusters = new Map<string, NewsStreamItem[]>();
+  for (const item of eligible) {
+    const key = clusterKey(item.title);
+    const list = clusters.get(key) || [];
+    list.push(item);
+    clusters.set(key, list);
+  }
+
+  let best: HeroBreakingItem | null = null;
+
+  for (const item of eligible) {
+    const key = clusterKey(item.title);
+    const cluster = clusters.get(key) || [item];
+    const score = urgencyScore(item, cluster.length);
+    const heroStatus = resolveHeroStatus(item, cluster);
+    const ageMinutes = parseAgeMinutes(item.pubDate);
+
+    const entry: HeroBreakingItem = {
+      ...item,
+      heroStatus,
+      urgencyScore: score,
+      ageMinutes,
+      clusterId: key,
+    };
+
+    if (!best || entry.urgencyScore > best.urgencyScore) {
+      best = entry;
+    }
+  }
+
+  // Prefer Tier1 headline when cluster has confirmation
+  if (best?.clusterId) {
+    const cluster = clusters.get(best.clusterId) || [];
+    const tier1 = cluster
+      .filter((c) => c.trustTier === 1)
+      .sort((a, b) => parseAgeMinutes(a.pubDate) - parseAgeMinutes(b.pubDate))[0];
+    if (tier1 && best.heroStatus !== "unverified") {
+      best = {
+        ...best,
+        title: tier1.title,
+        link: tier1.link,
+        source: tier1.source,
+        publisher: tier1.publisher,
+        pubDate: tier1.pubDate,
+        trustTier: tier1.trustTier,
+        heroStatus: "confirmed",
+      };
+    }
+  }
+
+  return best;
+}
+
+function sortByRecency(items: NewsStreamItem[]): NewsStreamItem[] {
+  const now = Date.now();
+  return [...items].sort((a, b) => {
+    const da = Math.abs(now - Date.parse(a.pubDate || "0"));
+    const db = Math.abs(now - Date.parse(b.pubDate || "0"));
+    return da - db;
+  });
+}
+
+export async function buildNewsStream(): Promise<NewsStreamPayload> {
+  const results = await mapPool(ALL_NEWS_FEEDS, fetchFeedItems, 10);
+  const merged = results.flat();
+
+  const seen = new Set<string>();
+  const deduped = merged.filter((item) => {
+    const key = item.title.toLowerCase().trim().slice(0, 72);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  const verified = sortByRecency(deduped.filter((i) => i.trustTier <= 2));
+  const stateMedia = sortByRecency(deduped.filter((i) => i.trustTier === 3));
+  const heroCandidates = deduped.filter((i) => parseAgeMinutes(i.pubDate) <= 1_440);
+  const hero = pickHero(heroCandidates.length > 0 ? heroCandidates : deduped.slice(0, 40));
+
+  const theaters = {} as Record<NewsTheater, number>;
+  for (const item of deduped) {
+    theaters[item.theater] = (theaters[item.theater] || 0) + 1;
+  }
+
+  return {
+    fetchedAt: new Date().toISOString(),
+    hero,
+    verified: verified.slice(0, 80),
+    stateMedia: stateMedia.slice(0, 40),
+    stats: {
+      total: deduped.length,
+      tier1: deduped.filter((i) => i.trustTier === 1).length,
+      tier2: deduped.filter((i) => i.trustTier === 2).length,
+      tier3: deduped.filter((i) => i.trustTier === 3).length,
+      theaters,
+    },
+  };
+}
+
+export function tierBadgeLabel(tier: MediaTrustTier): string {
+  if (tier === 1) return "Tier 1";
+  if (tier === 2) return "Tier 2";
+  return "Tier 3";
+}
+
+async function fetchFeedItems(feed: NewsFeedDef): Promise<NewsStreamItem[]> {
+  const raw = await fetchRssFeed(feed.url);
+  return raw
+    .filter((item) => isFeedItemRelevant(item.title, item.category, feed))
+    .filter((item) => isValidPubDate(item.pubDate))
+    .filter((item) => !SKIP_URL.test(item.link))
+    .filter((item) => !SKIP_TITLE.test(item.title.trim()))
+    .map((item) => {
+      const publisher = item.publisher || item.title.match(/- ([^-]+)$/)?.[1];
+      const source = publisher || feed.name;
+      const trustTier = classifyMediaTier(source, item.link);
+      return {
+        id: stableId(item.title, item.link, feed.theater),
+        title: item.title,
+        link: item.link,
+        source,
+        publisher: item.publisher,
+        pubDate: item.pubDate!,
+        theater: feed.theater,
+        trustTier,
+        category: item.category,
+        imageUrl: item.imageUrl,
+        summary: item.summary,
+      } satisfies NewsStreamItem;
+    });
+}
+
+async function mapPool<T, R>(
+  items: T[],
+  worker: (item: T) => Promise<R>,
+  concurrency: number,
+): Promise<R[]> {
+  const results: R[] = [];
+  let index = 0;
+
+  async function run() {
+    while (index < items.length) {
+      const current = index++;
+      try {
+        results[current] = await worker(items[current]);
+      } catch {
+        results[current] = [] as R;
+      }
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => run()),
+  );
+  return results;
+}

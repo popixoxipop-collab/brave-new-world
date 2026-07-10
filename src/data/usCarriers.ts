@@ -1,0 +1,163 @@
+export type UsCarrierStatus = "deployed" | "home" | "maintenance";
+
+export type UsCarrier = {
+  id: string;
+  name: string;
+  hull: string;
+  lat: number;
+  lng: number;
+  status: UsCarrierStatus;
+  location: string;
+  airwing: string;
+  notes: string;
+};
+
+export const US_CARRIER_STATUS_COLORS: Record<UsCarrierStatus, string> = {
+  deployed: "#dc2626",
+  home: "#f59e0b",
+  maintenance: "#6b7280",
+};
+
+export const US_CARRIER_STATUS_LABELS: Record<UsCarrierStatus, string> = {
+  deployed: "배치·작전",
+  home: "항구·주둔",
+  maintenance: "정비·대기",
+};
+
+export const US_CARRIER_STATUS_LABELS_EN: Record<UsCarrierStatus, string> = {
+  deployed: "Deployed/Active",
+  home: "In Port/Home",
+  maintenance: "Maintenance",
+};
+
+/** Jul 10, 2026 기준 — USNI News · CENTCOM · 공개 보도 종합 */
+export const US_CARRIERS_SEED: UsCarrier[] = [
+  {
+    id: "cvn-68",
+    name: "USS Nimitz",
+    hull: "CVN 68",
+    lat: 47.6,
+    lng: -122.6,
+    status: "maintenance",
+    location: "Kitsap-Bremerton, WA (Home Port)",
+    airwing: "CVW-17 (None)",
+    notes: "Decommissioning process - arriving Norfolk May 2026",
+  },
+  {
+    id: "cvn-69",
+    name: "USS Dwight D. Eisenhower",
+    hull: "CVN 69",
+    lat: 36.9,
+    lng: -76.3,
+    status: "maintenance",
+    location: "Norfolk Naval Shipyard, VA",
+    airwing: "CVW-3",
+    notes: "Planned Incremental Availability (PIA) - Retiring 2028",
+  },
+  {
+    id: "cvn-70",
+    name: "USS Carl Vinson",
+    hull: "CVN 70",
+    lat: 32.7,
+    lng: -117.2,
+    status: "home",
+    location: "San Diego, CA (Home Port)",
+    airwing: "CVW-2",
+    notes: "In port since Oct 8, 2025",
+  },
+  {
+    id: "cvn-71",
+    name: "USS Theodore Roosevelt",
+    hull: "CVN 71",
+    lat: 32.71,
+    lng: -117.18,
+    status: "home",
+    location: "San Diego, CA (Home Port)",
+    airwing: "CVW-11",
+    notes: "Returned from training Jan 13, 2026",
+  },
+  {
+    id: "cvn-72",
+    name: "USS Abraham Lincoln",
+    hull: "CVN 72",
+    lat: 17.2,
+    lng: 63.8,
+    status: "deployed",
+    location: "Arabian Sea · CENTCOM (이란·호르무즈 대응)",
+    airwing: "CVW-9",
+    notes: "Operation Epic Fury — 200일+ 연속 해상 작전 (USNI News, Jul 2026)",
+  },
+  {
+    id: "cvn-73",
+    name: "USS George Washington",
+    hull: "CVN 73",
+    lat: 35.3,
+    lng: 139.7,
+    status: "home",
+    location: "Yokosuka, Japan (Forward Deployed)",
+    airwing: "CVW-5",
+    notes: "Forward-deployed carrier - returned Dec 17, 2025",
+  },
+  {
+    id: "cvn-74",
+    name: "USS John C. Stennis",
+    hull: "CVN 74",
+    lat: 37.0,
+    lng: -76.4,
+    status: "maintenance",
+    location: "Newport News Shipyard, VA",
+    airwing: "None",
+    notes: "RCOH - Return to service Oct 2026 (5-year downtime)",
+  },
+  {
+    id: "cvn-75",
+    name: "USS Harry S. Truman",
+    hull: "CVN 75",
+    lat: 36.91,
+    lng: -76.31,
+    status: "home",
+    location: "Norfolk, VA (Home Port)",
+    airwing: "CVW-1",
+    notes: "Returned from UNITAS 2025 exercise Oct 1, 2025",
+  },
+  {
+    id: "cvn-76",
+    name: "USS Ronald Reagan",
+    hull: "CVN 76",
+    lat: 47.61,
+    lng: -122.58,
+    status: "maintenance",
+    location: "PSNS & IMF, Bremerton, WA",
+    airwing: "None",
+    notes: "DPIA expected completion Aug 2026",
+  },
+  {
+    id: "cvn-77",
+    name: "USS George H.W. Bush",
+    hull: "CVN 77",
+    lat: 19.0,
+    lng: 61.0,
+    status: "deployed",
+    location: "Arabian Sea · CENTCOM (이란 긴장 대응)",
+    airwing: "CVW-7",
+    notes: "CVN-72와 이란·중동 이중 항모 전개 (USNI News, Jul 2026)",
+  },
+  {
+    id: "cvn-78",
+    name: "USS Gerald R. Ford",
+    hull: "CVN 78",
+    lat: 36.91,
+    lng: -76.31,
+    status: "home",
+    location: "Norfolk, VA (Home Port)",
+    airwing: "CVW-8",
+    notes: "중동 전개는 CVN-72·77 — 항구 대기 (Jul 2026)",
+  },
+];
+
+export const US_CARRIER_BASE_PORTS = [
+  { id: "san-diego", name: "San Diego", lat: 32.7, lng: -117.2 },
+  { id: "norfolk", name: "Norfolk", lat: 36.9, lng: -76.3 },
+  { id: "yokosuka", name: "Yokosuka", lat: 35.3, lng: 139.7 },
+  { id: "bremerton", name: "Bremerton", lat: 47.6, lng: -122.6 },
+] as const;

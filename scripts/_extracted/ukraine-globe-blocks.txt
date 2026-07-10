@@ -1,0 +1,446 @@
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+import { selectViinaPolygons } from "@/lib/viinaLod";
+import { filterUkraineSettlementsForView } from "@/lib/ukraineSettlements";
+import {
+  buildUkraineCleanFrontLines,
+  computeUkraineFrontFitBbox,
+} from "@/lib/ukraineFrontPaths";
+import {
+  getUkraineSettlementDotRadius,
+  getUkraineSettlementLabelAltitude,
+  getUkraineSettlementLabelColor,
+  getUkraineSettlementLabelSize,
+  getUkraineSettlementTier,
+  isInUkraineTheater,
+  ukraineControlStatusLabel,
+} from "@/lib/ukraineSettlementLabels";
+import {
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+  const [syncBusy, setSyncBusy] = useState(false);
+  const [ukraineControl, setUkraineControl] = useState<UkraineControlZone[]>([]);
+
+  const [ukraineControlOverview, setUkraineControlOverview] = useState<UkraineControlZone[]>([]);
+  const [ukraineControlDate, setUkraineControlDate] = useState<string | null>(null);
+  const [ukraineRuCellCount, setUkraineRuCellCount] = useState(0);
+  const [ukraineSettlements, setUkraineSettlements] = useState<UkraineSettlement[]>([]);
+  const [ukraineControlStatus, setUkraineControlStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
+  const ukraineSettlementsLoadedRef = useRef(false);
+  const ukraineZoomPendingRef = useRef(false);
+  const [aisVessels, setAisVessels] = useState<AisVessel[]>([]);
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+  } = layerPrefs;
+  const setShowUkraineControl = (v: boolean) => {
+    if (v) {
+      ukraineZoomPendingRef.current = true;
+      immediateUntilRef.current = Date.now() + 1500;
+      setRegionNavSelection(null);
+      setSelected(null);
+      setShowUkraineLegendPanel(true);
+    } else {
+      setShowUkraineLegendPanel(false);
+    }
+    togglePref("showUkraineControl", v);
+  };
+  const setShowDisputes = (v: boolean) => {
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+  }, [data.generatedAt, isLoading, loadError, syncInfo]);
+
+  const refreshUkraineControl = useCallback(async (opts?: { includeSettlements?: boolean }) => {
+    const includeSettlements = opts?.includeSettlements === true;
+    setUkraineControlStatus("loading");
+    try {
+      let response: Response;
+      if (isClientApiStubMode()) {
+        response = await fetch(dataPath("ukraine-control.json"), { cache: "no-store" });
+      } else {
+        response = await fetch(
+          `/api/viina-ukraine${includeSettlements ? "?settlements=1" : ""}`,
+          { cache: "no-store" },
+        );
+        if (!response.ok) {
+          response = await fetch(dataPath("ukraine-control.json"), { cache: "no-store" });
+        }
+      }
+
+      const payload = (await response.json()) as {
+        features?: UkraineControlZone[];
+        overviewFeatures?: UkraineControlZone[];
+        settlements?: UkraineSettlement[];
+        controlDate?: string;
+        ruCellCount?: number;
+        error?: string;
+      };
+
+      if (!response.ok || payload.error || !payload.features?.length) {
+        throw new Error(payload.error || "VIINA 데이터 없음");
+      }
+
+      setUkraineControl(payload.features);
+      setUkraineControlOverview(payload.overviewFeatures || []);
+      setUkraineControlDate(payload.controlDate || null);
+      setUkraineRuCellCount(payload.ruCellCount || 0);
+
+      if (includeSettlements) {
+        setUkraineSettlements(expandSettlements(payload.settlements || []));
+        ukraineSettlementsLoadedRef.current = true;
+      } else if (!ukraineSettlementsLoadedRef.current) {
+        setUkraineSettlements([]);
+      }
+
+      setUkraineControlStatus("ok");
+    } catch {
+      setUkraineControlStatus("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (syncGeneration <= 0) return;
+    void refreshUkraineControl({ includeSettlements: true });
+  }, [syncGeneration, refreshUkraineControl]);
+
+  // 폴리곤 로드 — 거주지(3만 건)는 줌인 후 near/village에서만
+  useEffect(() => {
+    if (!showUkraineControl) {
+      setUkraineSettlements([]);
+      ukraineSettlementsLoadedRef.current = false;
+      return;
+    }
+
+    const tier = getGlobeLod(layerAltitude).tier;
+    const includeSettlements = tier === "near" || tier === "village";
+    void refreshUkraineControl({ includeSettlements });
+    const timer = window.setInterval(() => {
+      const currentTier = getGlobeLod(layerAltitudeRef.current).tier;
+      void refreshUkraineControl({
+        includeSettlements: currentTier === "near" || currentTier === "village",
+      });
+    }, 12 * 60 * 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, [showUkraineControl, refreshUkraineControl, layerAltitude]);
+
+  useEffect(() => {
+    if (!showUkraineControl || (isCameraMoving && Date.now() >= immediateUntilRef.current)) return;
+    if (ukraineSettlementsLoadedRef.current) return;
+    const tier = getGlobeLod(layerAltitude).tier;
+    if (tier === "global") return;
+    void refreshUkraineControl({ includeSettlements: true });
+  }, [applyGeneration, immediateUntilRef, isCameraMoving, layerAltitude, refreshUkraineControl, showUkraineControl]);
+
+  const viinaDisplay = useMemo(
+    () =>
+      selectViinaPolygons(
+        ukraineControl,
+        ukraineControlOverview,
+        layerViewState,
+        layerViewState.altitude,
+      ),
+    [ukraineControl, ukraineControlOverview, layerViewState],
+  );
+
+  const globeLod = useMemo(
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+  const overlayPolygonData = useMemo<PolygonLayerFeature[]>(() => {
+    const layers: PolygonLayerFeature[] = [];
+
+    if (showUkraineControl && viinaDisplay.lod.mode !== "hidden") {
+      for (const zone of viinaDisplay.uaZones) {
+        layers.push({ ...zone, polygonLayer: "ukraine-ua" });
+      }
+      for (const zone of viinaDisplay.contestedZones) {
+        layers.push({ ...zone, polygonLayer: "ukraine-contested" });
+      }
+    }
+
+    if (showMilitaryBases && visibleMilitaryBaseAreas.length > 0) {
+      layers.push(
+        ...visibleMilitaryBaseAreas.map((area) => ({
+          ...area,
+          polygonLayer: "military-base" as const,
+        })),
+      );
+    }
+
+    return layers.length > 0 ? layers : EMPTY_OVERLAY_POLYGONS;
+  }, [
+    showMilitaryBases,
+    showUkraineControl,
+    viinaDisplay.contestedZones,
+    viinaDisplay.lod.mode,
+    viinaDisplay.uaZones,
+    visibleMilitaryBaseAreas,
+  ]);
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+  const polygonData = useMemo<PolygonLayerFeature[]>(
+    () => [...countryPolygonData, ...stableOverlayPolygons],
+    [countryPolygonData, stableOverlayPolygons],
+  );
+
+  const viinaPolygonCount = useMemo(
+    () =>
+      showUkraineControl
+        ? viinaDisplay.ruZones.length +
+          viinaDisplay.uaZones.length +
+          viinaDisplay.contestedZones.length
+        : 0,
+    [
+      showUkraineControl,
+      viinaDisplay.contestedZones.length,
+      viinaDisplay.ruZones.length,
+      viinaDisplay.uaZones.length,
+    ],
+  );
+
+  const ukraineSituationPaths = useMemo<TransportPath[]>(() => {
+    if (!showUkraineControl) return [];
+    return UKRAINE_SITUATION_PATHS.map((path) => {
+      const lats = path.points.map((point) => point.lat);
+      const lngs = path.points.map((point) => point.lng);
+      return {
+        id: path.id,
+        kind: path.kind,
+        name: path.name,
+        scalerank: 1,
+        lengthKm: null,
+        bbox: {
+          minLat: Math.min(...lats),
+          maxLat: Math.max(...lats),
+          minLng: Math.min(...lngs),
+          maxLng: Math.max(...lngs),
+        },
+        points: path.points,
+      };
+    });
+  }, [showUkraineControl]);
+
+  const ukraineFrontPaths = useMemo<TransportPath[]>(() => {
+    if (!showUkraineControl || layerViewState.altitude > 1.65) return [];
+    const maxZones =
+      globeLod.tier === "continent" ? 900 : globeLod.tier === "regional" ? 1600 : 2400;
+    const maxArrows = globeLod.tier === "continent" ? 5 : globeLod.tier === "regional" ? 7 : 10;
+    return buildUkraineCleanFrontLines(
+      viinaDisplay.ruZones,
+      viinaDisplay.uaZones,
+      viinaDisplay.contestedZones,
+      layerViewState,
+      { maxZones, maxArrows },
+    );
+  }, [
+    globeLod.tier,
+    layerViewState,
+    showUkraineControl,
+    viinaDisplay.contestedZones,
+    viinaDisplay.ruZones,
+    viinaDisplay.uaZones,
+  ]);
+
+  const rawGlobePaths = useMemo<TransportPath[]>(
+    () => [
+      ...visibleCoastlines,
+      // 국경선은 stableCountryBorderPaths로만 주입 (줌 LOD 재선정 금지)
+      ...visibleDisputeBoundaries,
+      ...disputeZonePaths,
+      ...visibleShipping,
+      ...visibleCables,
+      ...visibleOilPipelines,
+      ...visibleGasPipelines,
+      ...railPaths,
+      ...armsEmbargoFramePaths,
+      ...ukraineFrontPaths,
+      ...ukraineSituationPaths,
+    ],
+    [
+      armsEmbargoFramePaths,
+      disputeZonePaths,
+      railPaths,
+      ukraineFrontPaths,
+      ukraineSituationPaths,
+      visibleCables,
+      visibleCoastlines,
+      visibleDisputeBoundaries,
+      visibleGasPipelines,
+      visibleOilPipelines,
+      visibleShipping,
+    ],
+  );
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+  const labelPlaces = useMemo(() => {
+    if (!showCityLabels) return [];
+    const mapPlaces = data.places.filter(
+      (place) => place.type === "city" || place.type === "town" || place.type === "village",
+    );
+    const filtered = filterPlacesForView(mapPlaces, layerViewState, layerViewState.altitude);
+    // 우크라 전황 ON이면 전장 안 일반 도시 라벨은 거주지 통제색과 겹치므로 제외
+    if (showUkraineControl) {
+      return filtered.filter((place) => !isInUkraineTheater(place.lat, place.lng));
+    }
+    return filtered;
+  }, [data.places, layerViewState, showCityLabels, showUkraineControl]);
+
+  const ukraineSettlementLabels = useMemo<GlobeLabel[]>(() => {
+    if (!showUkraineControl) return [];
+    if (ukraineSettlements.length === 0 && viinaDisplay.zones.length === 0) return [];
+    return filterUkraineSettlementsForView(
+      ukraineSettlements,
+      viinaDisplay.zones,
+      layerViewState,
+      layerViewState.altitude,
+    ).map((settlement) => ({
+      ...settlement,
+      id: `ua-settle-${settlement.geonameId}`,
+      labelKind: "ukraine-settlement" as const,
+    }));
+  }, [layerViewState, showUkraineControl, ukraineSettlements, viinaDisplay.zones]);
+
+  const rawGlobeLabels = useMemo<GlobeLabel[]>(
+    () => [
+      ...labelPlaces.map((place) => ({
+        ...place,
+        labelKind: "place" as const,
+      })),
+      ...ukraineSettlementLabels,
+    ],
+    [labelPlaces, ukraineSettlementLabels],
+  );
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+    showUcdpEvents,
+    showUkraineControl,
+    showAirports,
+    staticCounts,
+    toggleCategoryPrefs,
+    ukraineControlStatus,
+    ukraineControlDate,
+    ukraineRuCellCount,
+    viinaDisplay.lod.mode,
+    viinaPolygonCount,
+    visibleCables.length,
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+  function flyToBounds(selection: NavSelection, durationMs = 850) {
+    const targetLat = (selection.bbox.minLat + selection.bbox.maxLat) / 2;
+    const targetLng = (selection.bbox.minLng + selection.bbox.maxLng) / 2;
+    const targetAltitude = computeRegionFitAltitude(selection.bbox, selection.altitude);
+    flyTo(targetLat, targetLng, targetAltitude, durationMs);
+  }
+
+  // 우크라 전선 ON → 전선·진격축·양측 점령지가 한 화면에 들어오도록 자동 줌
+  useEffect(() => {
+    if (!showUkraineControl || !globeReady || !ukraineZoomPendingRef.current) return;
+    if (ukraineControl.length === 0) return;
+
+    ukraineZoomPendingRef.current = false;
+    const extraPoints = UKRAINE_SITUATION_PATHS.flatMap((path) => path.points);
+    const bbox = computeUkraineFrontFitBbox(ukraineControl, extraPoints);
+    const targetLat = (bbox.minLat + bbox.maxLat) / 2;
+    const targetLng = (bbox.minLng + bbox.maxLng) / 2;
+    const targetAltitude = computeRegionFitAltitude(bbox, 0.76);
+    layerCenterRef.current = { lat: targetLat, lng: targetLng };
+    layerAltitudeRef.current = targetAltitude;
+    layerLodTierRef.current = getGlobeLod(targetAltitude).tier;
+    setFilterCenter({ lat: targetLat, lng: targetLng });
+    setLayerAltitude(targetAltitude);
+    flyTo(targetLat, targetLng, targetAltitude, 1100);
+  }, [globeReady, showUkraineControl, ukraineControl]);
+
+  useEffect(() => {
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+        <UkraineFrontLegend
+          open={
+            showUkraineControl &&
+            showUkraineLegendPanel &&
+            !showLeftPanel &&
+            !selected &&
+            !regionNavSelection
+          }
+          onClose={() => setShowUkraineLegendPanel(false)}
+          controlDate={ukraineControlDate}
+          lodLabel={
+            viinaDisplay.lod.mode === "hidden"
+              ? "줌인 필요"
+              : viinaDisplay.lod.mode === "overview"
+                ? "전선 개요"
+                : "상세"
+          }
+        />
+        <DisputeZoneLegend
+          open={
+            showDisputes &&
+            showDisputeLegendPanel &&
+            !showLeftPanel &&
+            !selected &&
+            !regionNavSelection
+          }
+          onClose={() => setShowDisputeLegendPanel(false)}
+          stacked={showUkraineControl && showUkraineLegendPanel}
+        />
+        {!showLeftPanel && !selected && !regionNavSelection && (
+          <div className="pointer-events-none absolute bottom-[4.75rem] left-1/2 z-20 flex -translate-x-1/2 flex-wrap items-center justify-center gap-2">
+            {showDisputes && !showDisputeLegendPanel && (
+              <LegendReopenButton
+                label="영토 분쟁 범례"
+                accent="orange"
+                onClick={() => setShowDisputeLegendPanel(true)}
+              />
+            )}
+            {showUkraineControl && !showUkraineLegendPanel && (
+              <LegendReopenButton
+                label="우크라이나 전선 범례"
+                accent="red"
+                onClick={() => setShowUkraineLegendPanel(true)}
+              />
+            )}
+          </div>
+        )}
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+            <p className="mt-2 text-xs leading-5 text-slate-500">
+              현재 배율: {globeLod.label}
+              {showUkraineControl && viinaDisplay.lod.mode === "overview"
+                ? " · 전선 개요"
+                : showUkraineControl && viinaDisplay.lod.mode === "hidden"
+                  ? " · 전선(줌인 필요)"
+                  : ""}{" "}
+              · 이벤트 {globePoints.length.toLocaleString()}개
+            </p>
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+          {aisError && <p className="mt-2 text-xs leading-5 text-red-200">{aisError}</p>}
+          <button
+            type="button"
+            onClick={() =>
+              void refreshUkraineControl({
+                includeSettlements:
+                  getGlobeLod(viewState.altitude).tier !== "global" &&
+                  getGlobeLod(viewState.altitude).tier !== "continent",
+              })
+            }
+            disabled={ukraineControlStatus === "loading" || !showUkraineControl}
+            className="mt-3 w-full rounded-lg border border-red-300/30 bg-red-300/10 px-3 py-2 text-xs text-red-100 transition hover:border-red-200 disabled:cursor-wait disabled:opacity-60"
+          >
+            {ukraineControlStatus === "loading" ? "점령지 불러오는 중…" : "점령지 새로고침"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSyncBusy(true);
+              void forceSync().finally(() => setSyncBusy(false));
+            }}

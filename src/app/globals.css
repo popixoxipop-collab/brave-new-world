@@ -1,0 +1,358 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #0b0c10;
+  --background-deep: #06070a;
+  --foreground: #e8eef7;
+  --panel: rgba(15, 20, 28, 0.82);
+  --panel-border: rgba(69, 243, 255, 0.14);
+  --accent: rgba(0, 255, 204, 0.85);
+  /* MapLegend + intel stack clearance (collapsed default; expanded via JS) */
+  --bottom-intel-stack-clearance: 8.5rem;
+  --intel-sidebar-width: 480px;
+}
+
+body {
+  color: var(--foreground);
+  background:
+    radial-gradient(ellipse 78% 58% at 50% 40%, rgba(0, 255, 204, 0.04) 0%, transparent 62%),
+    radial-gradient(ellipse 42% 32% at 82% 14%, rgba(69, 243, 255, 0.03) 0%, transparent 54%),
+    radial-gradient(ellipse 38% 28% at 14% 86%, rgba(255, 0, 127, 0.025) 0%, transparent 50%),
+    var(--background);
+  font-family: var(--font-geist-mono), "IBM Plex Mono", "JetBrains Mono", monospace;
+}
+
+.city-label-marker {
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  text-shadow:
+    0 0 1px rgba(0, 0, 0, 0.95),
+    0 1px 4px rgba(0, 0, 0, 0.85),
+    0 0 12px rgba(0, 0, 0, 0.45);
+}
+
+.city-label-marker[data-tier="megacity"] {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.city-label-marker[data-tier="city"] {
+  font-size: 12px;
+}
+
+::selection {
+  background: rgba(0, 255, 204, 0.28);
+}
+
+.intel-panel {
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
+  box-shadow: 0 20px 60px rgba(4, 12, 28, 0.55);
+  backdrop-filter: blur(16px);
+}
+
+.intel-sidebar-right {
+  width: min(100vw, var(--intel-sidebar-width));
+}
+
+.stock-ticker-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.stock-ticker-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.ua-settlement-label {
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .space-ambient {
+    background:
+      radial-gradient(ellipse 78% 58% at 50% 40%, rgba(0, 255, 204, 0.04) 0%, transparent 62%),
+      radial-gradient(ellipse 42% 32% at 82% 14%, rgba(69, 243, 255, 0.03) 0%, transparent 54%),
+      radial-gradient(ellipse 38% 28% at 14% 86%, rgba(255, 0, 127, 0.025) 0%, transparent 50%),
+      var(--background);
+  }
+}
+
+.gdelt-location-tag-pin,
+.location-pin-marker.gdelt-news-pin {
+  animation: cyber-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes cyber-pulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 4px rgba(0, 255, 204, 0.35));
+  }
+  50% {
+    filter: drop-shadow(0 0 10px rgba(0, 255, 204, 0.75));
+  }
+}
+
+.hub-marker {
+  will-change: transform, opacity;
+}
+
+.hub-marker svg {
+  display: block;
+  filter: drop-shadow(0 1px 1px rgba(2, 8, 20, 0.35));
+}
+
+.location-pin-marker {
+  will-change: transform, opacity, filter;
+}
+
+.location-pin-marker svg {
+  display: block;
+  overflow: visible;
+}
+
+.carrier-marker-root.carrier-marker-deployed .carrier-marker--deployed svg {
+  animation: carrier-deployed-pulse 2.2s ease-in-out infinite;
+}
+
+.carrier-marker-root.carrier-marker-deployed .carrier-status-badge {
+  animation: carrier-badge-pulse 2.2s ease-in-out infinite;
+}
+
+.carrier-marker-root.carrier-marker-home {
+  filter: saturate(0.85);
+}
+
+.carrier-legend-deck-swatch {
+  display: inline-flex;
+  line-height: 0;
+  animation: carrier-deployed-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes carrier-deployed-pulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 4px rgba(220, 38, 38, 0.45));
+  }
+  50% {
+    filter: drop-shadow(0 0 12px rgba(220, 38, 38, 0.95));
+  }
+}
+
+@keyframes carrier-badge-pulse {
+  0%,
+  100% {
+    opacity: 0.88;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes intel-stack-focus-flash-keyframes {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0 rgba(56, 189, 248, 0));
+  }
+  40% {
+    filter: drop-shadow(0 0 18px rgba(56, 189, 248, 0.55));
+  }
+}
+
+.intel-stack-focus-flash {
+  animation: intel-stack-focus-flash-keyframes 0.9s ease-out;
+}
+
+/* 풀스크린 뉴스: 아래에서 쫙 올라와 화면 전체 덮음 */
+.intel-news-sheet {
+  transform: translateY(100%);
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    transform 0.38s cubic-bezier(0.32, 0, 0.17, 1),
+    visibility 0.38s step-end;
+}
+
+.intel-news-sheet--open {
+  transform: translateY(0);
+  visibility: visible;
+  pointer-events: auto;
+  transition:
+    transform 0.38s cubic-bezier(0.22, 1, 0.32, 1),
+    visibility 0s;
+}
+
+.intel-news-sheet--open .intel-tier-section {
+  animation: intel-tier-reveal 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.intel-open-fab {
+  animation: intel-fab-glow 3s ease-in-out infinite;
+}
+
+@keyframes intel-fab-glow {
+  0%,
+  100% {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  }
+  50% {
+    box-shadow: 0 8px 36px rgba(56, 189, 248, 0.22);
+  }
+}
+
+@keyframes intel-tier-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.intel-analysis-panel {
+  border-top-width: 2px;
+}
+
+.hero-breaking-breaking {
+  animation: hero-breaking-pulse 2.6s ease-in-out infinite;
+}
+
+@keyframes hero-breaking-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(251, 113, 133, 0);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(251, 113, 133, 0.28);
+  }
+}
+
+.hero-breaking-confirmed {
+  animation: hero-confirmed-pulse 2.4s ease-in-out infinite;
+}
+
+.hero-breaking-unverified {
+  animation: hero-unverified-pulse 2.8s ease-in-out infinite;
+}
+
+.hero-open-cta-arrow {
+  animation: hero-cta-arrow-nudge 1.4s ease-in-out infinite;
+}
+
+@keyframes hero-cta-arrow-nudge {
+  0%,
+  100% {
+    transform: translateX(0);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translateX(3px);
+    opacity: 1;
+  }
+}
+
+.hero-open-cta:hover .hero-open-cta-arrow {
+  animation-duration: 0.7s;
+}
+
+@keyframes hero-confirmed-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(248, 113, 113, 0);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(248, 113, 113, 0.35);
+  }
+}
+
+@keyframes hero-unverified-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(251, 191, 36, 0);
+  }
+  50% {
+    box-shadow: 0 0 14px rgba(251, 191, 36, 0.28);
+  }
+}
+
+.neptun-threat-marker-root {
+  filter: drop-shadow(0 0 6px rgba(255, 120, 0, 0.4));
+}
+
+.neptun-threat-marker__ring {
+  position: absolute;
+  inset: 1px;
+  border: 1.5px solid;
+  border-radius: 9999px;
+  opacity: 0.45;
+}
+
+.neptun-threat-marker__body {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center center;
+}
+
+.neptun-threat-marker__svg {
+  display: block;
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+.neptun-threat-marker__body[data-threat-shape="missile"] .neptun-threat-marker__svg,
+.neptun-threat-marker__body[data-threat-shape="ballistic"] .neptun-threat-marker__svg,
+.neptun-threat-marker__body[data-threat-shape="kab"] .neptun-threat-marker__svg,
+.neptun-threat-marker__body[data-threat-shape="mig31k"] .neptun-threat-marker__svg {
+  filter: drop-shadow(0 0 6px currentColor);
+}
+
+.neptun-threat-marker__count {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background: rgba(10, 16, 28, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #fff;
+  font: 700 9px/14px ui-monospace, monospace;
+  text-align: center;
+  pointer-events: none;
+}
+
+.neptun-threat-marker--flying .neptun-threat-marker__ring {
+  animation: neptun-threat-pulse 1.8s ease-in-out infinite;
+}
+
+.neptun-threat-marker--flying[data-threat-type="uav"] {
+  filter: drop-shadow(0 0 8px rgba(240, 130, 14, 0.55));
+}
+
+@keyframes neptun-threat-pulse {
+  0%,
+  100% {
+    transform: scale(0.92);
+    opacity: 0.45;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.9;
+  }
+}

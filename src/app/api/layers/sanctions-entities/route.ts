@@ -1,0 +1,33 @@
+import { NextResponse } from "next/server";
+import type { StaticPoint } from "@/data/geoTypes";
+import { cachedFetchJson } from "@/lib/apiCache";
+import { loadLocalStaticPoints } from "@/lib/localLayerData";
+import { apiStubResponse } from "@/lib/apiStub";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+const TTL_MS = 24 * 60 * 60 * 1000;
+
+async function loadSanctions(): Promise<{ points: StaticPoint[]; lists: string[] }> {
+  const points = loadLocalStaticPoints("sanctions-entities.json");
+  return {
+    points,
+    lists: ["OFAC SDN", "UN Consolidated", "EU FSF", "UK Sanctions"],
+  };
+}
+
+export async function GET(request: Request) {
+  const stub = apiStubResponse("sanctions-entities", request);
+  if (stub) return stub;
+
+  const { data, cached } = await cachedFetchJson("sanctions-entities", TTL_MS, loadSanctions);
+  return NextResponse.json({
+    receivedAt: new Date().toISOString(),
+    cached,
+    count: data.points.length,
+    points: data.points,
+    lists: data.lists,
+    attribution: "US Treasury OFAC / UN / EU / UK · local build",
+  });
+}

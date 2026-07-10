@@ -1,0 +1,556 @@
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+} from "@/lib/disputeHatch";
+import {
+  UKRAINE_SITUATION_CALLOUTS,
+  UKRAINE_SITUATION_PATHS,
+  type UkraineCallout,
+} from "@/data/ukraineSituationSeed";
+import type {
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+  | {
+      kind: "ais";
+      item: AisVessel;
+    }
+  | {
+      kind: "ukraine-control";
+      item: UkraineControlZone;
+    }
+  | {
+      kind: "us-carrier";
+      item: UsCarrier;
+    };
+
+type PolygonLayerFeature =
+  | (CountryFeature & { polygonLayer: "country" })
+  | (UkraineControlZone & { polygonLayer: "ukraine-ru" | "ukraine-ua" | "ukraine-contested" })
+  | (MilitaryBaseArea & { polygonLayer: "military-base" })
+  | (ConflictZoneFeature & { polygonLayer: "conflict-zone" });
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+/** ISW 분홍 점령면 — 이름(거의 검정)이 읽히도록 반투명·밝은 톤 */
+const UKRAINE_RU_FILL = "rgba(244, 140, 150, 0.42)";
+const UKRAINE_RU_ALTITUDE = 0.0018;
+/** 우크라이나 주장 영토 (전선·청색 톤) */
+const UKRAINE_UA_FILL = "rgba(56, 189, 248, 0.28)";
+const UKRAINE_UA_ALTITUDE = 0.0016;
+/** 경합·교전지 — 주황 형광 */
+const UKRAINE_CONTESTED_FILL = "rgba(255, 120, 0, 0.52)";
+const UKRAINE_CONTESTED_STROKE = "rgba(255, 180, 0, 0.88)";
+const UKRAINE_CONTESTED_ALTITUDE = 0.002;
+const UKRAINE_ADVANCE_ORANGE = "rgba(255, 160, 0, 0.96)";
+const UKRAINE_ADVANCE_RU = "rgba(255, 90, 40, 0.92)";
+const US_BASE_FILL = "rgba(37, 99, 235, 0.32)";
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+const SPACE_ATMOSPHERE = "rgba(48, 96, 168, 0.2)";
+
+function formatViinaDate(value: string | null | undefined) {
+  if (!value || !/^\d{8}$/.test(value)) return value || "N/A";
+  return `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`;
+}
+
+/** Polygon / MultiPolygon 외곽을 닫힌 path 링으로 변환 (면 없이 테두리만) */
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+  return el;
+}
+
+function createUkraineCalloutBadge(callout: UkraineCalloutMarker): HTMLElement {
+  const accent =
+    callout.side === "ua"
+      ? { border: "rgba(96,165,250,0.85)", bg: "rgba(15,23,42,0.92)", title: "#93c5fd" }
+      : callout.side === "ru"
+        ? { border: "rgba(248,113,113,0.85)", bg: "rgba(15,23,42,0.92)", title: "#fca5a5" }
+        : { border: "rgba(251,191,36,0.85)", bg: "rgba(15,23,42,0.92)", title: "#fde68a" };
+
+  const el = document.createElement("div");
+  el.className = "ua-callout";
+  el.style.maxWidth = "200px";
+  el.style.padding = "6px 8px";
+  el.style.borderRadius = "4px";
+  el.style.border = `1px solid ${accent.border}`;
+  el.style.background = accent.bg;
+  el.style.color = "#e2e8f0";
+  el.style.fontSize = "11px";
+  el.style.lineHeight = "1.35";
+  el.style.transform = "translate(-50%, -110%)";
+  el.style.opacity = "0";
+  el.style.pointerEvents = "none";
+  el.style.userSelect = "none";
+  el.style.boxShadow = "0 4px 14px rgba(0,0,0,0.35)";
+  el.innerHTML = `<div style="font-weight:700;color:${accent.title};margin-bottom:2px">${escapeHtml(
+    callout.title,
+  )}</div><div style="opacity:0.92">${escapeHtml(callout.body)}</div>`;
+  return el;
+}
+
+const EMPTY_OVERLAY_POLYGONS: PolygonLayerFeature[] = [];
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+const FLOW_PATH_KINDS = new Set([
+  "shipping-lane",
+  "submarine-cable",
+  "msr",
+  "oil-pipeline",
+  "gas-pipeline",
+  "ua-axis",
+  "ru-axis",
+  "ua-advance",
+  "ru-advance",
+  "ukraine-ru-front",
+  "ukraine-ua-front",
+  "ukraine-contested-front",
+]);
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+  if (kind === "dispute-hatch") return "분쟁 빗금";
+  if (kind === "ua-axis") return "UA 작전 축";
+  if (kind === "ru-axis") return "RU 방어선";
+  if (kind === "ua-advance") return "UA 진격 방향";
+  if (kind === "ru-advance") return "RU 진격·압박";
+  if (kind === "msr") return "보급로 (MSR)";
+  if (kind === "ukraine-ru-front") return "RU 점령 전선";
+  if (kind === "ukraine-ua-front") return "UA 방어 전선";
+  if (kind === "ukraine-contested-front") return "경합·교전지";
+  return kind;
+}
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+  const [showDisputeLegendPanel, setShowDisputeLegendPanel] = useState(false);
+  const [showUkraineLegendPanel, setShowUkraineLegendPanel] = useState(false);
+  const [selected, setSelected] = useState<Selection | null>(null);
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+  }, [data.generatedAt, isLoading, loadError, syncInfo]);
+
+  const refreshUkraineControl = useCallback(async (opts?: { includeSettlements?: boolean }) => {
+    const includeSettlements = opts?.includeSettlements === true;
+    setUkraineControlStatus("loading");
+    try {
+      let response: Response;
+      if (isClientApiStubMode()) {
+        response = await fetch(dataPath("ukraine-control.json"), { cache: "no-store" });
+      } else {
+        response = await fetch(
+          `/api/viina-ukraine${includeSettlements ? "?settlements=1" : ""}`,
+          { cache: "no-store" },
+        );
+        if (!response.ok) {
+          response = await fetch(dataPath("ukraine-control.json"), { cache: "no-store" });
+        }
+      }
+
+      const payload = (await response.json()) as {
+        features?: UkraineControlZone[];
+        overviewFeatures?: UkraineControlZone[];
+        settlements?: UkraineSettlement[];
+        controlDate?: string;
+        ruCellCount?: number;
+        error?: string;
+      };
+
+      if (!response.ok || payload.error || !payload.features?.length) {
+        throw new Error(payload.error || "VIINA 데이터 없음");
+      }
+
+      setUkraineControl(payload.features);
+      setUkraineControlOverview(payload.overviewFeatures || []);
+      setUkraineControlDate(payload.controlDate || null);
+      setUkraineRuCellCount(payload.ruCellCount || 0);
+
+      if (includeSettlements) {
+        setUkraineSettlements(expandSettlements(payload.settlements || []));
+        ukraineSettlementsLoadedRef.current = true;
+      } else if (!ukraineSettlementsLoadedRef.current) {
+        setUkraineSettlements([]);
+      }
+
+      setUkraineControlStatus("ok");
+    } catch {
+      setUkraineControlStatus("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (syncGeneration <= 0) return;
+    void refreshUkraineControl({ includeSettlements: true });
+  }, [syncGeneration, refreshUkraineControl]);
+
+  // 폴리곤 로드 — 거주지(3만 건)는 줌인 후 near/village에서만
+  useEffect(() => {
+    if (!showUkraineControl) {
+      setUkraineSettlements([]);
+      ukraineSettlementsLoadedRef.current = false;
+      return;
+    }
+
+    const tier = getGlobeLod(layerAltitude).tier;
+    const includeSettlements = tier === "near" || tier === "village";
+    void refreshUkraineControl({ includeSettlements });
+    const timer = window.setInterval(() => {
+      const currentTier = getGlobeLod(layerAltitudeRef.current).tier;
+      void refreshUkraineControl({
+        includeSettlements: currentTier === "near" || currentTier === "village",
+      });
+    }, 12 * 60 * 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, [showUkraineControl, refreshUkraineControl, layerAltitude]);
+
+  useEffect(() => {
+    if (!showUkraineControl || (isCameraMoving && Date.now() >= immediateUntilRef.current)) return;
+    if (ukraineSettlementsLoadedRef.current) return;
+    const tier = getGlobeLod(layerAltitude).tier;
+    if (tier === "global") return;
+    void refreshUkraineControl({ includeSettlements: true });
+  }, [applyGeneration, immediateUntilRef, isCameraMoving, layerAltitude, refreshUkraineControl, showUkraineControl]);
+
+  const viinaDisplay = useMemo(
+    () =>
+      selectViinaPolygons(
+        ukraineControl,
+        ukraineControlOverview,
+        layerViewState,
+        layerViewState.altitude,
+      ),
+    [ukraineControl, ukraineControlOverview, layerViewState],
+  );
+
+  const globeLod = useMemo(
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+  const polygonData = useMemo<PolygonLayerFeature[]>(
+    () => [...countryPolygonData, ...stableOverlayPolygons],
+    [countryPolygonData, stableOverlayPolygons],
+  );
+
+  const viinaPolygonCount = useMemo(
+    () =>
+      showUkraineControl
+        ? viinaDisplay.ruZones.length +
+          viinaDisplay.uaZones.length +
+          viinaDisplay.contestedZones.length
+        : 0,
+    [
+      showUkraineControl,
+      viinaDisplay.contestedZones.length,
+      viinaDisplay.ruZones.length,
+      viinaDisplay.uaZones.length,
+    ],
+  );
+
+  const ukraineSituationPaths = useMemo<TransportPath[]>(() => {
+    if (!showUkraineControl) return [];
+    return UKRAINE_SITUATION_PATHS.map((path) => {
+      const lats = path.points.map((point) => point.lat);
+      const lngs = path.points.map((point) => point.lng);
+      return {
+        id: path.id,
+        kind: path.kind,
+        name: path.name,
+        scalerank: 1,
+        lengthKm: null,
+        bbox: {
+          minLat: Math.min(...lats),
+          maxLat: Math.max(...lats),
+          minLng: Math.min(...lngs),
+          maxLng: Math.max(...lngs),
+        },
+        points: path.points,
+      };
+    });
+  }, [showUkraineControl]);
+
+  const ukraineFrontPaths = useMemo<TransportPath[]>(() => {
+    if (!showUkraineControl || layerViewState.altitude > 1.65) return [];
+    const maxZones =
+      globeLod.tier === "continent" ? 900 : globeLod.tier === "regional" ? 1600 : 2400;
+    const maxArrows = globeLod.tier === "continent" ? 5 : globeLod.tier === "regional" ? 7 : 10;
+    return buildUkraineCleanFrontLines(
+      viinaDisplay.ruZones,
+      viinaDisplay.uaZones,
+      viinaDisplay.contestedZones,
+      layerViewState,
+      { maxZones, maxArrows },
+    );
+  }, [
+    globeLod.tier,
+    layerViewState,
+    showUkraineControl,
+    viinaDisplay.contestedZones,
+    viinaDisplay.ruZones,
+    viinaDisplay.uaZones,
+  ]);
+
+  const rawGlobePaths = useMemo<TransportPath[]>(
+    () => [
+      ...visibleCoastlines,
+      // 국경선은 stableCountryBorderPaths로만 주입 (줌 LOD 재선정 금지)
+      ...visibleDisputeBoundaries,
+      ...disputeZonePaths,
+      ...visibleShipping,
+      ...visibleCables,
+      ...visibleOilPipelines,
+      ...visibleGasPipelines,
+      ...railPaths,
+      ...armsEmbargoFramePaths,
+      ...ukraineFrontPaths,
+      ...ukraineSituationPaths,
+    ],
+    [
+      armsEmbargoFramePaths,
+      disputeZonePaths,
+      railPaths,
+      ukraineFrontPaths,
+      ukraineSituationPaths,
+      visibleCables,
+      visibleCoastlines,
+      visibleDisputeBoundaries,
+      visibleGasPipelines,
+      visibleOilPipelines,
+      visibleShipping,
+    ],
+  );
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+  const ukraineCalloutMarkers = useMemo<UkraineCalloutMarker[]>(() => {
+    if (!showUkraineControl || globeLod.tier === "global") return [];
+    return UKRAINE_SITUATION_CALLOUTS.map((callout) => ({
+      ...callout,
+      markerId: `ua-callout-${callout.id}`,
+      displayKind: "ua-callout" as const,
+    }));
+  }, [globeLod.tier, showUkraineControl]);
+
+  const htmlOverlayMarkers = useMemo<HtmlOverlayMarker[]>(
+    () => [...globePoints, ...airportPortHtmlMarkers, ...ukraineCalloutMarkers, ...usCarrierHtmlMarkers],
+    [airportPortHtmlMarkers, globePoints, ukraineCalloutMarkers, usCarrierHtmlMarkers],
+  );
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+  function flyToBounds(selection: NavSelection, durationMs = 850) {
+    const targetLat = (selection.bbox.minLat + selection.bbox.maxLat) / 2;
+    const targetLng = (selection.bbox.minLng + selection.bbox.maxLng) / 2;
+    const targetAltitude = computeRegionFitAltitude(selection.bbox, selection.altitude);
+    flyTo(targetLat, targetLng, targetAltitude, durationMs);
+  }
+
+  // 우크라 전선 ON → 전선·진격축·양측 점령지가 한 화면에 들어오도록 자동 줌
+  useEffect(() => {
+    if (!showUkraineControl || !globeReady || !ukraineZoomPendingRef.current) return;
+    if (ukraineControl.length === 0) return;
+
+    ukraineZoomPendingRef.current = false;
+    const extraPoints = UKRAINE_SITUATION_PATHS.flatMap((path) => path.points);
+    const bbox = computeUkraineFrontFitBbox(ukraineControl, extraPoints);
+    const targetLat = (bbox.minLat + bbox.maxLat) / 2;
+    const targetLng = (bbox.minLng + bbox.maxLng) / 2;
+    const targetAltitude = computeRegionFitAltitude(bbox, 0.76);
+    layerCenterRef.current = { lat: targetLat, lng: targetLng };
+    layerAltitudeRef.current = targetAltitude;
+    layerLodTierRef.current = getGlobeLod(targetAltitude).tier;
+    setFilterCenter({ lat: targetLat, lng: targetLng });
+    setLayerAltitude(targetAltitude);
+    flyTo(targetLat, targetLng, targetAltitude, 1100);
+  }, [globeReady, showUkraineControl, ukraineControl]);
+
+  useEffect(() => {
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+      if (item.displayKind === "event") {
+        return createEventPinElement(item, viewState.altitude, {
+          onHover: handleHtmlMarkerHover,
+          onClick: (eventPoint) => {
+            openSelection({ kind: "event", item: eventPoint });
+            flyTo(eventPoint.lat, eventPoint.lng, 0.92);
+          },
+        });
+      }
+      if (item.displayKind === "ua-callout") {
+        return createUkraineCalloutBadge(item);
+      }
+      if (item.displayKind === "us-carrier-html") {
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+    if (feature.polygonLayer === "military-base") {
+      flyTo(feature.center.lat, feature.center.lng, 0.55);
+      return;
+    }
+
+    openSelection({ kind: "ukraine-control", item: feature });
+    flyTo(feature.center.lat, feature.center.lng, 0.88);
+  }
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+              polygonCapColor={(feature: PolygonLayerFeature) => {
+                if (feature.polygonLayer === "country") return getCountryFillColor(feature);
+                if (feature.polygonLayer === "military-base") return US_BASE_FILL;
+                if (feature.polygonLayer === "conflict-zone") {
+                  return CONFLICT_ZONE_FILLS[feature.tension] || CONFLICT_ZONE_FILLS.medium;
+                }
+                if (feature.polygonLayer === "ukraine-ua") return UKRAINE_UA_FILL;
+                if (feature.polygonLayer === "ukraine-contested") return UKRAINE_CONTESTED_FILL;
+                return UKRAINE_RU_FILL;
+              }}
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+                if (feature.polygonLayer === "conflict-zone") {
+                  return `
+                      <div style="max-width: 300px">
+                        <strong>분쟁 클러스터</strong><br/>
+                        ${escapeHtml(feature.name)}<br/>
+                        이벤트 ${feature.eventCount.toLocaleString()} · 긴장도 ${escapeHtml(feature.tension)}
+                      </div>
+                    `;
+                }
+
+                const layerLabel =
+                  feature.polygonLayer === "ukraine-ru"
+                    ? "러시아 주장"
+                    : feature.polygonLayer === "ukraine-ua"
+                      ? "우크라이나 주장"
+                      : feature.polygonLayer === "ukraine-contested"
+                        ? "경합·교전"
+                        : ukraineControlStatusLabel(feature.controlStatus);
+                return `
+                      <div style="max-width: 320px">
+                        <strong>${escapeHtml(feature.name)}</strong><br/>
+                        ${escapeHtml(layerLabel)} · ${escapeHtml(formatViinaDate(ukraineControlDate))}<br/>
+                        VIINA · RU ${ukraineRuCellCount.toLocaleString()}곳
+                      </div>
+                    `;
+              }}
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+                if (path.kind === "arms-embargo") return ARMS_EMBARGO_STROKE;
+                if (path.kind === "ua-axis") return UKRAINE_ADVANCE_ORANGE;
+                if (path.kind === "ru-axis") return UKRAINE_ADVANCE_RU;
+                if (path.kind === "ua-advance") return UKRAINE_ADVANCE_ORANGE;
+                if (path.kind === "ru-advance") return UKRAINE_ADVANCE_RU;
+                if (path.kind === "msr") return "rgba(250, 204, 21, 0.9)";
+                if (path.kind === "ukraine-ru-front") return "rgba(244, 140, 150, 0.96)";
+                if (path.kind === "ukraine-ua-front") return "rgba(56, 189, 248, 0.95)";
+                if (path.kind === "ukraine-contested-front") return "rgba(255, 160, 0, 0.98)";
+                return showRailGlow ? INFRA_COLORS.rail.glow : INFRA_COLORS.rail.dim;
+              }}
+              pathStroke={(path: TransportPath) => {
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+                if (path.kind === "arms-embargo") return ARMS_EMBARGO_STROKE_WIDTH;
+                if (path.kind === "ua-axis") return 0.68;
+                if (path.kind === "ru-axis") return 0.62;
+                if (path.kind === "ua-advance") return 0.82;
+                if (path.kind === "ru-advance") return 0.78;
+                if (path.kind === "msr") return 0.55;
+                if (path.kind === "ukraine-ru-front") return 1.05;
+                if (path.kind === "ukraine-ua-front") return 1.0;
+                if (path.kind === "ukraine-contested-front") return 1.15;
+                return showRailGlow ? INFRA_STROKE.rail.glow : INFRA_STROKE.rail.dim;
+              }}
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+        <UkraineFrontLegend
+          open={
+            showUkraineControl &&
+            showUkraineLegendPanel &&
+            !showLeftPanel &&
+            !selected &&
+            !regionNavSelection
+          }
+          onClose={() => setShowUkraineLegendPanel(false)}
+          controlDate={ukraineControlDate}
+          lodLabel={
+            viinaDisplay.lod.mode === "hidden"
+              ? "줌인 필요"
+              : viinaDisplay.lod.mode === "overview"
+                ? "전선 개요"
+                : "상세"
+          }
+        />
+        <DisputeZoneLegend
+          open={
+            showDisputes &&
+            showDisputeLegendPanel &&
+            !showLeftPanel &&
+            !selected &&
+            !regionNavSelection
+          }
+          onClose={() => setShowDisputeLegendPanel(false)}
+          stacked={showUkraineControl && showUkraineLegendPanel}
+        />
+        {!showLeftPanel && !selected && !regionNavSelection && (
+          <div className="pointer-events-none absolute bottom-[4.75rem] left-1/2 z-20 flex -translate-x-1/2 flex-wrap items-center justify-center gap-2">
+            {showDisputes && !showDisputeLegendPanel && (
+              <LegendReopenButton
+                label="영토 분쟁 범례"
+                accent="orange"
+                onClick={() => setShowDisputeLegendPanel(true)}
+              />
+            )}
+            {showUkraineControl && !showUkraineLegendPanel && (
+              <LegendReopenButton
+                label="우크라이나 전선 범례"
+                accent="red"
+                onClick={() => setShowUkraineLegendPanel(true)}
+              />
+            )}
+          </div>
+        )}
+
+
+===== c:\Users\Administrator\Downloads\Confilct-view-dev\Confilct-view-dev\src\components\GlobeDashboard.tsx =====
+  }
+
+  if (selection.kind === "ukraine-control") {
+    const zone = selection.item;
+    return (
+      <div className="flex flex-col gap-4">
+        <PanelHeader
+          eyebrow="VIINA Territorial Control"
+          title={zone.name}
+          badge={`RU · ${formatViinaDate(ukraineControlDate)}`}
+          onClose={onClose}
+        />
+
+        <section className="rounded-xl border border-red-900/50 bg-red-950/20 p-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-red-200/70">전황 설명</p>
+          <p className="mt-3 text-sm leading-6 text-slate-300">
+            DeepStateMap · ISW · Wikipedia · VIINA 이벤트를 융합한 거주지 단위 영토 통제 데이터입니다.
+            빨간 반투명 면은 러시아군이 통제하는 지역을 표시합니다.
+          </p>
+        </section>
+
+        <section className="grid grid-cols-2 gap-3">
+          <Metric label="점령 거주지" value={`${ukraineRuCellCount.toLocaleString()}곳`} />
+          <Metric label="기준일" value={formatViinaDate(ukraineControlDate)} />
+          <Metric label="Lat" value={zone.center.lat.toFixed(2)} />
+          <Metric label="Lng" value={zone.center.lng.toFixed(2)} />
+        </section>
+
+        <p className="mt-auto text-xs leading-5 text-slate-500">
+          VIINA는 일 1회 GitHub에 갱신됩니다. 앱은 12시간마다 자동 동기화하며, 좌측 패널에서 수동 새로고침할 수 있습니다.
+        </p>
+      </div>
+    );
+  }
+
+  if (selection.kind === "dispute") {
