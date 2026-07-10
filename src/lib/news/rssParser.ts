@@ -93,11 +93,11 @@ export function parseRssXml(xml: string): RawRssItem[] {
   }
 
   const items: RawRssItem[] = [];
-  const blocks = [...xml.matchAll(/<item[\s>]([\s\S]*?)<\/item>/gi)].map((m) => m[1]);
+  const blocks = Array.from(xml.matchAll(/<item[\s>]([\s\S]*?)<\/item>/gi)).map((m) => m[1]);
   const entries =
     blocks.length > 0
       ? blocks
-      : [...xml.matchAll(/<entry[\s>]([\s\S]*?)<\/entry>/gi)].map((m) => m[1]);
+      : Array.from(xml.matchAll(/<entry[\s>]([\s\S]*?)<\/entry>/gi)).map((m) => m[1]);
 
   for (const block of entries.slice(0, 15)) {
     let title = tagContent(block, "title");
