@@ -4,7 +4,7 @@
 
 - **스택:** Next.js 14 · React 18 · TypeScript · react-globe.gl · Three.js · Tailwind CSS
 - **언어:** UI 기본 한국어 (`labelLanguage: "ko"`)
-- **라이선스:** 프로젝트별 데이터 출처·이용 조건은 앱 내 「데이터 출처 · 라이선스」 패널 및 [`docs/copyright-checklist.md`](docs/copyright-checklist.md) 참고
+- **출처 표기 의무:** [출처 표기 · 라이선스 공개 의무](#출처-표기--라이선스-공개-의무) · 앱 UI 「출처」 패널 · [`docs/copyright-checklist.md`](docs/copyright-checklist.md)
 
 ---
 
@@ -286,183 +286,111 @@ IRONSIGHT/                # 참고용 별도 OSINT 대시보드 (Nobler Works, M
 
 ---
 
-## 데이터 출처 · 라이선스 · 표기 의무
+## 출처 표기 · 라이선스 공개 의무
 
-> **본 안내는 법률 자문이 아닙니다.** 상업 서비스·유료화 전에는 변호사 검토를 권장합니다.  
-> 앱 UI: 우상단 **「출처」** 버튼 → `MethodologySourcesPanel` · 상세 체크리스트: [`docs/copyright-checklist.md`](docs/copyright-checklist.md)
+> **본 절은 출처 표기·라이선스 고지·이용 제한이 있는 소스만** 다룹니다.  
+> Public Domain·무료 공개 API·일반 npm 오픈소스 라이브러리는 별도 표기 의무가 없어 **목록에서 제외**했습니다.  
+> 법률 자문이 아닙니다. 상세 체크리스트: [`docs/copyright-checklist.md`](docs/copyright-checklist.md) · 앱 UI **「출처」** 패널
 
-### 필수 표기 문구 (VIINA · ODbL)
+### ODbL (Open Database License v1.0) — 출처·라이선스 링크 필수
 
-우크라이나 전선 레이어 사용 시 아래 문구를 UI·문서에 표기해야 합니다 (ODbL 4.3).
+| 대상 | 프로젝트·데이터 | 앱 내 사용 | 필수 표기 |
+|------|----------------|------------|-----------|
+| **VIINA** | 우크라이나 전선·점령 폴리곤 | 지구본 렌더링 전용 | 아래 문구 + VIINA·ODbL 링크 |
+| **OpenStreetMap** | 미군 기지·AI DC·경제 허브 등 OSM 기반 레이어 | 파생 지도 데이터 | `© OpenStreetMap contributors` + [ODbL](https://opendatacommons.org/licenses/odbl/1-0/) |
+| **OurAirports** | 공항 포인트 (덤프 빌드) | 정적 JSON | OurAirports + [ODbL](https://opendatacommons.org/licenses/odbl/1-0/) |
 
-**한국어**
+**VIINA 필수 문구 (ODbL 4.3)**
+
+한국어:
 
 > 본 지도에는 VIINA(Open Database License, ODbL v1.0)에 따라 제공된 정보가 포함됩니다. 데이터는 화면 렌더링 전용이며, 원본 추출·API 제공은 하지 않습니다.
 
-**English**
+English:
 
 > Contains information from VIINA, which is made available here under the Open Database License (ODbL).
 
-| 링크 | URL |
-|------|-----|
-| VIINA 프로젝트 | https://github.com/zhukovyuri/VIINA |
+| | URL |
+|---|-----|
+| VIINA | https://github.com/zhukovyuri/VIINA |
 | ODbL v1.0 | https://opendatacommons.org/licenses/odbl/1-0/ |
+| OpenStreetMap copyright | https://www.openstreetmap.org/copyright |
+| OurAirports 데이터 | https://ourairports.com/data/ |
 
-**VIINA 사용 제한:** 렌더링 전용(Produced Work). GeoJSON/CSV export·공개 API bulk 제공 **금지**. 정책: `src/lib/licensing/viinaPolicy.ts`
-
----
-
-### 지도 · 기하 · 베이스맵
-
-| 항목 | 출처 | 라이선스 · 표기 | URL / 비고 |
-|------|------|-----------------|------------|
-| 국가 경계·분쟁 구역·도시·도로·철도·해안선 | **Natural Earth** | Public Domain — 출처 표기 권장 | https://www.naturalearthdata.com/ |
-| 지구본 야간/위성/지형 텍스처 | three-globe 예제 에셋 (로컬 `public/textures/` 또는 CDN 폴백) | 예제 이미지 — 상업 배포 시 별도 확인 | `npm run textures:fetch` |
-| 국가 색상·폴리곤 스타일 | 프로젝트 가공 | Natural Earth 기반 | — |
-| 영토 분쟁·긴장 지역 (빗금 박스) | Natural Earth disputed areas + 지역 긴장 시드 | Public Domain + 프로젝트 메타 | `public/data/{profile}/dispute-*.json` |
+**VIINA 추가 의무·금지:** Produced Work(화면 렌더)만 허용. GeoJSON/CSV export·공개 API bulk 제공 **금지**. → `src/lib/licensing/viinaPolicy.ts`
 
 ---
 
-### 분쟁 · 안보 · 실시간 레이어
+### CC BY 4.0 — 저작자 표시·라이선스 링크 필수
 
-| 레이어 | 데이터 소스 | 표기 · 라이선스 | URL / API |
-|--------|-------------|-----------------|-----------|
-| 우크라이나 전선 (VIINA) | **VIINA** | **ODbL v1.0** — 위 필수 문구 | 렌더링 전용 · `/api/render/ukraine-control` |
-| 우크라 드론·미사일 (NEPTUN) | **NEPTUN** (neptun.in.ua) | NEPTUN — Карта повітряних тривог України | https://neptun.in.ua/ · `/api/neptun` |
-| 지나간 NEPTUN 궤적 | NEPTUN WebSocket delta 보존 | 동일 | 클라이언트 아카이브 |
-| 이스라엘 공습 경보 | **Pikud HaOref** (비공식 JSON) | Israel Home Front Command (Oref) | AlertsHistory.json · `/api/tzeva-adom` |
-| GDELT 뉴스 (전투·외교·동맹·시위) | **GDELT Project** Geo 2.0 | GDELT 이용 약관 준수 · 상업 시 별도 확인 | https://www.gdeltproject.org/ · `/api/gdelt` |
-| Intel 뉴스 스트림 | **Google News RSS** + GDELT | Google News 약관 · GDELT | `/api/news-stream` |
-| 사이버 공격 | GDELT (cyber 테마) | GDELT Project | `/api/gdelt?theme=cyber` |
-| 선거 사건 | GDELT (election 테마) | GDELT Project | `/api/gdelt?theme=election` |
-| 분쟁 사건 (UCDP) | **Uppsala Conflict Data Program (UCDP) GED** | 연구용 · 상업 시 별도 확인 | https://ucdp.uu.se/ |
-| AI 전쟁지역 (데모) | Natural Earth + GDELT war 클러스터링 | 외부 AI API 없음 · 로컬 휴리스틱 | `/api/layers/conflict-zones` |
-| 무기 금수 구역 | UN / EU / UK / US 공식 목록 + Wikidata | UN / EU / UK / US + Wikidata | `/api/layers/arms-embargo-zones` |
-| 군사 항공기 | **adsb.fi** open data | adsb.fi · 비상업·출처 표기 (약관 확인) | https://adsb.fi/ · `/api/adsb-mil` |
-| 위성 화재 | **NASA FIRMS** (VIIRS NRT) | NASA FIRMS attribution 필수 | https://firms.modaps.eosdis.nasa.gov/ · `/api/firms-fires` |
-| 우주 발사 | **The Space Devs** (Launch Library 2) | The Space Devs | https://thespacedevs.com/ · `/api/space-launches` |
-| 정보 수집 거점 | 설정 가능 GeoJSON | External provider | `INTEL_HOTSPOTS_URL` · `/api/intel-hotspots` |
-| 미 해군 항공모함 | USNI News · CENTCOM · 공개 보도 종합 (시드) | 비공식 추정 위치 · 참고용 | `/api/us-carriers` · `src/data/usCarriers.ts` |
+| 대상 | 데이터 | 앱 내 레이어 |
+|------|--------|-------------|
+| **Global Energy Monitor (GEM)** | 기름·가스 파이프, LNG 터미널 | `oil-pipelines` · `gas-pipelines` · `lng-terminals` |
+| **World Bank Open Data** | GDP 등 경제 지표 (경제 중심지 스코어링) | `economic-centers` |
 
-**NEPTUN 면책:** 비공식 정보 피드입니다. **공식 공습 경보 시스템을 대체하지 않습니다.**
+**표기 예시**
 
-**Tzeva Adom 면책:** 비공식 JSON 미러입니다. 해외 IP는 `OREF_HISTORY_URL` 프록시 필요할 수 있습니다.
+> Data from Global Energy Monitor, licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+
+> World Bank Open Data, licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+
+| | URL |
+|---|-----|
+| GEM | https://globalenergymonitor.org/ |
+| GEM 라이선스 | https://creativecommons.org/licenses/by/4.0/ |
+| World Bank 데이터 | https://data.worldbank.org/ |
 
 ---
 
-### Telegram OSINT
+### MIT License — 저작권·라이선스 문구 유지 (파생·참고 코드)
+
+| 저장소 | 사용 내용 | 의무 |
+|--------|-----------|------|
+| **[IRONSIGHT](https://github.com/NoblerWorks-HQ/IRONSIGHT)** (Nobler Works) | 공개 Telegram 채널 카탈로그 (`src/data/telegramChannels.ts`) | Copyright (c) 2026 Nobler Works · [MIT License](https://opensource.org/licenses/MIT) 고지 유지 |
+
+서브폴더 [`IRONSIGHT/`](IRONSIGHT/) 전체는 MIT 라이선스 적용. 채널 **게시물** 저작권은 각 Telegram 운영자 소유.
+
+---
+
+### 제공자 attribution · 이용약관 준수 (무료여도 표기·제한 있음)
+
+| 제공자 | 데이터 | 표기·제한 | URL |
+|--------|--------|-----------|-----|
+| **NEPTUN** | 우크라 드론·미사일·공습 경보 | `NEPTUN — Карта повітряних тривог України` · 비공식 피드 | https://neptun.in.ua/ |
+| **GDELT Project** | 뉴스·사이버·선거 이벤트 | GDELT 출처 표기 · [이용 약관](https://www.gdeltproject.org/about.html) · 상업 이용 별도 확인 | https://www.gdeltproject.org/ |
+| **NASA FIRMS** | 위성 화재 (VIIRS) | **NASA FIRMS** attribution 필수 | https://firms.modaps.eosdis.nasa.gov/ |
+| **Uppsala Conflict Data Program (UCDP)** | 분쟁 사건 (GED) | UCDP 인용·연구/상업 조건 준수 | https://ucdp.uu.se/ |
+| **adsb.fi** | 군용 항공기 ADS-B | adsb.fi 출처 · [서비스 약관](https://adsb.fi/terms) (비상업 등 제한 확인) | https://adsb.fi/ |
+| **TeleGeography** | 해저 케이블 지도 GeoJSON | TeleGeography / [Submarine Cable Map](https://www.submarinecablemap.com/) 표기 | https://www.submarinecablemap.com/ |
+| **Pikud HaOref (Oref)** | 이스라엘 공습 경보 (비공식 JSON) | Israel Home Front Command (Oref) | `/api/tzeva-adom` |
+| **The Space Devs** | 우주 발사 (Launch Library 2) | The Space Devs attribution | https://thespacedevs.com/ |
+| **PeeringDB** | 인터넷 교환점 | PeeringDB [이용 약관](https://www.peeringdb.com/apiv2/)·표기 | https://www.peeringdb.com/ |
+| **AISstream** | 선박 AIS (API 키) | [AISstream 약관](https://aisstream.io/) 준수 | https://aisstream.io/ |
+| **Google News RSS** | Intel 뉴스 스트림 | Google 서비스 약관 | `/api/news-stream` |
+| **Google Translate** (비공식) | 뉴스·NEPTUN·Telegram 한국어 UI | Google 서비스 약관 · 비공식 엔드포인트 | `src/lib/koreanTranslate.ts` |
+| **Yahoo Finance** (yahoo-finance2) | 주식 티커 | Yahoo 이용 약관 · 비공식 API | `/api/stock-tickers` |
+
+**정부·국제기구 공식 목록** (재배포·상업 조건 확인 필요): US Treasury **OFAC** · **UN** Security Council · **EU** · **UK** 제재·무기 금수 목록 → `sanctions-entities` · `arms-embargo-zones`
+
+---
+
+### 이용 제한·면책 (라이선스와 별도)
 
 | 항목 | 내용 |
 |------|------|
-| 채널 목록 | **IRONSIGHT** 채널 카탈로그 참고·검증 (MIT) — `src/data/telegramChannels.ts` |
-| 채널 콘텐츠 | 각 Telegram 채널 **운영자 소유** — 본 앱은 뷰어 |
-| 수집 방식 | Telegram 공개 embed 엔드포인트 (`TELEGRAM_USE_EMBED=true`) 또는 Telethon (선택) |
-| IRONSIGHT 표기 | Copyright (c) 2026 Nobler Works · MIT License |
-| IRONSIGHT 저장소 | https://github.com/NoblerWorks-HQ/IRONSIGHT |
-| MIT License | https://opensource.org/licenses/MIT |
-
-**절대 규칙:** Telegram OSINT 텍스트는 **AI 요약·뉴스 파이프라인(`/api/news-stream`) 컨텍스트에 포함하지 않습니다.** `TelegramOsintPanel` 전용. 정책: `src/lib/licensing/telegramOsintPolicy.ts`
+| **VIINA** | 렌더링 전용. 데이터 추출·API export 금지. |
+| **NEPTUN · Tzeva Adom** | 비공식 피드. **공식 경보 시스템 대체 불가.** |
+| **Telegram OSINT** | 채널 글은 운영자 소유. **AI·뉴스 요약 파이프라인에 포함 금지** (`src/lib/licensing/telegramOsintPolicy.ts`). |
+| **GDELT · UCDP · adsb.fi** | 비상업·연구 목적 제한이 있을 수 있음. |
 
 ---
 
-### 에너지 · 운송 · 인프라
+### 코드·메타데이터 참고
 
-| 레이어 | 데이터 소스 | 표기 · 라이선스 | URL / 비고 |
-|--------|-------------|-----------------|------------|
-| 기름 파이프 | **Global Energy Monitor (GEM)** GOIT | **CC BY 4.0** — GEM 출처 표기 | https://globalenergymonitor.org/ |
-| 가스관 | GEM GGIT | **CC BY 4.0** | 동일 |
-| LNG 터미널 | GEM GGIT | **CC BY 4.0** | 동일 |
-| 해저 케이블 | **TeleGeography** Submarine Cable Map (미러 GeoJSON) | TeleGeography · submarinecablemap.com | https://www.submarinecablemap.com/ |
-| 해상 항로 | Shipping Lanes (newzealandpaul) | 공개 GeoJSON — 출처 확인 | GitHub: newzealandpaul/Shipping-Lanes |
-| 공항 | **OurAirports** open data | OurAirports · ODbL/CC — 덤프 출처 표기 | https://ourairports.com/data/ |
-| 항구 | **NGA WPI** (World Port Index) | 미국 정부 공개 데이터 — NGA 출처 | `scripts/data/wpi-ports.csv` |
-| 철도 | Natural Earth + 로컬 빌드 | Natural Earth | `public/data/{profile}/railroads.json` |
-| 선박 위치 (AIS) | **AISstream** | AISstream 약관 · API 키 서버 전용 | https://aisstream.io/ · `/api/ais` |
-| 인터넷 교환점 (IXP) | **PeeringDB** / 공개 데이터 | PeeringDB | `public/data/{profile}/internet-exchanges.json` |
+라이선스·attribution 문자열 단일 출처: [`src/data/sourceCatalog.ts`](src/data/sourceCatalog.ts)  
+VIINA 정책: `src/lib/licensing/viinaPolicy.ts` · IRONSIGHT: `src/lib/licensing/ironsightPolicy.ts`
 
-**GEM 표기 예시:** `Data from Global Energy Monitor, licensed under CC BY 4.0`
-
----
-
-### 군사 · 인도 · 경제 · 제재
-
-| 레이어 | 데이터 소스 | 표기 · 라이선스 |
-|--------|-------------|-----------------|
-| 미군 기지 | OpenStreetMap / 공개 데이터셋 | © OpenStreetMap contributors (ODbL) |
-| 원자력 시설 | IAEA / NTI / 공개 데이터 | 각 기관 출처 |
-| 광물·자원지 | USGS / 공개 데이터 | USGS |
-| 난민 캠프 | UNHCR / 공개 데이터 | UNHCR |
-| 경제 중심지 | Wikidata + OpenStreetMap + World Bank Open Data | Wikidata (CC0) · OSM (ODbL) · World Bank (CC BY 4.0) |
-| AI 데이터센터 | Wikidata SPARQL + OSM | Wikidata (CC0) · OSM (ODbL) |
-| 제재 대상 | US Treasury **OFAC** SDN + **UN** + **EU** + **UK** | 각 정부 공식 목록 |
-
----
-
-### 번역 · UI 부가 서비스
-
-| 서비스 | 용도 | 표기 · 주의 |
-|--------|------|-------------|
-| **Google Translate** (비공식 `translate.googleapis.com`) | 뉴스·NEPTUN·Telegram 한국어 표시 | Google 서비스 약관 · 비공식 API |
-| NEPTUN 한글 표시 | `neptunDisplay.ts` + Google 번역 | NEPTUN + 번역 출처 |
-| 주식 티커 | **Yahoo Finance** (yahoo-finance2) | Yahoo Finance · 비공식 라이브러리 | `/api/stock-tickers` |
-
-환경 변수: `NEWS_TRANSLATE_KO`, `TELEGRAM_TRANSLATE_KO` (기본 `true`)
-
----
-
-### 오픈소스 · 참고 프로젝트
-
-| 프로젝트 | 용도 | 라이선스 |
-|----------|------|----------|
-| [react-globe.gl](https://github.com/vasturiano/react-globe.gl) | 3D 지구본 | MIT |
-| [three.js](https://threejs.org/) | 3D 렌더링 | MIT |
-| [Next.js](https://nextjs.org/) | 웹 프레임워크 | MIT |
-| [IRONSIGHT](https://github.com/NoblerWorks-HQ/IRONSIGHT) | Telegram 채널 카탈로그 참고 | MIT · Copyright Nobler Works |
-| [Fuse.js](https://fusejs.io/) | 검색 | Apache 2.0 |
-| [yahoo-finance2](https://github.com/gadicc/yahoo-finance2) | 시세 | MIT |
-
-[`IRONSIGHT/`](IRONSIGHT/) — Nobler Works의 Leaflet OSINT 대시보드 참고 구현체. 메인 앱(`src/`)과 별도 실행.
-
----
-
-### 레이어별 메타데이터 (코드 기준)
-
-전체 레이어 ID·갱신 주기·ingest 방식: [`src/data/sourceCatalog.ts`](src/data/sourceCatalog.ts)
-
-| layerId | attribution (요약) |
-|---------|-------------------|
-| `viina-ukraine-control` | VIINA · ODbL v1.0 |
-| `neptun` | NEPTUN — Карта повітряних тривог України |
-| `tzeva-adom` | Israel Home Front Command (Oref) |
-| `gdelt-*` | GDELT Project |
-| `firms-fires` | NASA FIRMS |
-| `military-activity` | adsb.fi |
-| `ucdp-events` | Uppsala Conflict Data Program (UCDP) |
-| `space-launches` | The Space Devs |
-| `oil/gas/lng-*` | Global Energy Monitor (CC BY 4.0) |
-| `trade-routes` | IMO / public datasets |
-| `military-bases` | OpenStreetMap / public datasets |
-| `nuclear-sites` | IAEA / NTI / public datasets |
-| `ai-data-centers` | Wikidata (CC0) / OSM (ODbL) |
-| `economic-centers` | Wikidata / OSM / World Bank (CC BY 4.0) |
-| `critical-minerals` | USGS / public datasets |
-| `internet-exchanges` | PeeringDB / public |
-| `sanctions-entities` | OFAC / UN / EU / UK Gov |
-| `refugee-camps` | UNHCR / public datasets |
-| `arms-embargo-zones` | UN / EU / UK / US + Wikidata |
-| `conflict-zones` | Natural Earth + GDELT war clustering |
-| `intel-hotspots` | External provider |
-
----
-
-### 면책 · 이용 주의 (요약)
-
-1. **정보 목적만** — 실시간 분쟁·경보·군사·항공 데이터는 오류·지연·누락이 있을 수 있습니다.
-2. **공식 경보 우선** — NEPTUN, Tzeva Adom, Telegram 등은 **비공식** 피드입니다.
-3. **VIINA** — 화면 렌더만 허용, 데이터 재배포·export 금지.
-4. **Telegram** — 채널 게시물 저작권은 운영자에게 있으며, LLM 학습·요약 입력에 사용하지 않습니다.
-5. **adsb.fi · GDELT · UCDP** — 비상업·연구 목적 제한이 있을 수 있습니다.
-6. **Google Translate** — 비공식 엔드포인트, 번역 정확도 보장 없음.
+**본 README에 없는 데이터** = Public Domain, 무료 공개 API, 또는 별도 표기 의무가 없는 소스로 간주합니다 (예: Natural Earth, NGA WPI, USGS, UNHCR 시드, 로컬 휴리스틱 데모 등).
 
 ---
 
