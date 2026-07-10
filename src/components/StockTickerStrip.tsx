@@ -5,6 +5,7 @@ import {
   formatTickerChangePercent,
   formatTickerPrice,
   STOCK_TICKER_SYMBOLS,
+  TICKER_STRIP_SYMBOLS,
   tickerChangeTone,
   type StockTickerItem,
 } from "@/lib/stockTickers";
@@ -76,14 +77,18 @@ function TickerSparkline({
 function SkeletonStrip() {
   return (
     <div className="flex h-10 min-w-0 items-center gap-4 overflow-hidden px-3">
-      {STOCK_TICKER_SYMBOLS.map((item) => (
+      {TICKER_STRIP_SYMBOLS.map((symbol) => {
+        const item = STOCK_TICKER_SYMBOLS.find((entry) => entry.symbol === symbol);
+        if (!item) return null;
+        return (
         <div key={item.symbol} className="flex shrink-0 items-center gap-2">
           <span className="h-3 w-12 animate-pulse rounded bg-white/10" />
           <span className="h-[18px] w-[52px] animate-pulse rounded bg-white/10" />
           <span className="h-3 w-16 animate-pulse rounded bg-white/10" />
           <span className="h-3 w-10 animate-pulse rounded bg-white/10" />
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -135,17 +140,22 @@ export function StockTickerStrip() {
         <SkeletonStrip />
       ) : (
         <div className="stock-ticker-scroll flex h-10 items-center gap-5 overflow-x-auto px-3 text-xs font-mono">
-          {(
-            tickers ??
-            STOCK_TICKER_SYMBOLS.map((item) => ({
-              ...item,
-              price: null,
-              changePercent: null,
-              sparkline: [],
-            }))
-          ).map((item) => (
-            <TickerRow key={item.symbol} item={item} />
-          ))}
+          {TICKER_STRIP_SYMBOLS.map((symbol) => {
+            const item =
+              tickers?.find((entry) => entry.symbol === symbol) ??
+              (() => {
+                const config = STOCK_TICKER_SYMBOLS.find((entry) => entry.symbol === symbol);
+                if (!config) return null;
+                return {
+                  ...config,
+                  price: null,
+                  changePercent: null,
+                  sparkline: [],
+                } satisfies StockTickerItem;
+              })();
+            if (!item) return null;
+            return <TickerRow key={item.symbol} item={item} />;
+          })}
         </div>
       )}
     </div>

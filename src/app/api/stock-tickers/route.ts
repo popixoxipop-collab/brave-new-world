@@ -10,7 +10,7 @@ const TTL_MS = 10 * 60 * 1000;
 
 export async function GET() {
   try {
-    const { data, cached } = await cachedFetchJson("stock-tickers-v2", TTL_MS, fetchStockTickers);
+    const { data, cached } = await cachedFetchJson("stock-tickers-v3", TTL_MS, fetchStockTickers);
     return NextResponse.json({
       receivedAt: new Date().toISOString(),
       cached,
