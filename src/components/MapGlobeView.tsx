@@ -50,8 +50,13 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
   const mapRef = useRef<MapRef>(null);
   const changeListenersRef = useRef(new Set<() => void>());
   const readyRef = useRef(false);
+  const onGlobeReadyRef = useRef(onGlobeReady);
   const [mapZoom, setMapZoom] = useState(2);
   const [mapLoaded, setMapLoaded] = useState(false);
+
+  useEffect(() => {
+    onGlobeReadyRef.current = onGlobeReady;
+  }, [onGlobeReady]);
 
   const methods = useMemo(
     () => createMapGlobeMethods(mapRef, changeListenersRef),
@@ -60,15 +65,28 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
 
   useImperativeHandle(ref, () => methods, [methods]);
 
-  const pointsData = (props.pointsData as unknown[]) ?? [];
-  const pathsData = (props.pathsData as unknown[]) ?? [];
-  const polygonsData = (props.polygonsData as unknown[]) ?? [];
-  const ringsData = (props.ringsData as unknown[]) ?? [];
-  const labelsData = (props.labelsData as unknown[]) ?? [];
-  const htmlElementsData = (props.htmlElementsData as unknown[]) ?? [];
-  const heatmapsData =
-    (props.heatmapsData as { points: { lat: number; lng: number; weight: number }[]; tier: string; bandwidth?: number; colorSaturation?: number }[]) ??
-    [];
+  const pointsData = useMemo(() => (props.pointsData as unknown[]) ?? [], [props.pointsData]);
+  const pathsData = useMemo(() => (props.pathsData as unknown[]) ?? [], [props.pathsData]);
+  const polygonsData = useMemo(
+    () => (props.polygonsData as { geometry: unknown }[]) ?? [],
+    [props.polygonsData],
+  );
+  const ringsData = useMemo(() => (props.ringsData as unknown[]) ?? [], [props.ringsData]);
+  const labelsData = useMemo(() => (props.labelsData as unknown[]) ?? [], [props.labelsData]);
+  const htmlElementsData = useMemo(
+    () => (props.htmlElementsData as unknown[]) ?? [],
+    [props.htmlElementsData],
+  );
+  const heatmapsData = useMemo(
+    () =>
+      (props.heatmapsData as {
+        points: { lat: number; lng: number; weight: number }[];
+        tier: string;
+        bandwidth?: number;
+        colorSaturation?: number;
+      }[]) ?? [],
+    [props.heatmapsData],
+  );
 
   const pointLat = asFn<unknown, number>(props.pointLat, () => 0);
   const pointLng = asFn<unknown, number>(props.pointLng, () => 0);
@@ -190,18 +208,27 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
     [notifyChange],
   );
 
+  const emitGlobeReady = useCallback(() => {
+    if (readyRef.current) return;
+    readyRef.current = true;
+    onGlobeReadyRef.current?.({});
+    notifyChange();
+  }, [notifyChange, onGlobeReadyRef]);
+
   const handleLoad = useCallback(() => {
     const map = mapRef.current?.getMap();
     if (!map) return;
     map.setProjection({ type: "globe" });
     setMapZoom(map.getZoom());
     setMapLoaded(true);
-    if (!readyRef.current) {
-      readyRef.current = true;
-      onGlobeReady?.();
+
+    if (map.isStyleLoaded()) {
+      emitGlobeReady();
+      return;
     }
-    notifyChange();
-  }, [notifyChange, onGlobeReady]);
+
+    map.once("idle", emitGlobeReady);
+  }, [emitGlobeReady]);
 
   const resolveFeature = useCallback(
     (layerId: string, index: number) => {
@@ -283,10 +310,10 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
   const initialCamera = globeViewToMapLibre({ lat: 25, lng: 105, altitude: 2.25 });
 
   return (
-    <div className="relative h-full w-full" style={{ backgroundColor }}>
+    <div className="relative h-full w-full" style={{ backgroundColor: backgroundColor as string }}>
       <Map
         ref={mapRef}
-        mapStyle={mapStyleUrl}
+        mapStyle={mapStyleUrl as string}
         initialViewState={{
           longitude: initialCamera.longitude,
           latitude: initialCamera.latitude,
