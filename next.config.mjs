@@ -1,13 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    optimizePackageImports: ["three", "react-globe.gl"],
+    optimizePackageImports: ["maplibre-gl"],
   },
   webpack: (config, { dev }) => {
     if (dev) {
       config.output = {
         ...config.output,
-        // react-globe.gl + three 최초 컴파일이 길어질 수 있어 청크 타임아웃 여유
+        // MapLibre 최초 컴파일이 길어질 수 있어 청크 타임아웃 여유
         chunkLoadTimeout: 600000,
       };
 

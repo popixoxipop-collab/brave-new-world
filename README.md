@@ -2,7 +2,7 @@
 
 3D 지구본 기반 지정학·분쟁 상황 대시보드입니다. Natural Earth 지형, GDELT 뉴스, 우크라이나 전선(VIINA), NEPTUN 공중 위협, 텔레그램 OSINT, 이스라엘 공습 경보 등을 한 화면에서 탐색할 수 있습니다.
 
-- **스택:** Next.js 14 · React 18 · TypeScript · react-globe.gl · Three.js · Tailwind CSS
+- **스택:** Next.js 14 · React 18 · TypeScript · MapLibre GL · react-map-gl · Tailwind CSS
 - **언어:** UI 기본 한국어 (`labelLanguage: "ko"`)
 - **출처 표기 의무:** [출처 표기 · 라이선스 공개 의무](#출처-표기--라이선스-공개-의무) · 앱 UI 「출처」 패널 · [`docs/copyright-checklist.md`](docs/copyright-checklist.md)
 
@@ -55,7 +55,7 @@ npm run lint    # ESLint
 
 ### 3D 지구본 · 지도
 
-- **지도 스타일:** 야간 / 위성 / 지형 (`mapStyle`)
+- **베이스맵:** Carto Dark Matter 단일 (레이어 가독용 다크 벡터)
 - **줌 LOD:** `global` → `continent` → `regional` → `near` → `village` 단계별 레이어·포인트 수 자동 조절
 - **뷰포트 컬링:** 카메라 중심·고도 기준으로 보이는 데이터만 렌더
 - **지역 탐색:** 상단 「충돌지역」「대륙간 갈등」「주요전선」 탭으로 fly-to

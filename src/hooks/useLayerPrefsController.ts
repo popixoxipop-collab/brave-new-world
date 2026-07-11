@@ -15,7 +15,7 @@ const BATCH_DEBOUNCE_MS = 400;
 /** 단일 토글 직후 쓰로틀·카메라 동결 우회 유지 시간 */
 export const LAYER_IMMEDIATE_RENDER_MS = 900;
 
-const INSTANT_KEYS = new Set<keyof LayerPrefs>(["mapStyle", "labelLanguage"]);
+const INSTANT_KEYS = new Set<keyof LayerPrefs>(["labelLanguage"]);
 
 type BooleanLayerKey = {
   [K in keyof LayerPrefs]: LayerPrefs[K] extends boolean ? K : never;

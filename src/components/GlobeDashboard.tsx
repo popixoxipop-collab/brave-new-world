@@ -2,8 +2,7 @@
 
 import Fuse from "fuse.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Color, MeshPhongMaterial } from "three";
-import type { GlobeMethods } from "react-globe.gl";
+import type { MapGlobeMethods } from "@/lib/mapGlobeRef";
 import { CursorHoverCard } from "@/components/CursorHoverCard";
 import { DisputeZoneLegend } from "@/components/DisputeZoneLegend";
 import { UkraineFrontLegend, UkraineFrontLegendContent } from "@/components/UkraineFrontLegend";
@@ -17,8 +16,7 @@ import { NeptunLayerPanel } from "@/components/NeptunLayerPanel";
 import { NeptunThreatDetailPanel } from "@/components/NeptunThreatDetailPanel";
 import { LocalAlertPanel } from "@/components/LocalAlertPanel";
 import { LayerCategoryPanel, type LayerCategory } from "@/components/LayerCategoryPanel";
-import { GlobeView } from "@/components/GlobeView";
-import { MapLibreBasemap } from "@/components/MapLibreBasemap";
+import { MapGlobeView } from "@/components/MapGlobeView";
 import { HoverNav } from "@/components/HoverNav";
 import { HoverHint } from "@/components/HoverHint";
 import { RegionNewsPanel } from "@/components/RegionNewsPanel";
@@ -91,14 +89,11 @@ import { useLayerPrefsController } from "@/hooks/useLayerPrefsController";
 
 import {
   type LabelLanguage,
-  type MapStyleMode,
 } from "@/lib/layerPrefs";
 import { lookupOceanName } from "@/lib/oceanNames";
-import { getGlobeTextures, TEXTURE_CDN_FALLBACK } from "@/lib/mapStyles";
+import { getGlobeTextures } from "@/lib/mapStyles";
 import {
   CYBER_WAR_ROOM_THEME,
-  cyberAtmosphereAltitude,
-  cyberAtmosphereRgba,
 } from "@/lib/cyberWarRoomTheme";
 import { getZoomOutScale } from "@/lib/zoomScale";
 import {
@@ -686,12 +681,6 @@ function neptunPathsGeometryEqual(a: TransportPath[], b: TransportPath[]) {
   return true;
 }
 
-const MAP_STYLE_OPTIONS: { id: MapStyleMode; label: string }[] = [
-  { id: "night", label: "야간" },
-  { id: "satellite", label: "위성" },
-  { id: "topo", label: "지형" },
-];
-
 type GlobeSize = {
   width: number;
   height: number;
@@ -980,7 +969,7 @@ export function GlobeDashboard({
 }: {
   viinaMeta?: ViinaRenderMeta | null;
 }) {
-  const globeRef = useRef<GlobeMethods>(null);
+  const globeRef = useRef<MapGlobeMethods>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const intelStackRef = useRef<BottomIntelStackHandle>(null);
   const lastGlobeClickAt = useRef(0);
@@ -1130,7 +1119,6 @@ export function GlobeDashboard({
     showTzevaAdom,
     showNeptun,
     showNeptunPreviousTrails,
-    mapStyle,
     labelLanguage,
   } = layerPrefs;
 
@@ -1233,7 +1221,6 @@ export function GlobeDashboard({
 
   const showGdeltLayers =
     showGdeltWar || showGdeltDiplomatic || showGdeltAlliance || showGdeltProtests;
-  const setMapStyle = (v: MapStyleMode) => togglePref("mapStyle", v);
   const setLabelLanguage = (v: LabelLanguage) => togglePref("labelLanguage", v);
 
   const [transportLoading, setTransportLoading] = useState(false);
@@ -1535,74 +1522,8 @@ export function GlobeDashboard({
     [layerAltitude],
   );
 
-  const globeTextures = useMemo(() => getGlobeTextures(mapStyle), [mapStyle]);
+  const globeTextures = useMemo(() => getGlobeTextures(), []);
   const isVectorBaseMap = globeTextures.vectorBase;
-
-  const [resolvedGlobeImageUrl, setResolvedGlobeImageUrl] = useState<string | null>(
-    TEXTURE_CDN_FALLBACK.night,
-  );
-  const [resolvedBumpImageUrl, setResolvedBumpImageUrl] = useState<string | null>(
-    globeTextures.bumpImageUrl,
-  );
-
-  useEffect(() => {
-    if (isVectorBaseMap) {
-      setResolvedGlobeImageUrl(null);
-      setResolvedBumpImageUrl(null);
-      return;
-    }
-
-    const localGlobe = globeTextures.globeImageUrl;
-    const cdnGlobe = TEXTURE_CDN_FALLBACK[mapStyle];
-    setResolvedGlobeImageUrl(cdnGlobe);
-    if (!localGlobe) return;
-
-    let cancelled = false;
-    const probe = new Image();
-    probe.onload = () => {
-      if (!cancelled) setResolvedGlobeImageUrl(localGlobe);
-    };
-    probe.onerror = () => {
-      if (!cancelled) setResolvedGlobeImageUrl(cdnGlobe);
-    };
-    probe.src = localGlobe;
-
-    return () => {
-      cancelled = true;
-    };
-  }, [globeTextures.globeImageUrl, isVectorBaseMap, mapStyle]);
-
-  useEffect(() => {
-    if (isVectorBaseMap || !globeTextures.bumpImageUrl) {
-      setResolvedBumpImageUrl(null);
-      return;
-    }
-
-    const localBump = globeTextures.bumpImageUrl;
-    let cancelled = false;
-    const probe = new Image();
-    probe.onload = () => {
-      if (!cancelled) setResolvedBumpImageUrl(localBump);
-    };
-    probe.onerror = () => {
-      if (!cancelled) setResolvedBumpImageUrl(null);
-    };
-    probe.src = localBump;
-
-    return () => {
-      cancelled = true;
-    };
-  }, [globeTextures.bumpImageUrl, isVectorBaseMap]);
-
-  const vectorGlobeMaterial = useMemo(() => {
-    if (!isVectorBaseMap) return undefined;
-    return new MeshPhongMaterial({
-      color: new Color(globeTextures.oceanColor),
-      transparent: true,
-      opacity: 0,
-      depthWrite: false,
-    });
-  }, [globeTextures.oceanColor, isVectorBaseMap]);
 
   const railPaths = useMemo<TransportPath[]>(() => {
     if (!showRailGlow) return [];
@@ -4412,32 +4333,11 @@ export function GlobeDashboard({
           className="relative h-full w-full"
           style={{ backgroundColor: globeTextures.backgroundColor }}
         >
-          {isVectorBaseMap ? (
-            <MapLibreBasemap
-              mapStyle={globeTextures.mapStyleUrl}
-              viewState={viewState}
-              className="absolute inset-0 z-0"
-            />
-          ) : null}
           <div className="absolute inset-0 z-10">
-          <GlobeView
+          <MapGlobeView
               ref={globeRef}
-              width={size.width}
-              height={size.height}
-              backgroundColor={isVectorBaseMap ? "rgba(0, 0, 0, 0)" : globeTextures.backgroundColor}
-              globeImageUrl={isVectorBaseMap ? undefined : resolvedGlobeImageUrl ?? undefined}
-              globeMaterial={vectorGlobeMaterial}
-              bumpImageUrl={
-                isVectorBaseMap
-                  ? undefined
-                  : viewState.altitude < EXTREME_ZOOM_ALTITUDE
-                    ? undefined
-                    : resolvedBumpImageUrl ?? undefined
-              }
-              showAtmosphere={!isVectorBaseMap}
-              atmosphereColor={cyberAtmosphereRgba(0.38)}
-              atmosphereAltitude={cyberAtmosphereAltitude(viewState.altitude)}
-              showGraticules={false}
+              mapStyleUrl={globeTextures.mapStyleUrl}
+              backgroundColor={globeTextures.backgroundColor}
               onGlobeReady={configureGlobe}
               heatmapsData={tensionHeatmaps}
               heatmapPoints={(layer: { points: { lat: number; lng: number; weight: number }[] }) =>
@@ -5127,26 +5027,6 @@ export function GlobeDashboard({
           >
             ✕
           </button>
-        </div>
-
-        <div className="rounded-xl border border-slate-800 bg-black/25 p-3">
-          <p className="text-xs uppercase tracking-[0.24em] text-slate-500">지도 스타일</p>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            {MAP_STYLE_OPTIONS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => setMapStyle(option.id)}
-                className={`rounded-lg border px-2 py-2 text-xs transition ${
-                  mapStyle === option.id
-                    ? "border-sky-300/60 bg-sky-300/15 text-sky-50"
-                    : "border-slate-700/80 bg-black/20 text-slate-400 hover:border-slate-600 hover:text-slate-200"
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
         </div>
 
         <div className="rounded-xl border border-slate-800 bg-black/25 p-3">

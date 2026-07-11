@@ -1,4 +1,3 @@
-export type MapStyleMode = "night" | "satellite" | "topo";
 export type LabelLanguage = "en" | "ko";
 
 export type LayerPrefs = {
@@ -48,12 +47,11 @@ export type LayerPrefs = {
   showNeptun: boolean;
   /** 사라진 드론·미사일의 지나간 이동 경로 (WebSocket delta 보존) */
   showNeptunPreviousTrails: boolean;
-  mapStyle: MapStyleMode;
   labelLanguage: LabelLanguage;
 };
 
-/** v18: 모든 레이어 체크박스 기본 OFF */
-export const LAYER_PREFS_KEY = "geowatch-layers-v18";
+/** v19: 베이스맵 단일화 — mapStyle pref 제거 */
+export const LAYER_PREFS_KEY = "geowatch-layers-v19";
 
 /** 토글 가능 레이어는 전부 기본 OFF — 사용자가 켤 때만 로드·렌더 */
 export const DEFAULT_LAYER_PREFS: LayerPrefs = {
@@ -95,11 +93,11 @@ export const DEFAULT_LAYER_PREFS: LayerPrefs = {
   showTzevaAdom: false,
   showNeptun: false,
   showNeptunPreviousTrails: false,
-  mapStyle: "night",
   labelLanguage: "ko",
 };
 
 const LEGACY_LAYER_KEYS = [
+  "geowatch-layers-v18",
   "geowatch-layers-v17",
   "geowatch-layers-v16",
   "geowatch-layers-v15",
@@ -115,11 +113,6 @@ const LEGACY_LAYER_KEYS = [
   "geowatch-layers-v3",
 ] as const;
 
-function parseMapStyle(value: unknown): MapStyleMode {
-  if (value === "satellite" || value === "topo" || value === "night") return value;
-  return DEFAULT_LAYER_PREFS.mapStyle;
-}
-
 function parseLabelLanguage(value: unknown): LabelLanguage {
   if (value === "en" || value === "ko") return value;
   return DEFAULT_LAYER_PREFS.labelLanguage;
@@ -131,11 +124,10 @@ type SavedLayerPrefs = Partial<LayerPrefs> & {
   showCountryBorders?: boolean;
 };
 
-/** v18 이전 저장값 — 지도 스타일·언어만 이전, 레이어는 전부 OFF */
+/** v19 이전 저장값 — 도시명 언어만 이전, 레이어는 전부 OFF */
 function migrateLegacyLayerPrefs(parsed: SavedLayerPrefs): LayerPrefs {
   return {
     ...DEFAULT_LAYER_PREFS,
-    mapStyle: parseMapStyle(parsed.mapStyle),
     labelLanguage: parseLabelLanguage(parsed.labelLanguage),
   };
 }
@@ -154,7 +146,6 @@ function mergeSavedPrefs(parsed: SavedLayerPrefs): LayerPrefs {
         : typeof showRoadCityGlow === "boolean"
           ? showRoadCityGlow
           : DEFAULT_LAYER_PREFS.showCityLabels,
-    mapStyle: parseMapStyle(rest.mapStyle),
     labelLanguage: parseLabelLanguage(rest.labelLanguage),
   };
 }

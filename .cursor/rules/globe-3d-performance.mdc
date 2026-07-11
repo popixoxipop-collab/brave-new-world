@@ -1,6 +1,6 @@
 ---
-description: react-globe.gl / Three.js / MapLibre 3D 지정학 대시보드 성능 아키텍처 (60FPS·VRAM·DOM Grave 방지)
-globs: src/components/Globe*.tsx,src/components/MapLibre*.tsx,src/lib/globe*.ts,src/lib/neptun*.ts,src/lib/viewportCull.ts,src/lib/placeLod.ts,src/lib/staticGlobe.ts,src/hooks/useGlobe*.ts,src/hooks/useNeptun*.ts,src/hooks/useCameraViewport.ts
+description: MapLibre GL 3D 지정학 대시보드 성능 아키텍처 (60FPS·VRAM·DOM Grave 방지)
+globs: src/components/Globe*.tsx,src/components/MapGlobe*.tsx,src/lib/globe*.ts,src/lib/mapGlobe*.ts,src/lib/neptun*.ts,src/lib/viewportCull.ts,src/lib/placeLod.ts,src/lib/staticGlobe.ts,src/hooks/useGlobe*.ts,src/hooks/useNeptun*.ts,src/hooks/useCameraViewport.ts
 alwaysApply: false
 ---
 
@@ -11,7 +11,7 @@ Intel 내장 GPU·5년 전 사무용 PC에서 **60FPS·VRAM 누수 0**을 목표
 ## 1. DOM Grave 방지 · 라벨
 
 - 수천 포인트를 `htmlElementsData` / CSS2DRenderer로 렌더하지 않는다.
-- 텍스트는 `labelsData`(three-globe 캔버스) 또는 MapLibre symbol layer. Draw call O(1) 유지.
+- 텍스트는 MapLibre symbol layer. Draw call O(1) 유지.
 - **줌아웃**: 주요 도시 라벨 **10개 미만** (`filterMajorCityLabels`, global tier ≤ 9).
 - **zoom > 6** (또는 village tier)에서만 정착지·세부 POI HTML 허용.
 
@@ -30,7 +30,7 @@ Intel 내장 GPU·5년 전 사무용 PC에서 **60FPS·VRAM 누수 0**을 목표
 ## 4. GC · dispose · 스트리밍
 
 - 스트림 JSON: 통째 `JSON.parse` 후 전체 state 교체 금지 → envelope 단위 merge (`useNeptunStream`).
-- 레이어 OFF / 언마운트: `threeDispose.ts`로 geometry·material·texture `dispose()`.
+- 레이어 OFF / 언마운트: MapLibre Source·Layer 제거로 GPU 리소스 해제.
 - `public/data/{lite,full}` 프로필 분리. village는 영역 JSON 동적 fetch.
 
 ## 5. Throttle / Debounce
@@ -55,15 +55,11 @@ points.map(p => new Mesh(geo, mat))
 <Points positions={mergedFloat32} />
 ```
 
-## dispose 클린업 (레이어 OFF 시)
+## 레이어 정리 (레이어 OFF 시)
 
 ```typescript
-useEffect(() => {
-  return () => {
-    disposeGeometry(geometry);
-    disposeMaterial(material);
-  };
-}, []);
+// MapLibre Source/Layer는 React 언마운트 시 자동 제거
+{showLayer ? <Source id="points" ...><Layer ... /></Source> : null}
 ```
 
 ## 참조 파일

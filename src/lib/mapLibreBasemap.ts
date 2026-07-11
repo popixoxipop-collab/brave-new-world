@@ -1,12 +1,8 @@
-import type { MapStyleMode } from "@/lib/layerPrefs";
 import { clampGlobeAltitude } from "@/lib/globeCamera";
 
-/** 무료 MapLibre GL 스타일 — Conflict View 톤별 */
-export const MAPLIBRE_STYLE_BY_MODE: Record<MapStyleMode, string> = {
-  night: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
-  satellite: "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
-  topo: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-};
+/** Conflict View 단일 베이스맵 — Carto Dark Matter (레이어 가독용 다크 벡터) */
+export const MAPLIBRE_STYLE_URL =
+  "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
 
 export type MapLibreCamera = {
   longitude: number;
@@ -23,7 +19,7 @@ export function globeViewToMapLibre(view: {
   altitude: number;
 }): MapLibreCamera {
   const alt = clampGlobeAltitude(view.altitude);
-  const zoom = Math.max(0.85, Math.min(13.8, 9.25 - Math.log2(alt + 0.06) * 2.35));
+  const zoom = altitudeToMapLibreZoom(alt);
 
   return {
     longitude: view.lng,
@@ -34,6 +30,17 @@ export function globeViewToMapLibre(view: {
   };
 }
 
-export function getMapLibreStyleUrl(mode: MapStyleMode): string {
-  return MAPLIBRE_STYLE_BY_MODE[mode] ?? MAPLIBRE_STYLE_BY_MODE.night;
+export function altitudeToMapLibreZoom(altitude: number): number {
+  const alt = clampGlobeAltitude(altitude);
+  return Math.max(0.85, Math.min(13.8, 9.25 - Math.log2(alt + 0.06) * 2.35));
+}
+
+/** MapLibre zoom → globe.gl altitude (globeViewToMapLibre 역변환) */
+export function mapLibreZoomToAltitude(zoom: number): number {
+  const z = Math.max(0.85, Math.min(13.8, zoom));
+  return clampGlobeAltitude(2 ** ((9.25 - z) / 2.35) - 0.06);
+}
+
+export function getMapLibreStyleUrl(): string {
+  return MAPLIBRE_STYLE_URL;
 }

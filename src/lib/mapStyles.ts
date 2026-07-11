@@ -1,19 +1,11 @@
-import type { MapStyleMode } from "@/lib/layerPrefs";
 import {
   CYBER_WAR_ROOM_THEME,
   cyberCoastlineColor,
 } from "@/lib/cyberWarRoomTheme";
 import { getMapLibreStyleUrl } from "@/lib/mapLibreBasemap";
 
-/** 레거시 JPG 폴백 — MapLibre 로드 실패 시 수동 복구용 */
-export const TEXTURE_CDN_FALLBACK: Record<MapStyleMode, string> = {
-  night: "https://unpkg.com/three-globe/example/img/earth-night.jpg",
-  satellite: "https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg",
-  topo: "https://unpkg.com/three-globe/example/img/earth-water.png",
-};
-
 export type GlobeTextureConfig = {
-  /** true면 MapLibre 벡터 글로브 + 투명 three-globe 오버레이 */
+  /** true면 MapLibre 벡터 글로브 단일 렌더 */
   vectorBase: boolean;
   mapStyleUrl: string;
   globeImageUrl: string | null;
@@ -28,12 +20,12 @@ export type GlobeTextureConfig = {
   countryColors: Record<string, string>;
 };
 
-export function getGlobeTextures(mode: MapStyleMode): GlobeTextureConfig {
+export function getGlobeTextures(): GlobeTextureConfig {
   const { globe, polygon } = CYBER_WAR_ROOM_THEME;
 
   return {
     vectorBase: true,
-    mapStyleUrl: getMapLibreStyleUrl(mode),
+    mapStyleUrl: getMapLibreStyleUrl(),
     globeImageUrl: null,
     bumpImageUrl: null,
     backgroundColor: globe.backgroundColor,

@@ -25,13 +25,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" suppressHydrationWarning style={{ background: "#02040a" }}>
-      <head>
-        <link
-          rel="preload"
-          as="image"
-          href="https://unpkg.com/three-globe/example/img/earth-night.jpg"
-        />
-      </head>
+      <head />
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         style={{ background: "#02040a", minHeight: "100vh" }}
