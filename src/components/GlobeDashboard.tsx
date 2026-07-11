@@ -2166,6 +2166,10 @@ export function GlobeDashboard({
     setHoveredPoint(point);
   }, []);
 
+  const handleGlobeMouseMove = useCallback((coords: { lat: number; lng: number } | null) => {
+    setHoverGlobeCoords(coords);
+  }, []);
+
   const handleMapPointerMove = useCallback((event: React.MouseEvent<HTMLElement>) => {
     const section = mapSectionRef.current;
     if (!section) return;
@@ -2174,18 +2178,6 @@ export function GlobeDashboard({
       x: event.clientX - rect.left,
       y: event.clientY - rect.top,
     });
-
-    const canvas = globeRef.current?.renderer()?.domElement;
-    if (!canvas) {
-      setHoverGlobeCoords(null);
-      return;
-    }
-    const canvasRect = canvas.getBoundingClientRect();
-    const coords = globeRef.current?.toGlobeCoords(
-      event.clientX - canvasRect.left,
-      event.clientY - canvasRect.top,
-    );
-    setHoverGlobeCoords(coords);
   }, []);
 
   const handleMapPointerLeave = useCallback(() => {
@@ -4339,6 +4331,7 @@ export function GlobeDashboard({
               mapStyleUrl={globeTextures.mapStyleUrl}
               backgroundColor={globeTextures.backgroundColor}
               onGlobeReady={configureGlobe}
+              onGlobeMouseMove={handleGlobeMouseMove}
               heatmapsData={tensionHeatmaps}
               heatmapPoints={(layer: { points: { lat: number; lng: number; weight: number }[] }) =>
                 layer.points

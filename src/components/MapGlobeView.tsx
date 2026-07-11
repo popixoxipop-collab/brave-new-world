@@ -24,11 +24,16 @@ import {
   type GlobeLayerProps,
 } from "@/lib/mapGlobeLayers";
 
-export type MapGlobeViewProps = GlobeLayerProps & {
+type MapGlobeViewOwnProps = {
   mapStyleUrl: string;
   backgroundColor?: string;
   onGlobeReady?: () => void;
+  /** 빈 바다·지도 위 커서 좌표 (해역명 툴팁 등) */
+  onGlobeMouseMove?: (coords: { lat: number; lng: number } | null) => void;
 };
+
+/** GlobeLayerProps의 index signature 때문에 콜백은 OwnProps에서 읽어야 타입이 유지됩니다. */
+export type MapGlobeViewProps = MapGlobeViewOwnProps & GlobeLayerProps;
 
 const INTERACTIVE_LAYERS = [
   "map-points",
@@ -41,22 +46,26 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
   props,
   ref,
 ) {
-  const {
-    mapStyleUrl,
-    backgroundColor = "#02040a",
-    onGlobeReady,
-  } = props;
+  const { mapStyleUrl, backgroundColor = "#02040a" } = props;
+  const { onGlobeReady, onGlobeMouseMove } = props as MapGlobeViewOwnProps;
 
   const mapRef = useRef<MapRef>(null);
   const changeListenersRef = useRef(new Set<() => void>());
   const readyRef = useRef(false);
-  const onGlobeReadyRef = useRef(onGlobeReady);
+  const onGlobeReadyRef = useRef<(() => void) | undefined>(onGlobeReady);
+  const onGlobeMouseMoveRef = useRef<
+    ((coords: { lat: number; lng: number } | null) => void) | undefined
+  >(onGlobeMouseMove);
   const [mapZoom, setMapZoom] = useState(2);
   const [mapLoaded, setMapLoaded] = useState(false);
 
   useEffect(() => {
     onGlobeReadyRef.current = onGlobeReady;
   }, [onGlobeReady]);
+
+  useEffect(() => {
+    onGlobeMouseMoveRef.current = onGlobeMouseMove;
+  }, [onGlobeMouseMove]);
 
   const methods = useMemo(
     () => createMapGlobeMethods(mapRef, changeListenersRef),
@@ -211,9 +220,9 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
   const emitGlobeReady = useCallback(() => {
     if (readyRef.current) return;
     readyRef.current = true;
-    onGlobeReadyRef.current?.({});
+    onGlobeReadyRef.current?.();
     notifyChange();
-  }, [notifyChange, onGlobeReadyRef]);
+  }, [notifyChange]);
 
   const handleLoad = useCallback(() => {
     const map = mapRef.current?.getMap();
@@ -269,7 +278,15 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
   );
 
   const handleMapMouseMove = useCallback(
-    (event: { features?: { layer?: { id?: string }; properties?: { index?: number } }[] }) => {
+    (event: {
+      lngLat: { lat: number; lng: number };
+      features?: { layer?: { id?: string }; properties?: { index?: number } }[];
+    }) => {
+      const { lat, lng } = event.lngLat;
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        onGlobeMouseMoveRef.current?.({ lat, lng });
+      }
+
       const features = event.features ?? [];
       for (const feature of features) {
         const layerId = feature.layer?.id;
@@ -296,6 +313,13 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
     },
     [onPathHover, onPointHover, onPolygonHover, resolveFeature],
   );
+
+  const handleMapMouseLeave = useCallback(() => {
+    onGlobeMouseMoveRef.current?.(null);
+    onPointHover?.(null);
+    onPathHover?.(null);
+    onPolygonHover?.(null);
+  }, [onPathHover, onPointHover, onPolygonHover]);
 
   useEffect(() => {
     if (!mapLoaded) return;
@@ -329,6 +353,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
         onMove={handleMove}
         onClick={handleMapClick}
         onMouseMove={handleMapMouseMove}
+        onMouseLeave={handleMapMouseLeave}
         cursor="grab"
       >
         {polygonsGeoJson.features.length > 0 ? (
