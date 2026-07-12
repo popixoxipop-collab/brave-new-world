@@ -34,6 +34,9 @@ yarn-error.log*
 # cloudflare
 .wrangler/
 
+# server-side hatch/precompute caches (regenerable)
+/private/overlay-cache/
+
 # telethon session
 scripts/telegram-osint/.session/
 *.session

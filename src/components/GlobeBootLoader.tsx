@@ -11,6 +11,7 @@ import {
 import { GlobeLoadingScreen } from "@/components/GlobeLoadingScreen";
 import { prefetchUkraineControl } from "@/lib/viinaPrefetch";
 import { prefetchUkraineHatchPaths } from "@/lib/ukraineHatchPrefetch";
+import { prefetchDisputeHatchPaths } from "@/lib/disputeHatchPrefetch";
 import { prefetchNeptun } from "@/lib/neptunPrefetch";
 import { ModePickerOverlay } from "@/components/ModePickerOverlay";
 import type { GlobeDashboardProps } from "@/components/GlobeDashboard";
@@ -47,6 +48,8 @@ export function GlobeBootLoader({
       void prefetchUkraineHatchPaths("overview");
       void prefetchUkraineHatchPaths("detail");
     }
+    void prefetchDisputeHatchPaths("overview");
+    void prefetchDisputeHatchPaths("detail");
     void prefetchNeptun();
   }, [viinaMeta.available]);
 

@@ -281,6 +281,8 @@ export type ConflictZoneFeature = {
   aiSummary?: string;
   detectedBy?: "ai-demo";
   sources?: string[];
+  /** 서버 사전계산 빗금·테두리 (있으면 클라 geometry hatch 생략) */
+  hatchPaths?: TransportPath[];
 };
 
 export type ArmsEmbargoZone = {

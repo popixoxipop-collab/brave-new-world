@@ -284,6 +284,11 @@ import {
   readUkraineHatchPathsCache,
 } from "@/lib/ukraineHatchPrefetch";
 import {
+  prefetchDisputeHatchPaths,
+  readDisputeHatchPathsCache,
+} from "@/lib/disputeHatchPrefetch";
+import type { DisputeHatchLod } from "@/lib/disputeHatchPrecompute";
+import {
   createUkraineSettlementLabelElement,
   getUkraineSettlementTier,
   isInUkraineTheater,
@@ -2034,6 +2039,26 @@ export function GlobeDashboard({
     };
   }, [showUkraineControl, ukraineHatchLod, viinaDisplay.lod.mode, ukraineControlDate]);
 
+  const disputeHatchLod: DisputeHatchLod =
+    globeLod.tier === "global" || globeLod.tier === "continent" ? "overview" : "detail";
+  const [disputeHatchCachePaths, setDisputeHatchCachePaths] = useState<TransportPath[]>(
+    () => readDisputeHatchPathsCache(disputeHatchLod)?.paths ?? [],
+  );
+
+  useEffect(() => {
+    if (!showAnyDisputeOverlay) return;
+    let cancelled = false;
+    const cached = readDisputeHatchPathsCache(disputeHatchLod);
+    if (cached?.paths?.length) setDisputeHatchCachePaths(cached.paths);
+    void prefetchDisputeHatchPaths(disputeHatchLod).then((payload) => {
+      if (cancelled || !payload?.paths?.length) return;
+      setDisputeHatchCachePaths(payload.paths);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [disputeHatchLod, showAnyDisputeOverlay]);
+
   const rawUkraineFrontRender = useMemo(() => {
     if (!showUkraineControl || viinaDisplay.lod.mode === "hidden") {
       return { paths: [] as TransportPath[] };
@@ -2105,37 +2130,60 @@ export function GlobeDashboard({
     if (!showAnyDisputeOverlay && !showConflictZones) return [];
     const radiusDeg = VIEWPORT_RADIUS_BY_TIER[globeLod.tier] + 6;
     const maxZones = DISPUTE_MAX_BY_TIER[globeLod.tier];
-    const paths: TransportPath[] = [];
+    const maxPaths = Math.max(400, maxZones * 24);
     const preferDetailSegments =
       globeLod.tier === "regional" || globeLod.tier === "near" || globeLod.tier === "village";
+    const paths: TransportPath[] = [];
 
     if (showAnyDisputeOverlay) {
-      const ranked = rankDisputesForDisplay(data.disputes ?? [])
-        .filter((dispute) =>
-          disputeMatchesWarDiplomaticLayers(dispute, showWarZones, showDiplomaticTension),
-        )
-        .filter((dispute) =>
-          isCenterInView(resolveDisputeCenter(dispute), layerViewState, radiusDeg),
-        )
-        .slice(0, maxZones);
-      for (const dispute of ranked) {
-        paths.push(
-          ...disputeToOutlineAndHatchPaths(dispute, {
-            preferDetailSegments,
-          }),
-        );
+      if (disputeHatchCachePaths.length > 0) {
+        const filtered = filterHatchPathsByView(
+          disputeHatchCachePaths,
+          layerViewState,
+          radiusDeg,
+          maxPaths,
+        ).filter((path) => {
+          // 레이어 체크: war/diplomatic — path id에서 dispute 매칭
+          const match = path.id.match(/^dispute-(?:zone|hatch)-(.+)-\d+$/);
+          if (!match) return true;
+          const dispute = (data.disputes ?? []).find((d) => d.id === match[1]);
+          if (!dispute) return true;
+          return disputeMatchesWarDiplomaticLayers(dispute, showWarZones, showDiplomaticTension);
+        });
+        paths.push(...filtered);
+      } else {
+        const ranked = rankDisputesForDisplay(data.disputes ?? [])
+          .filter((dispute) =>
+            disputeMatchesWarDiplomaticLayers(dispute, showWarZones, showDiplomaticTension),
+          )
+          .filter((dispute) =>
+            isCenterInView(resolveDisputeCenter(dispute), layerViewState, radiusDeg),
+          )
+          .slice(0, maxZones);
+        for (const dispute of ranked) {
+          paths.push(
+            ...disputeToOutlineAndHatchPaths(dispute, {
+              preferDetailSegments,
+            }),
+          );
+        }
       }
     }
 
     if (showConflictZones) {
       for (const zone of visibleConflictZones.slice(0, maxZones)) {
-        paths.push(...conflictZoneToOutlineAndHatchPaths(zone));
+        if (zone.hatchPaths?.length) {
+          paths.push(...zone.hatchPaths);
+        } else {
+          paths.push(...conflictZoneToOutlineAndHatchPaths(zone));
+        }
       }
     }
 
     return paths;
   }, [
     data.disputes,
+    disputeHatchCachePaths,
     globeLod.tier,
     layerViewState,
     showAnyDisputeOverlay,
