@@ -76,12 +76,10 @@ import {
 } from "@/lib/tensionHeatmap";
 import { getGlobeLod, type GlobeLodTier } from "@/lib/globeLod";
 import { getTransportLod } from "@/lib/transportLod";
-import {
-  expandPlaces,
-  expandTransportPaths,
-} from "@/lib/compactData";
+import { expandPlaces } from "@/lib/compactData";
 import { dataPath } from "@/lib/dataProfile";
 import { fetchAppDataStream, fetchAppDataPlaces, type AppDataLoadProgress } from "@/lib/fetchAppDataStream";
+import { useViewportPaths } from "@/hooks/useViewportPaths";
 import { computeDashboardBootProgress } from "@/lib/bootLoadingProgress";
 import { runWhenIdle } from "@/lib/deferIdle";
 import { isClientApiStubMode } from "@/lib/apiStubMode";
@@ -1358,7 +1356,6 @@ export function GlobeDashboard({
   const [firmsError, setFirmsError] = useState<string | null>(null);
   const firmsBboxRef = useRef("");
   const firmsFetchBusyRef = useRef(false);
-  const [railroads, setRailroads] = useState<TransportPath[]>([]);
   const ultraLiteRef = useRef(false);
   const [ultraLite, setUltraLite] = useState(false);
   const {
@@ -1575,8 +1572,6 @@ export function GlobeDashboard({
     (showGdeltWar || showGdeltDiplomatic || showGdeltAlliance || showGdeltProtests);
   const setLabelLanguage = (v: LabelLanguage) => togglePref("labelLanguage", v);
 
-  const [transportLoading, setTransportLoading] = useState(false);
-  const [transportError, setTransportError] = useState<string | null>(null);
   const [regionNavSelection, setRegionNavSelection] = useState<NavSelection | null>(null);
   const [ukraineFrontLegendEngaged, setUkraineFrontLegendEngaged] = useState(false);
   const [econNavSelection, setEconNavSelection] = useState<NavSelection | null>(null);
@@ -1655,7 +1650,7 @@ export function GlobeDashboard({
               places: [],
               events: [],
               roads: patch.roads ?? prev.roads ?? [],
-              railroads: patch.railroads ?? prev.railroads ?? [],
+              railroads: [],
             }));
             if (!firstPaint && patch.countries && patch.countries.length > 0) {
               firstPaint = true;
@@ -1670,7 +1665,7 @@ export function GlobeDashboard({
           countries: raw.countries ?? [],
           disputes: raw.disputes ?? [],
           roads: raw.roads ?? [],
-          railroads: raw.railroads ?? [],
+          railroads: [],
           events: [],
           places: [],
         };
@@ -1939,18 +1934,55 @@ export function GlobeDashboard({
   const globeTextures = useMemo(() => getGlobeTextures(), []);
   const isVectorBaseMap = globeTextures.vectorBase;
 
-  const railPaths = useMemo<TransportPath[]>(() => {
-    if (!showRailGlow) return [];
-    const lod = transportLod;
-    return filterTransportPaths(
-      railroads,
-      layerViewState,
-      lod.radiusDeg,
-      lod.railMaxScalerank,
-      lod.maxRailroads,
-      lod.arterialMaxRank,
-    );
-  }, [railroads, showRailGlow, transportLod, layerViewState]);
+  const {
+    paths: railPaths,
+    loading: transportLoading,
+    error: transportError,
+  } = useViewportPaths({
+    layer: "railroads",
+    enabled: showRailGlow && transportLod.maxRailroads > 0,
+    lat: layerViewState.lat,
+    lng: layerViewState.lng,
+    radiusDeg: transportLod.radiusDeg,
+    tier: globeLod.tier,
+    max: transportLod.maxRailroads,
+    maxScalerank: transportLod.railMaxScalerank,
+    arterialMaxRank: transportLod.arterialMaxRank,
+  });
+
+  const [viewportCountries, setViewportCountries] = useState<CountryFeature[]>([]);
+
+  useEffect(() => {
+    if (isVectorBaseMap) {
+      setViewportCountries([]);
+      return;
+    }
+    const ac = new AbortController();
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams({
+        lat: String(Math.round(layerViewState.lat * 10) / 10),
+        lng: String(Math.round(layerViewState.lng * 10) / 10),
+        radius: String(VIEWPORT_RADIUS_BY_TIER[globeLod.tier]),
+        tier: globeLod.tier,
+        max: String(COUNTRY_POLYGON_MAX_BY_TIER[globeLod.tier]),
+      });
+      void fetch(`/api/layers/viewport-countries?${params}`, {
+        cache: "no-store",
+        signal: ac.signal,
+      })
+        .then(async (res) => {
+          if (!res.ok) return;
+          const payload = (await res.json()) as { countries?: CountryFeature[] };
+          if (ac.signal.aborted) return;
+          setViewportCountries(Array.isArray(payload.countries) ? payload.countries : []);
+        })
+        .catch(() => undefined);
+    }, 400);
+    return () => {
+      window.clearTimeout(timer);
+      ac.abort();
+    };
+  }, [globeLod.tier, isVectorBaseMap, layerViewState.lat, layerViewState.lng]);
 
   const pathRadiusDeg =
     globeLod.radiusDeg > 0 ? globeLod.radiusDeg : globeLod.tier === "global" ? 40 : 28;
@@ -2004,6 +2036,13 @@ export function GlobeDashboard({
     if (isVectorBaseMap) {
       return withGeometry.map((country) => ({ ...country, polygonLayer: "country" as const }));
     }
+    // 서버 뷰포트 응답이 있으면 그걸 우선 (전체 countries geometry 미보유)
+    if (viewportCountries.length > 0) {
+      return viewportCountries.map((country) => ({
+        ...country,
+        polygonLayer: "country" as const,
+      }));
+    }
     const radiusDeg = VIEWPORT_RADIUS_BY_TIER[globeLod.tier];
     const maxCount = COUNTRY_POLYGON_MAX_BY_TIER[globeLod.tier];
     const visible = filterByViewportCenter(
@@ -2014,7 +2053,13 @@ export function GlobeDashboard({
       (a, b) => (b.population ?? 0) - (a.population ?? 0),
     );
     return visible.map((country) => ({ ...country, polygonLayer: "country" as const }));
-  }, [data.countries, globeLod.tier, isVectorBaseMap, layerViewState]);
+  }, [
+    data.countries,
+    globeLod.tier,
+    isVectorBaseMap,
+    layerViewState,
+    viewportCountries,
+  ]);
 
   const ukraineHatchLod = lodTierToHatchLod(globeLod.tier);
   const [ukraineHatchCachePaths, setUkraineHatchCachePaths] = useState<TransportPath[]>(
@@ -3654,28 +3699,6 @@ export function GlobeDashboard({
     }
   }, [layerAltitude, layerViewState, showFirmsFires]);
 
-  const loadTransportLayers = useCallback(async () => {
-    if (railroads.length > 0) return;
-
-    setTransportLoading(true);
-    setTransportError(null);
-
-    try {
-      const railroadsResponse = await fetch(dataPath("railroads.json"), { cache: "no-store" });
-
-      if (!railroadsResponse.ok) {
-        throw new Error(`railroads.json 로드 실패: ${railroadsResponse.status}`);
-      }
-
-      const nextRailroads = expandTransportPaths(await railroadsResponse.json());
-      setRailroads(nextRailroads);
-    } catch (error) {
-      setTransportError(error instanceof Error ? error.message : "철도 데이터 로드 실패");
-    } finally {
-      setTransportLoading(false);
-    }
-  }, [railroads]);
-
   useEffect(() => {
     if (!showAis) return;
     void refreshAis();
@@ -3881,12 +3904,6 @@ export function GlobeDashboard({
     }, liveFirmsPollMs());
     return () => window.clearInterval(timer);
   }, [refreshFirmsFires, showFirmsFires]);
-
-  useEffect(() => {
-    if (showRailGlow && transportLod.maxRailroads > 0) {
-      loadTransportLayers();
-    }
-  }, [loadTransportLayers, showRailGlow, transportLod.maxRailroads]);
 
   const layerPanelActive = showLeftPanel;
   /** 패널 닫힘 시 deps 고정 — GDELT·카메라 등과 layerCategories 재계산 분리 */

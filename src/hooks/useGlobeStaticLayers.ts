@@ -204,6 +204,29 @@ export function useGlobeStaticLayers(options: {
     [],
   );
 
+  const fetchViewportLayer = useCallback(
+    async (layer: string, setter: (value: TransportPath[]) => void) => {
+      try {
+        const params = new URLSearchParams({
+          layer,
+          lat: String(Math.round(options.viewState.lat * 10) / 10),
+          lng: String(Math.round(options.viewState.lng * 10) / 10),
+          radius: String(options.radiusDeg),
+          tier: options.globeTier,
+        });
+        const response = await fetch(`/api/layers/viewport-paths?${params}`, {
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const payload = (await response.json()) as { paths?: TransportPath[] };
+        setter(Array.isArray(payload.paths) ? payload.paths : []);
+      } catch {
+        // optional
+      }
+    },
+    [options.globeTier, options.radiusDeg, options.viewState.lat, options.viewState.lng],
+  );
+
   const loadOnceApiPoints = useCallback(
     async (
       key: string,
@@ -254,34 +277,99 @@ export function useGlobeStaticLayers(options: {
   );
 
   useEffect(() => {
-    if (options.showDisputeBoundaries) {
-      loadOnce("disputeBoundaries", "dispute-boundaries.json", setDisputeBoundaryPaths, expandPathsFromJson);
+    if (!options.showDisputeBoundaries) {
+      setDisputeBoundaryPaths([]);
+      return;
     }
-  }, [loadOnce, options.showDisputeBoundaries, reloadToken]);
+    const timer = window.setTimeout(() => {
+      void fetchViewportLayer("dispute-boundaries", setDisputeBoundaryPaths);
+    }, 320);
+    return () => window.clearTimeout(timer);
+  }, [
+    fetchViewportLayer,
+    options.showDisputeBoundaries,
+    options.viewState.lat,
+    options.viewState.lng,
+    options.globeTier,
+    options.radiusDeg,
+    reloadToken,
+  ]);
 
   useEffect(() => {
-    if (options.showShippingLanes) {
-      loadOnce("shipping", "shipping-lanes.json", setShippingPaths, expandPathsFromJson);
+    if (!options.showShippingLanes) {
+      setShippingPaths([]);
+      return;
     }
-  }, [loadOnce, options.showShippingLanes, reloadToken]);
+    const timer = window.setTimeout(() => {
+      void fetchViewportLayer("shipping-lanes", setShippingPaths);
+    }, 320);
+    return () => window.clearTimeout(timer);
+  }, [
+    fetchViewportLayer,
+    options.showShippingLanes,
+    options.viewState.lat,
+    options.viewState.lng,
+    options.globeTier,
+    options.radiusDeg,
+    reloadToken,
+  ]);
 
   useEffect(() => {
-    if (options.showSubmarineCables) {
-      loadOnce("cables", "submarine-cables.json", setCablePaths, expandPathsFromJson);
+    if (!options.showSubmarineCables) {
+      setCablePaths([]);
+      return;
     }
-  }, [loadOnce, options.showSubmarineCables, reloadToken]);
+    const timer = window.setTimeout(() => {
+      void fetchViewportLayer("submarine-cables", setCablePaths);
+    }, 320);
+    return () => window.clearTimeout(timer);
+  }, [
+    fetchViewportLayer,
+    options.showSubmarineCables,
+    options.viewState.lat,
+    options.viewState.lng,
+    options.globeTier,
+    options.radiusDeg,
+    reloadToken,
+  ]);
 
   useEffect(() => {
-    if (options.showOilPipelines) {
-      loadOnce("oilPipelines", "oil-pipelines.json", setOilPipelinePaths, expandPathsFromJson);
+    if (!options.showOilPipelines) {
+      setOilPipelinePaths([]);
+      return;
     }
-  }, [loadOnce, options.showOilPipelines, reloadToken]);
+    const timer = window.setTimeout(() => {
+      void fetchViewportLayer("oil-pipelines", setOilPipelinePaths);
+    }, 320);
+    return () => window.clearTimeout(timer);
+  }, [
+    fetchViewportLayer,
+    options.showOilPipelines,
+    options.viewState.lat,
+    options.viewState.lng,
+    options.globeTier,
+    options.radiusDeg,
+    reloadToken,
+  ]);
 
   useEffect(() => {
-    if (options.showGasPipelines) {
-      loadOnce("gasPipelines", "gas-pipelines.json", setGasPipelinePaths, expandPathsFromJson);
+    if (!options.showGasPipelines) {
+      setGasPipelinePaths([]);
+      return;
     }
-  }, [loadOnce, options.showGasPipelines, reloadToken]);
+    const timer = window.setTimeout(() => {
+      void fetchViewportLayer("gas-pipelines", setGasPipelinePaths);
+    }, 320);
+    return () => window.clearTimeout(timer);
+  }, [
+    fetchViewportLayer,
+    options.showGasPipelines,
+    options.viewState.lat,
+    options.viewState.lng,
+    options.globeTier,
+    options.radiusDeg,
+    reloadToken,
+  ]);
 
   useEffect(() => {
     if (options.showLngTerminals) {
