@@ -13,15 +13,22 @@ SESSION_FILE = ROOT / "scripts" / "telegram-osint" / ".session" / "osint_command
 
 
 def load_dotenv_local() -> None:
-    env_path = ROOT / ".env.local"
-    if not env_path.exists():
-        return
-    for line in env_path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
+    """Load ROOT/.env then ROOT/.env.local (local overrides)."""
+    for name in (".env", ".env.local"):
+        env_path = ROOT / name
+        if not env_path.exists():
             continue
-        key, value = line.split("=", 1)
-        os.environ.setdefault(key.strip(), value.strip())
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip()
+            if name.endswith(".env.local"):
+                os.environ[key] = value
+            else:
+                os.environ.setdefault(key, value)
 
 
 def require_env(name: str) -> str:

@@ -20,6 +20,7 @@ const TARGETS =
 
 const PRIORITY = [
   "app-data.json",
+  "gdelt-events.json",
   "countries.json",
   "disputes.json",
   "places.json",

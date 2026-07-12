@@ -12,6 +12,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const TTL_MS = 3 * 60 * 1000;
+/** 클라이언트 firmsLiveFetchMax와 맞춤 — query max 무시 상한 */
+const FIRMS_SERVER_HARD_CAP = 900;
 
 function parseBBox(searchParams: URLSearchParams) {
   const west = Number(searchParams.get("west"));
@@ -40,7 +42,10 @@ export async function GET(request: Request) {
   const bbox = parseBBox(searchParams);
   const dayRange = Math.min(5, Math.max(1, Number(searchParams.get("days") || 1)));
   const source = searchParams.get("source") || "VIIRS_SNPP_NRT";
-  const max = Math.min(Number(searchParams.get("max") || 1500), 3000);
+  const max = Math.min(
+    Number(searchParams.get("max") || FIRMS_SERVER_HARD_CAP),
+    FIRMS_SERVER_HARD_CAP,
+  );
 
   const cacheKey = `firms:${source}:${bbox.west.toFixed(1)},${bbox.south.toFixed(1)},${bbox.east.toFixed(1)},${bbox.north.toFixed(1)}:${dayRange}`;
 

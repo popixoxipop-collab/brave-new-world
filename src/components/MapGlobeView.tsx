@@ -64,6 +64,12 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
   >(onGlobeMouseMove);
   const [mapZoom, setMapZoom] = useState(2);
   const [mapLoaded, setMapLoaded] = useState(false);
+  /** onMove는 프레임마다 오므로 zoom→GeoJSON 재빌드는 idle 시에만 */
+  const mapZoomRef = useRef(2);
+  const lastZoomPublishAtRef = useRef(0);
+  const pendingZoomPublishRef = useRef<number | null>(null);
+  const moveIdleTimerRef = useRef<number | null>(null);
+  const movingRef = useRef(false);
 
   useEffect(() => {
     onGlobeReadyRef.current = onGlobeReady;
@@ -159,65 +165,116 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
     | ((coords: { lat: number; lng: number }) => void)
     | undefined;
 
-  const pointsGeoJson = useMemo(
-    () =>
-      buildPointsGeoJson(pointsData, { lat: pointLat, lng: pointLng, color: pointColor, radius: pointRadius }, mapZoom),
-    [mapZoom, pointColor, pointLat, pointLng, pointRadius, pointsData],
-  );
+  /** inline accessor props는 매 렌더 새 참조 → GeoJSON deps에서 제외하고 ref로만 읽음 */
+  const accessorsRef = useRef({
+    pointLat,
+    pointLng,
+    pointColor,
+    pointRadius,
+    pathPoints,
+    pathColor,
+    pathStroke,
+    pathDashLength,
+    pathDashGap,
+    polygonGeoJsonGeometry,
+    polygonCapColor,
+    polygonStrokeColor,
+    polygonFillOpacity,
+    ringLat,
+    ringLng,
+    ringColor,
+    ringMaxRadius,
+    labelLat,
+    labelLng,
+    labelText,
+    labelSize,
+    labelColor,
+    labelDotRadius,
+  });
+  accessorsRef.current = {
+    pointLat,
+    pointLng,
+    pointColor,
+    pointRadius,
+    pathPoints,
+    pathColor,
+    pathStroke,
+    pathDashLength,
+    pathDashGap,
+    polygonGeoJsonGeometry,
+    polygonCapColor,
+    polygonStrokeColor,
+    polygonFillOpacity,
+    ringLat,
+    ringLng,
+    ringColor,
+    ringMaxRadius,
+    labelLat,
+    labelLng,
+    labelText,
+    labelSize,
+    labelColor,
+    labelDotRadius,
+  };
 
-  const pathsGeoJson = useMemo(
-    () =>
-      buildPathsGeoJson(
-        pathsData,
-        {
-          points: pathPoints,
-          color: pathColor,
-          stroke: pathStroke,
-          dashLength: pathDashLength,
-          dashGap: pathDashGap,
-        },
-        mapZoom,
-      ),
-    [mapZoom, pathColor, pathDashGap, pathDashLength, pathPoints, pathStroke, pathsData],
-  );
+  const pointsGeoJson = useMemo(() => {
+    const a = accessorsRef.current;
+    return buildPointsGeoJson(
+      pointsData,
+      { lat: a.pointLat, lng: a.pointLng, color: a.pointColor, radius: a.pointRadius },
+      mapZoom,
+    );
+  }, [mapZoom, pointsData]);
 
-  const polygonsGeoJson = useMemo(
-    () =>
-      buildPolygonsGeoJson(polygonsData, {
-        geometry: polygonGeoJsonGeometry,
-        fillColor: polygonCapColor,
-        strokeColor: polygonStrokeColor,
-        fillOpacity: polygonFillOpacity,
-      }),
-    [polygonCapColor, polygonFillOpacity, polygonGeoJsonGeometry, polygonStrokeColor, polygonsData],
-  );
+  const pathsGeoJson = useMemo(() => {
+    const a = accessorsRef.current;
+    return buildPathsGeoJson(
+      pathsData,
+      {
+        points: a.pathPoints,
+        color: a.pathColor,
+        stroke: a.pathStroke,
+        dashLength: a.pathDashLength,
+        dashGap: a.pathDashGap,
+      },
+      mapZoom,
+    );
+  }, [mapZoom, pathsData]);
 
-  const ringsGeoJson = useMemo(
-    () =>
-      buildRingsGeoJson(
-        ringsData,
-        { lat: ringLat, lng: ringLng, color: ringColor, maxRadius: ringMaxRadius },
-        mapZoom,
-      ),
-    [mapZoom, ringColor, ringLat, ringLng, ringMaxRadius, ringsData],
-  );
+  const polygonsGeoJson = useMemo(() => {
+    const a = accessorsRef.current;
+    return buildPolygonsGeoJson(polygonsData, {
+      geometry: a.polygonGeoJsonGeometry,
+      fillColor: a.polygonCapColor,
+      strokeColor: a.polygonStrokeColor,
+      fillOpacity: a.polygonFillOpacity,
+    });
+  }, [polygonsData]);
 
-  const labelsGeoJson = useMemo(
-    () =>
-      buildLabelsGeoJson(
-        labelsData,
-        {
-          lat: labelLat,
-          lng: labelLng,
-          text: labelText,
-          size: labelSize,
-          color: labelColor,
-          dotRadius: labelDotRadius,
-        },
-        mapZoom,
-      ),
-    [labelColor, labelDotRadius, labelLat, labelLng, labelSize, labelText, labelsData, mapZoom],
-  );
+  const ringsGeoJson = useMemo(() => {
+    const a = accessorsRef.current;
+    return buildRingsGeoJson(
+      ringsData,
+      { lat: a.ringLat, lng: a.ringLng, color: a.ringColor, maxRadius: a.ringMaxRadius },
+      mapZoom,
+    );
+  }, [mapZoom, ringsData]);
+
+  const labelsGeoJson = useMemo(() => {
+    const a = accessorsRef.current;
+    return buildLabelsGeoJson(
+      labelsData,
+      {
+        lat: a.labelLat,
+        lng: a.labelLng,
+        text: a.labelText,
+        size: a.labelSize,
+        color: a.labelColor,
+        dotRadius: a.labelDotRadius,
+      },
+      mapZoom,
+    );
+  }, [labelsData, mapZoom]);
 
   const heatmapCollections = useMemo(() => buildHeatmapGeoJson(heatmapsData), [heatmapsData]);
 
@@ -225,13 +282,55 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
     changeListenersRef.current.forEach((listener) => listener());
   }, []);
 
+  const publishZoom = useCallback((zoom: number, force = false) => {
+    mapZoomRef.current = zoom;
+    const now = performance.now();
+    const ZOOM_PUBLISH_MS = 150;
+    if (!force && now - lastZoomPublishAtRef.current < ZOOM_PUBLISH_MS) {
+      if (pendingZoomPublishRef.current == null) {
+        pendingZoomPublishRef.current = window.setTimeout(() => {
+          pendingZoomPublishRef.current = null;
+          lastZoomPublishAtRef.current = performance.now();
+          setMapZoom(mapZoomRef.current);
+        }, ZOOM_PUBLISH_MS);
+      }
+      return;
+    }
+    if (pendingZoomPublishRef.current != null) {
+      window.clearTimeout(pendingZoomPublishRef.current);
+      pendingZoomPublishRef.current = null;
+    }
+    lastZoomPublishAtRef.current = now;
+    setMapZoom(zoom);
+  }, []);
+
   const handleMove = useCallback(
     (event: { viewState: { zoom: number } }) => {
-      setMapZoom(event.viewState.zoom);
+      mapZoomRef.current = event.viewState.zoom;
+      movingRef.current = true;
+      if (moveIdleTimerRef.current != null) {
+        window.clearTimeout(moveIdleTimerRef.current);
+      }
+      // GeoJSON zoom은 idle 후 1회 — notify는 idle 타이머 리셋용으로 매 프레임 유지(setState 없음)
+      moveIdleTimerRef.current = window.setTimeout(() => {
+        movingRef.current = false;
+        publishZoom(mapZoomRef.current, true);
+      }, 420);
       notifyChange();
     },
-    [notifyChange],
+    [notifyChange, publishZoom],
   );
+
+  useEffect(() => {
+    return () => {
+      if (pendingZoomPublishRef.current != null) {
+        window.clearTimeout(pendingZoomPublishRef.current);
+      }
+      if (moveIdleTimerRef.current != null) {
+        window.clearTimeout(moveIdleTimerRef.current);
+      }
+    };
+  }, []);
 
   const emitGlobeReady = useCallback(() => {
     if (readyRef.current) return;
@@ -244,7 +343,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
     const map = mapRef.current?.getMap();
     if (!map) return;
     map.setProjection({ type: "globe" });
-    setMapZoom(map.getZoom());
+    publishZoom(map.getZoom(), true);
     setMapLoaded(true);
 
     if (map.isStyleLoaded()) {
@@ -253,7 +352,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
     }
 
     map.once("idle", emitGlobeReady);
-  }, [emitGlobeReady]);
+  }, [emitGlobeReady, publishZoom]);
 
   const resolveFeature = useCallback(
     (layerId: string, index: number) => {

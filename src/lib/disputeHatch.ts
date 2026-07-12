@@ -410,13 +410,85 @@ export function geometryHatchPathsOnly(
   box: { minLat: number; maxLat: number; minLng: number; maxLng: number },
   style: DisputeHatchStyle,
   kind: TransportPath["kind"],
+  accentColor?: string,
 ): TransportPath[] {
   const hatches = hatchLines(box, style);
   const out: TransportPath[] = [];
   for (const [index, segment] of hatches.entries()) {
     const hatch = makePath(`${idPrefix}-${index}`, name, segment, kind);
-    if (hatch) out.push(hatch);
+    if (hatch) {
+      if (accentColor) hatch.accentColor = accentColor;
+      out.push(hatch);
+    }
   }
+  return out;
+}
+
+/**
+ * 커스텀 색 외곽+빗금 — 우크라 점령/주장 등.
+ * dashed는 렌더러(kind)에서 처리.
+ */
+export function geometryToAccentOutlineAndHatch(
+  regionId: string,
+  name: string | null,
+  geometry: GeoJsonGeometry,
+  options: {
+    outlineKind: TransportPath["kind"];
+    hatchKind: TransportPath["kind"];
+    outlineColor: string;
+    hatchColor: string;
+    pattern: DisputeHatchStyle;
+    preferDetailSegments?: boolean;
+  },
+): TransportPath[] {
+  const out: TransportPath[] = [];
+  let rings = geometryOuterRings(geometry);
+  const preferDetail = options.preferDetailSegments ?? true;
+  if (!preferDetail && rings.length > 1) {
+    rings = [rings.slice().sort((a, b) => ringApproxArea(b) - ringApproxArea(a))[0]!];
+  }
+
+  for (const [index, ring] of rings.entries()) {
+    const points = ring
+      .map(([lng, lat]) => ({ lat: Number(lat), lng: Number(lng) }))
+      .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+    if (points.length < 2) continue;
+    const stride = points.length > 96 ? Math.ceil(points.length / 80) : 1;
+    const simplified =
+      stride <= 1
+        ? points
+        : points.filter((_, i) => i % stride === 0 || i === points.length - 1);
+    const first = simplified[0]!;
+    const last = simplified[simplified.length - 1]!;
+    if (first.lat !== last.lat || first.lng !== last.lng) simplified.push({ ...first });
+    const border = makePath(
+      `${options.outlineKind}-${regionId}-${index}`,
+      name,
+      simplified,
+      options.outlineKind,
+    );
+    if (border) {
+      border.accentColor = options.outlineColor;
+      out.push(border);
+    }
+  }
+
+  const box = preferDetail
+    ? disputeGeometryBbox(geometry)
+    : rings.length > 0
+      ? ringBbox(rings[0]!)
+      : null;
+  if (!box) return out;
+  out.push(
+    ...geometryHatchPathsOnly(
+      `${options.hatchKind}-${regionId}`,
+      name,
+      box,
+      options.pattern,
+      options.hatchKind,
+      options.hatchColor,
+    ),
+  );
   return out;
 }
 

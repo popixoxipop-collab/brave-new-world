@@ -197,6 +197,8 @@ const LAYER_DROP_PRIORITY: BooleanLayerKey[] = [
   "showLngTerminals",
   "showGasPipelines",
   "showOilPipelines",
+  "showTelegramOsint",
+  // showFirmsFires · showLogisticsRisk · showShippingLanes · showGdeltWar 는 중동 핵심 — 후순위 드롭
 ];
 
 const ECONOMY_LAYER_DROP_PRIORITY: BooleanLayerKey[] = [
@@ -230,13 +232,17 @@ export const LAYER_PREF_LABELS: Partial<Record<BooleanLayerKey, string>> = {
   showLngTerminals: "LNG 터미널",
   showGasPipelines: "가스 파이프라인",
   showShippingLanes: "해운로",
-  showLogisticsRisk: "물류 리스크",
+  showLogisticsRisk: "초크포인트·물류 리스크",
+  showPorts: "항만",
+  showFirmsFires: "위성 화재·폭격 열감지",
   showUcdpEvents: "분쟁 사건",
   showArmsEmbargo: "무기 금수",
 };
 
-const MAX_ON_LAYERS = 11;
-const MAX_ON_LAYERS_ECONOMY = 12;
+/** Conflict 동시 ON 레이어 hard cap — 타협 금지 */
+export const MAX_ON_LAYERS = 11 as const;
+/** Economy 동시 ON 레이어 hard cap — 타협 금지 */
+export const MAX_ON_LAYERS_ECONOMY = 12 as const;
 
 const PACKAGE_BY_ID = Object.fromEntries(
   VIEW_PACKAGES.map((pkg) => [pkg.id, pkg]),
@@ -254,14 +260,31 @@ function countBooleanLayers(layers: LayerPrefs): number {
     .length;
 }
 
-function capLayerCount(layers: LayerPrefs, maxLayers = MAX_ON_LAYERS, priority = LAYER_DROP_PRIORITY): LayerPrefs {
+function capLayerCount(
+  layers: LayerPrefs,
+  maxLayers: number = MAX_ON_LAYERS,
+  priority = LAYER_DROP_PRIORITY,
+): LayerPrefs {
+  // hard guard — 호출부에서 더 큰 값을 넘겨도 모드 기본 상한을 넘지 않음
+  const hardMax = Math.min(maxLayers, Math.max(MAX_ON_LAYERS, MAX_ON_LAYERS_ECONOMY));
   const next = { ...layers };
   let onCount = countBooleanLayers(next);
   for (const key of priority) {
-    if (onCount <= maxLayers) break;
+    if (onCount <= hardMax) break;
     if (next[key] === true) {
       next[key] = false;
       onCount -= 1;
+    }
+  }
+  // 최종 검증: 여전히 초과면 남은 boolean을 앞에서부터 끔
+  if (onCount > hardMax) {
+    for (const key of Object.keys(next) as Array<keyof LayerPrefs>) {
+      if (key === "labelLanguage") continue;
+      if (next[key] === true) {
+        (next as Record<string, boolean | string>)[key as string] = false;
+        onCount -= 1;
+        if (onCount <= hardMax) break;
+      }
     }
   }
   return next;

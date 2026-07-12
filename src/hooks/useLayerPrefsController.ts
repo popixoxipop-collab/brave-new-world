@@ -7,6 +7,11 @@ import {
   saveLayerPrefs,
   type LayerPrefs,
 } from "@/lib/layerPrefs";
+import {
+  canEnableLayer,
+  clampPrefsToActiveCap,
+  isLayerCapCountedKey,
+} from "@/lib/layerExclusiveCap";
 
 export type LayerRenderIntent = "immediate" | "deferred";
 
@@ -21,7 +26,10 @@ type BooleanLayerKey = {
   [K in keyof LayerPrefs]: LayerPrefs[K] extends boolean ? K : never;
 }[keyof LayerPrefs];
 
-export function useLayerPrefsController(deferMapApplyRef?: RefObject<boolean>) {
+export function useLayerPrefsController(
+  deferMapApplyRef?: RefObject<boolean>,
+  options?: { ultraLiteRef?: RefObject<boolean> },
+) {
   const [layerPrefs, setLayerPrefs] = useState<LayerPrefs>(DEFAULT_LAYER_PREFS);
   const [draftPrefs, setDraftPrefs] = useState<LayerPrefs>(DEFAULT_LAYER_PREFS);
   const [batchPending, setBatchPending] = useState(false);
@@ -31,6 +39,7 @@ export function useLayerPrefsController(deferMapApplyRef?: RefObject<boolean>) {
   const lastToggleAtRef = useRef(0);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const immediateUntilRef = useRef(0);
+  const ultraLiteRef = options?.ultraLiteRef;
 
   const clearDebounce = useCallback(() => {
     if (debounceTimerRef.current != null) {
@@ -39,18 +48,23 @@ export function useLayerPrefsController(deferMapApplyRef?: RefObject<boolean>) {
     }
   }, []);
 
-  const flushPrefs = useCallback((next: LayerPrefs, intent: LayerRenderIntent) => {
-    draftRef.current = next;
-    saveLayerPrefs(next);
-    if (intent === "immediate") {
-      immediateUntilRef.current = Date.now() + LAYER_IMMEDIATE_RENDER_MS;
-    }
-    startTransition(() => {
-      setLayerPrefs(next);
-      setDraftPrefs(next);
-      setApplyGeneration((n) => n + 1);
-    });
-  }, []);
+  const flushPrefs = useCallback(
+    (next: LayerPrefs, intent: LayerRenderIntent) => {
+      const ultra = ultraLiteRef?.current ?? false;
+      const clamped = clampPrefsToActiveCap(next, ultra);
+      draftRef.current = clamped;
+      saveLayerPrefs(clamped);
+      if (intent === "immediate") {
+        immediateUntilRef.current = Date.now() + LAYER_IMMEDIATE_RENDER_MS;
+      }
+      startTransition(() => {
+        setLayerPrefs(clamped);
+        setDraftPrefs(clamped);
+        setApplyGeneration((n) => n + 1);
+      });
+    },
+    [ultraLiteRef],
+  );
 
   const scheduleBatchFlush = useCallback(() => {
     clearDebounce();
@@ -64,14 +78,25 @@ export function useLayerPrefsController(deferMapApplyRef?: RefObject<boolean>) {
 
   useEffect(() => {
     const loaded = loadLayerPrefs();
-    draftRef.current = loaded;
-    setLayerPrefs(loaded);
-    setDraftPrefs(loaded);
+    const ultra = ultraLiteRef?.current ?? false;
+    const clamped = clampPrefsToActiveCap(loaded, ultra);
+    draftRef.current = clamped;
+    setLayerPrefs(clamped);
+    setDraftPrefs(clamped);
     return () => clearDebounce();
-  }, [clearDebounce]);
+  }, [clearDebounce, ultraLiteRef]);
 
   const togglePref = useCallback(
     <K extends keyof LayerPrefs>(key: K, value: LayerPrefs[K]) => {
+      const ultra = ultraLiteRef?.current ?? false;
+      if (
+        value === true &&
+        isLayerCapCountedKey(key) &&
+        !canEnableLayer(draftRef.current, key, ultra)
+      ) {
+        return;
+      }
+
       const next = { ...draftRef.current, [key]: value };
       draftRef.current = next;
 
@@ -83,6 +108,7 @@ export function useLayerPrefsController(deferMapApplyRef?: RefObject<boolean>) {
       }
 
       if (deferMapApplyRef?.current) {
+        setDraftPrefs(next);
         return;
       }
 
@@ -100,20 +126,22 @@ export function useLayerPrefsController(deferMapApplyRef?: RefObject<boolean>) {
         flushPrefs(next, "immediate");
       }
     },
-    [clearDebounce, deferMapApplyRef, flushPrefs, scheduleBatchFlush],
+    [clearDebounce, deferMapApplyRef, flushPrefs, scheduleBatchFlush, ultraLiteRef],
   );
 
   /** 카테고리 전체 켜기/끄기 — 항상 배치 모드 */
   const toggleCategoryPrefs = useCallback(
     (updates: Partial<Record<BooleanLayerKey, boolean>>) => {
-      const next = { ...draftRef.current, ...updates };
+      const ultra = ultraLiteRef?.current ?? false;
+      let next = { ...draftRef.current, ...updates };
+      next = clampPrefsToActiveCap(next, ultra);
       draftRef.current = next;
       lastToggleAtRef.current = Date.now();
-      if (deferMapApplyRef?.current) return;
       setDraftPrefs(next);
+      if (deferMapApplyRef?.current) return;
       scheduleBatchFlush();
     },
-    [deferMapApplyRef, scheduleBatchFlush],
+    [deferMapApplyRef, scheduleBatchFlush, ultraLiteRef],
   );
 
   const isLayerRenderImmediate = useCallback(() => {

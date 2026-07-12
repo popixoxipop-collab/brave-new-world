@@ -11,9 +11,7 @@ import {
 } from "@/lib/stockTickers";
 import type { HeroStatus } from "@/lib/news/types";
 import { TICKER_SPIKE_THRESHOLD_PERCENT, type IntelStackMode } from "@/lib/news/intelStackMode";
-import { emitDashboardSound } from "@/components/SoundEffectsBridge";
-
-const POLL_MS = 10 * 60 * 1000;
+import { liveTickerPollMs } from "@/lib/liveRenderGuard";
 
 type StockTickersResponse = {
   tickers?: StockTickerItem[];
@@ -38,6 +36,8 @@ export type StockTickerStripProps = {
   alertTone?: HeroStatus;
   /** L2 패널 헤더 라벨 표시 */
   showHeader?: boolean;
+  /** 카메라 이동 중 폴링·CSS 스크롤 정지 */
+  paused?: boolean;
 };
 
 function orderStripSymbols(highlightSymbols: string[]): string[] {
@@ -170,10 +170,12 @@ export function StockTickerStrip({
   highlightSymbols = [],
   alertTone,
   showHeader = false,
+  paused = false,
 }: StockTickerStripProps) {
   const [tickers, setTickers] = useState<StockTickerItem[] | null>(null);
   const [loading, setLoading] = useState(true);
-  const spikedSymbolsRef = useRef<Set<string>>(new Set());
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
 
   const orderedSymbols = useMemo(
     () => orderStripSymbols(mode === "alert" ? highlightSymbols : []),
@@ -183,6 +185,7 @@ export function StockTickerStrip({
   const highlightSet = useMemo(() => new Set(highlightSymbols), [highlightSymbols]);
 
   const refresh = useCallback(async () => {
+    if (pausedRef.current) return;
     try {
       const res = await fetch("/api/stock-tickers", { cache: "no-store" });
       const payload = (await res.json()) as StockTickersResponse;
@@ -198,27 +201,9 @@ export function StockTickerStrip({
 
   useEffect(() => {
     void refresh();
-    const timer = window.setInterval(() => void refresh(), POLL_MS);
+    const timer = window.setInterval(() => void refresh(), liveTickerPollMs());
     return () => window.clearInterval(timer);
   }, [refresh]);
-
-  useEffect(() => {
-    if (!tickers?.length) return;
-    for (const item of tickers) {
-      const pct = item.changePercent;
-      if (pct === null || Math.abs(pct) < TICKER_SPIKE_THRESHOLD_PERCENT) continue;
-      if (spikedSymbolsRef.current.has(item.symbol)) continue;
-      spikedSymbolsRef.current.add(item.symbol);
-      const eventId =
-        item.symbol === "^VIX"
-          ? "vix-spike"
-          : item.symbol === "CL=F" || item.symbol === "BZ=F"
-            ? "oil-spike"
-            : "ticker-spike";
-      emitDashboardSound(eventId);
-      break;
-    }
-  }, [tickers]);
 
   return (
     <div
@@ -226,6 +211,7 @@ export function StockTickerStrip({
         showHeader ? "rounded-b-2xl" : "h-10 rounded-none"
       }`}
       aria-label="글로벌 매크로·주요 증시 티커"
+      style={paused ? { animationPlayState: "paused" } : undefined}
     >
       {showHeader ? (
         <div className="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-1.5">

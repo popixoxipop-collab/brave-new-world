@@ -13,8 +13,7 @@ import {
   type TheaterMarketFilter,
 } from "@/lib/stockTickers";
 import { THEATER_CHIP_LABELS, type IntelTheaterFilter } from "@/lib/news/theaterMap";
-
-const POLL_MS = 10 * 60 * 1000;
+import { liveTickerPollMs } from "@/lib/liveRenderGuard";
 
 type StockTickersResponse = {
   tickers?: StockTickerItem[];
@@ -159,7 +158,7 @@ export function IntelRelatedMarketsPanel({
 
   useEffect(() => {
     void refresh();
-    const timer = window.setInterval(() => void refresh(), POLL_MS);
+    const timer = window.setInterval(() => void refresh(), liveTickerPollMs());
     return () => window.clearInterval(timer);
   }, [refresh]);
 

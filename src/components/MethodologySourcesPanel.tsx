@@ -1,6 +1,7 @@
 "use client";
 
 import { HoverHint } from "@/components/HoverHint";
+import { useLocale } from "@/contexts/LocaleContext";
 
 import {
   VIINA_ATTRIBUTION_EN,
@@ -71,23 +72,36 @@ export function MethodologySourcesPanel({ open, onClose }: MethodologySourcesPan
             <h3 className="text-sm font-medium text-amber-100">VIINA — 렌더링 전용 (ODbL)</h3>
             <p className="mt-2 text-[12px] leading-5 text-sky-100/80">{VIINA_ATTRIBUTION_KO}</p>
             <p className="mt-2 text-[11px] italic leading-5 text-sky-100/60">{VIINA_ATTRIBUTION_EN}</p>
-            <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
-              <a
-                href={VIINA_POLICY.sourceUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded border border-sky-300/25 px-2 py-1 text-sky-200 transition hover:border-sky-200/40"
-              >
-                VIINA
-              </a>
-              <a
-                href={VIINA_POLICY.licenseUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded border border-sky-300/25 px-2 py-1 text-sky-200 transition hover:border-sky-200/40"
-              >
-                ODbL v1.0
-              </a>
+            <div className="mt-3 space-y-2 text-[11px]">
+              <p className="leading-5 text-sky-100/75">
+                <span className="text-sky-200/55">GitHub · </span>
+                <a
+                  href={VIINA_POLICY.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="break-all font-mono text-sky-200 underline decoration-sky-400/35 underline-offset-2 transition hover:text-sky-50 hover:decoration-sky-200/60"
+                >
+                  {VIINA_POLICY.sourceUrl}
+                </a>
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <a
+                  href={VIINA_POLICY.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded border border-sky-300/25 px-2 py-1 text-sky-200 transition hover:border-sky-200/40"
+                >
+                  VIINA GitHub
+                </a>
+                <a
+                  href={VIINA_POLICY.licenseUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded border border-sky-300/25 px-2 py-1 text-sky-200 transition hover:border-sky-200/40"
+                >
+                  ODbL v1.0
+                </a>
+              </div>
             </div>
             <p className="mt-3 text-[11px] leading-5 text-amber-200/75">
               ODbL 4.5(b): 데이터베이스 조회로 만든 <strong>제작물(지도 렌더)</strong>은 파생 DB가
@@ -196,19 +210,16 @@ export function MethodologySourcesPanel({ open, onClose }: MethodologySourcesPan
 }
 
 export function SourcesLinkButton({ onClick }: { onClick: () => void }) {
+  const { t } = useLocale();
   return (
-    <HoverHint
-      placement="bottom"
-      title="데이터 출처"
-      detail="GDELT, VIINA, FIRMS 등 데이터 라이선스·출처·면책 안내를 봅니다."
-    >
+    <HoverHint placement="bottom" title={t("hoverSources")} detail={t("hoverSourcesHint")}>
       <button
         type="button"
-        aria-label="데이터 출처 및 라이선스"
+        aria-label={t("hoverSourcesAria")}
         onClick={onClick}
         className="flex h-10 shrink-0 items-center justify-center rounded-xl border border-sky-200/15 bg-[#1e3a5f]/55 px-2.5 text-[11px] font-medium text-sky-50/90 shadow-lg backdrop-blur-md transition hover:border-sky-200/30 hover:bg-[#254875]/65"
       >
-        출처
+        자료출처
       </button>
     </HoverHint>
   );

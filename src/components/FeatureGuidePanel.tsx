@@ -1,6 +1,7 @@
 "use client";
 
 import { HoverHint } from "@/components/HoverHint";
+import { useLocale } from "@/contexts/LocaleContext";
 import type { ViewerMode } from "@/lib/viewPackages";
 
 type FeatureGuidePanelProps = {
@@ -58,7 +59,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
       "속보 히어로 바 또는 📰 아이콘: Intel 뉴스 전체 화면 · 중클릭도 동일",
       "기사·속보 카드의 🎯 지도: 시트 닫고 해당 전장으로 fly-to",
       "✕ 지도로 / 하단 닫기: 전체 화면 닫고 지구본 복귀",
-      "우상단 ≡ : 레이어 패널 · 출처 · 도움말 · 주요전선 탭",
+      "우상단 ≡ : 레이어 패널 · 자료출처 · 도움말 · 주요전선 탭",
     ],
   },
 ];
@@ -153,23 +154,20 @@ export function FeatureGuideButton({
   viewerMode?: ViewerMode;
 }) {
   const isEconomy = viewerMode === "economy";
+  const { t } = useLocale();
   return (
     <HoverHint
       placement="bottom"
-      title="도움말"
-      detail={
-        isEconomy
-          ? "경제·시장 모드: 제재·유가·해운·RSS 사용법"
-          : "지도 조작, GDELT 핀, Intel 뉴스, 레이어 패널 사용법을 봅니다."
-      }
+      title={t("hoverHelp")}
+      detail={isEconomy ? t("hoverHelpHintEconomy") : t("hoverHelpHintConflict")}
     >
       <button
         type="button"
-        aria-label="도움말 열기"
+        aria-label={t("hoverHelpOpenAria")}
         onClick={onClick}
         className="flex h-10 shrink-0 items-center justify-center rounded-xl border border-sky-200/15 bg-[#1e3a5f]/55 px-2.5 text-[11px] font-medium text-sky-50/90 shadow-lg backdrop-blur-md transition hover:border-sky-200/30 hover:bg-[#254875]/65"
       >
-        도움말
+        {t("hoverHelp")}
       </button>
     </HoverHint>
   );

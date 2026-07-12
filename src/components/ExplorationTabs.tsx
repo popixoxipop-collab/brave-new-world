@@ -10,6 +10,8 @@ type ExplorationTabsProps = {
   onSelect: (preset: ExplorationPreset) => void;
   label?: string;
   hint?: string;
+  /** hubs = emerald styling (economy); fronts = sky (conflict) */
+  variant?: "fronts" | "hubs";
 };
 
 export function ExplorationTabs({
@@ -18,6 +20,7 @@ export function ExplorationTabs({
   onSelect,
   label = "주요전선",
   hint = "대만·한반도·우크라이나·중동으로 이동하며 Intel 뉴스 시트가 해당 전장으로 열립니다.",
+  variant = "fronts",
 }: ExplorationTabsProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -52,7 +55,7 @@ export function ExplorationTabs({
             aria-haspopup="listbox"
             onClick={() => setOpen((value) => !value)}
             className={`flex items-center gap-2 border px-3 py-2 text-xs shadow-lg backdrop-blur-md transition-all duration-200 ${
-              label === "주요 허브"
+              variant === "hubs"
                 ? "border-emerald-300/25 bg-[#071018]/88 text-emerald-100/90 hover:border-emerald-200/35"
                 : "border-sky-300/25 bg-[#0a1830]/88 text-sky-100/90 hover:border-sky-200/35"
             } ${

@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useState } from "react";
 import type { LabelLanguage } from "@/lib/layerPrefs";
 import { t } from "@/lib/uiStrings";
 
@@ -17,6 +18,8 @@ const LETTER_KO = {
     "우리는 당신의 방문을 진심으로 환영합니다. 이제, 편지를 접고—어느 창으로 들어설지 선택해 주십시오.",
   ],
   signOff: "Conflict View\n지구본 관측대에서",
+  backMark: "Conflict View",
+  backSub: "지구본 관측대",
 };
 
 const LETTER_EN = {
@@ -33,7 +36,12 @@ const LETTER_EN = {
     "We welcome your visit with sincere regard. Now fold the letter—and choose which window you will enter.",
   ],
   signOff: "Conflict View\nFrom the Globe Observatory",
+  backMark: "Conflict View",
+  backSub: "Globe Observatory",
 };
+
+/** 접기(뒷면) + 상승 모션 총 길이 (CSS와 맞춤) */
+const FOLD_EXIT_MS = 1100;
 
 type WelcomeParchmentLetterProps = {
   lang: LabelLanguage;
@@ -42,52 +50,90 @@ type WelcomeParchmentLetterProps = {
 
 export function WelcomeParchmentLetter({ lang, onContinue }: WelcomeParchmentLetterProps) {
   const letter = lang === "en" ? LETTER_EN : LETTER_KO;
-  const fontStyle =
-    lang === "en"
-      ? { fontFamily: "var(--font-letter-en), Caveat, cursive" as const }
-      : { fontFamily: 'var(--font-letter-ko), "Nanum Pen Script", cursive' as const };
+  const [phase, setPhase] = useState<"idle" | "folding" | "done">("idle");
+  const fontStyle = {
+    fontFamily:
+      'var(--font-letter-serif), "Noto Serif KR", "Nanum Myeongjo", "Apple Myungjo", "Batang", serif',
+  } as const;
+
+  const handleContinue = useCallback(() => {
+    if (phase !== "idle") return;
+    setPhase("folding");
+    const reduced =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.setTimeout(() => {
+      setPhase("done");
+      onContinue();
+    }, reduced ? 80 : FOLD_EXIT_MS);
+  }, [onContinue, phase]);
+
+  const exiting = phase === "folding" || phase === "done";
 
   return (
     <div
-      className="fixed inset-0 z-[10000] flex items-center justify-center bg-[#02040a]/92 p-3 backdrop-blur-sm sm:p-6"
+      className={`welcome-letter-scrim fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-6 ${
+        exiting ? "welcome-letter-scrim--exit" : ""
+      }`}
       role="dialog"
       aria-modal="true"
       aria-labelledby="welcome-letter-title"
+      aria-busy={phase === "folding"}
     >
-      <div
-        className="welcome-parchment relative flex max-h-[min(92vh,880px)] w-full max-w-2xl flex-col overflow-hidden rounded-sm shadow-[0_24px_80px_rgba(0,0,0,0.55)]"
-        style={fontStyle}
-      >
-        <div className="welcome-parchment-edge pointer-events-none absolute inset-0" aria-hidden />
-        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden px-7 py-8 sm:px-12 sm:py-10">
-          <h1
-            id="welcome-letter-title"
-            className="shrink-0 text-center text-4xl leading-tight text-[#3d2a18] sm:text-5xl"
-            style={{ fontWeight: 700 }}
-          >
-            {letter.title}
-          </h1>
-          <div className="mx-auto mt-3 h-px w-24 shrink-0 bg-[#8b6914]/45" aria-hidden />
-          <div className="mt-6 min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain text-[1.15rem] leading-relaxed text-[#3f2e1c] sm:text-[1.28rem] sm:leading-[1.75]">
-            {letter.paragraphs.map((p) => (
-              <p key={p.slice(0, 24)} className="whitespace-pre-wrap">
-                {p}
-              </p>
-            ))}
-            <p className="whitespace-pre-line pb-1 text-right text-[1.05rem] leading-relaxed text-[#5a4428]">
-              {letter.signOff}
-            </p>
+      <div className="welcome-letter-stage">
+        <div
+          className={`welcome-letter-card ${exiting ? "welcome-letter-card--fold-exit" : ""}`}
+          style={fontStyle}
+        >
+          {/* 앞면 */}
+          <div className="welcome-parchment welcome-letter-face welcome-letter-face--front relative flex max-h-[min(92vh,880px)] w-full max-w-2xl flex-col overflow-hidden rounded-sm shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
+            <div className="welcome-parchment-edge pointer-events-none absolute inset-0" aria-hidden />
+            <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden px-7 py-8 sm:px-12 sm:py-10">
+              <h1
+                id="welcome-letter-title"
+                className="shrink-0 text-center text-3xl leading-tight tracking-tight text-[#3d2a18] sm:text-4xl"
+                style={{ fontWeight: 700 }}
+              >
+                {letter.title}
+              </h1>
+              <div className="mx-auto mt-3 h-px w-24 shrink-0 bg-[#8b6914]/45" aria-hidden />
+              <div className="mt-6 min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain text-[1.05rem] leading-[1.85] tracking-[-0.01em] text-[#3f2e1c] sm:text-[1.12rem] sm:leading-[1.9]">
+                {letter.paragraphs.map((p) => (
+                  <p key={p.slice(0, 24)} className="whitespace-pre-wrap">
+                    {p}
+                  </p>
+                ))}
+                <p className="whitespace-pre-line pb-1 text-right text-[1rem] leading-relaxed text-[#5a4428]">
+                  {letter.signOff}
+                </p>
+              </div>
+            </div>
+            <div className="relative shrink-0 border-t border-[#8b6914]/25 bg-[#f3e4c4]/80 px-6 py-4 text-center">
+              <button
+                type="button"
+                onClick={handleContinue}
+                disabled={phase !== "idle"}
+                className="rounded-full border border-[#8b6914]/50 bg-[#efe0b8] px-6 py-2.5 text-base text-[#3d2a18] shadow-sm transition hover:bg-[#f7ecd0] disabled:cursor-wait disabled:opacity-70"
+                style={{ ...fontStyle, fontWeight: 600 }}
+              >
+                {t("welcomeLetterCta", lang)}
+              </button>
+            </div>
           </div>
-        </div>
-        <div className="relative shrink-0 border-t border-[#8b6914]/25 bg-[#f3e4c4]/80 px-6 py-4 text-center">
-          <button
-            type="button"
-            onClick={onContinue}
-            className="rounded-full border border-[#8b6914]/50 bg-[#efe0b8] px-6 py-2.5 text-lg text-[#3d2a18] shadow-sm transition hover:bg-[#f7ecd0]"
-            style={fontStyle}
+
+          {/* 뒷면 — 접히면 보이는 면 */}
+          <div
+            className="welcome-parchment welcome-letter-face welcome-letter-face--back"
+            aria-hidden
           >
-            {t("welcomeLetterCta", lang)}
-          </button>
+            <div className="welcome-parchment-edge pointer-events-none absolute inset-0" />
+            <div className="welcome-letter-back-inner">
+              <div className="welcome-letter-wax" />
+              <p className="welcome-letter-back-mark">{letter.backMark}</p>
+              <p className="welcome-letter-back-sub">{letter.backSub}</p>
+              <div className="welcome-letter-back-lines" />
+            </div>
+          </div>
         </div>
       </div>
     </div>

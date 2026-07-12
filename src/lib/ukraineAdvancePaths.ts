@@ -138,7 +138,7 @@ export function appendAdvanceArrowHead(
 }
 
 export function ukraineAxisToTransportPath(path: UkraineAxisPath): TransportPath {
-  const points = path.points;
+  const points = path.points.map((p) => ({ lat: p.lat, lng: p.lng, alt: 0 }));
   const lats = points.map((p) => p.lat);
   const lngs = points.map((p) => p.lng);
 

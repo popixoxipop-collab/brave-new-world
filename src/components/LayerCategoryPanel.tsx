@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useLocale } from "@/contexts/LocaleContext";
 
 export type LayerToggleAccent = "emerald" | "red" | "orange" | "fuchsia" | "blue" | "white" | "green";
 
@@ -14,6 +15,10 @@ export type LayerToggleItem = {
   /** checkbox(기본) | tag(위치 태그 칩) */
   presentation?: "checkbox" | "tag";
   disabled?: boolean;
+  /** Ultra-Lite 등 — 이름 옆 짧은 경고 태그 */
+  cautionTag?: string | null;
+  /** 경고 태그 호버 후킹 문구 */
+  cautionHint?: string | null;
 };
 
 export type LayerCategory = {
@@ -28,6 +33,7 @@ export type LayerCategory = {
 };
 
 const OPEN_STATE_KEY = "geowatch-layer-categories-open-v1";
+const CAUTION_BUBBLE_MS = 2800;
 
 function accentClass(accent: LayerToggleAccent) {
   switch (accent) {
@@ -66,18 +72,89 @@ function tagAccentClasses(accent: LayerToggleAccent, checked: boolean) {
   }
 }
 
+/** Ultra-Lite 「클릭 주의」— 호버 시 후킹 말풍선이 떴다가 자동으로 사라짐 */
+function LayerCautionTag({ tag, hint }: { tag: string; hint: string }) {
+  const [open, setOpen] = useState(false);
+  const hideTimerRef = useRef<number | null>(null);
+
+  const clearHideTimer = useCallback(() => {
+    if (hideTimerRef.current != null) {
+      window.clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+  }, []);
+
+  const showBubble = useCallback(() => {
+    clearHideTimer();
+    setOpen(true);
+    hideTimerRef.current = window.setTimeout(() => {
+      setOpen(false);
+      hideTimerRef.current = null;
+    }, CAUTION_BUBBLE_MS);
+  }, [clearHideTimer]);
+
+  const hideBubble = useCallback(() => {
+    clearHideTimer();
+    setOpen(false);
+  }, [clearHideTimer]);
+
+  useEffect(() => () => clearHideTimer(), [clearHideTimer]);
+
+  return (
+    <span
+      className="relative z-10 inline-flex shrink-0"
+      onMouseEnter={showBubble}
+      onMouseLeave={hideBubble}
+      onFocus={showBubble}
+      onBlur={hideBubble}
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      }}
+      onPointerDown={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      }}
+    >
+      <span
+        tabIndex={0}
+        role="note"
+        aria-label={hint}
+        className="cursor-help rounded border border-amber-400/55 bg-amber-500/25 px-1.5 py-px text-[9px] font-semibold tracking-wide text-amber-50 outline-none ring-amber-300/40 focus-visible:ring-2"
+      >
+        {tag}
+      </span>
+      <span
+        role="tooltip"
+        aria-hidden={!open}
+        className={`pointer-events-none absolute left-0 bottom-full z-[95] mb-1.5 w-max max-w-[min(72vw,220px)] rounded-lg border border-amber-300/35 bg-[#2a1a08]/97 px-2.5 py-2 text-left shadow-xl backdrop-blur-md transition-all duration-200 ${
+          open
+            ? "translate-y-0 scale-100 opacity-100"
+            : "pointer-events-none translate-y-0.5 scale-[0.96] opacity-0"
+        }`}
+      >
+        <span className="block text-[11px] font-medium leading-snug text-amber-50">{hint}</span>
+      </span>
+    </span>
+  );
+}
+
 export function LayerTagToggle({
   label,
   detail,
   checked,
   onChange,
   accent = "emerald",
+  cautionTag,
+  cautionHint,
 }: {
   label: string;
   detail: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
   accent?: LayerToggleAccent;
+  cautionTag?: string | null;
+  cautionHint?: string | null;
 }) {
   return (
     <button
@@ -86,7 +163,10 @@ export function LayerTagToggle({
       onClick={() => onChange(!checked)}
       className={`min-w-0 rounded-full border px-3 py-2 text-left text-xs transition ${tagAccentClasses(accent, checked)}`}
     >
-      <span className="block font-medium">{label}</span>
+      <span className="flex min-w-0 items-center gap-1.5">
+        <span className="block min-w-0 truncate font-medium">{label}</span>
+        {cautionTag && cautionHint ? <LayerCautionTag tag={cautionTag} hint={cautionHint} /> : null}
+      </span>
       <span className="mt-0.5 block truncate text-[10px] opacity-75">{detail}</span>
     </button>
   );
@@ -99,6 +179,8 @@ export function LayerToggle({
   onChange,
   accent = "emerald",
   disabled = false,
+  cautionTag,
+  cautionHint,
 }: {
   label: string;
   detail: string;
@@ -106,6 +188,8 @@ export function LayerToggle({
   onChange: (checked: boolean) => void;
   accent?: LayerToggleAccent;
   disabled?: boolean;
+  cautionTag?: string | null;
+  cautionHint?: string | null;
 }) {
   return (
     <label
@@ -114,7 +198,10 @@ export function LayerToggle({
       }`}
     >
       <span className="min-w-0">
-        <span className="block text-slate-200">{label}</span>
+        <span className="flex min-w-0 items-center gap-1.5">
+          <span className="block truncate text-slate-200">{label}</span>
+          {cautionTag && cautionHint ? <LayerCautionTag tag={cautionTag} hint={cautionHint} /> : null}
+        </span>
         <span className="block truncate text-xs text-slate-500">{detail}</span>
       </span>
       <input
@@ -143,6 +230,7 @@ export function LayerCategoryPanel({
   /** 켜진 레이어가 있는 카테고리를 자동 펼침 (저장된 접기 상태는 존중) */
   expandActiveCategories?: boolean;
 }) {
+  const { t } = useLocale();
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
   const [storageLoaded, setStorageLoaded] = useState(false);
 
@@ -220,7 +308,9 @@ export function LayerCategoryPanel({
         return (
           <div
             key={category.id}
-            className="overflow-hidden rounded-lg border border-slate-800/90 bg-slate-950/30"
+            className={`rounded-lg border border-slate-800/90 bg-slate-950/30 ${
+              isOpen ? "overflow-visible" : "overflow-hidden"
+            }`}
           >
             <div className="flex w-full items-center justify-between gap-2 px-3 py-2.5">
               <button
@@ -242,14 +332,14 @@ export function LayerCategoryPanel({
                       onClick={() => category.onToggleAll?.(true)}
                       className="rounded border border-slate-700/80 px-1.5 py-0.5 text-[10px] text-slate-400 transition hover:border-sky-400/40 hover:text-sky-200"
                     >
-                      전체
+                      {t("layerToggleAll")}
                     </button>
                     <button
                       type="button"
                       onClick={() => category.onToggleAll?.(false)}
                       className="rounded border border-slate-700/80 px-1.5 py-0.5 text-[10px] text-slate-400 transition hover:border-slate-600 hover:text-slate-300"
                     >
-                      끔
+                      {t("layerToggleOff")}
                     </button>
                   </span>
                 ) : null}
@@ -258,7 +348,7 @@ export function LayerCategoryPanel({
                   onClick={() => toggleCategory(category.id)}
                   className="flex items-center gap-2 transition hover:text-slate-300"
                   aria-expanded={isOpen}
-                  aria-label={`${category.title} ${isOpen ? "접기" : "펼치기"}`}
+                  aria-label={`${category.title} ${isOpen ? t("layerCategoryCollapse") : t("layerCategoryExpand")}`}
                 >
                   <span
                     className={
@@ -275,7 +365,7 @@ export function LayerCategoryPanel({
             </div>
 
             {isOpen ? (
-              <div className="space-y-0.5 border-t border-slate-800/80 px-2 py-2">
+              <div className="space-y-0.5 overflow-visible border-t border-slate-800/80 px-2 py-2">
                 {category.items.some((item) => item.presentation === "tag") ? (
                   <div className="mb-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {category.items
@@ -288,6 +378,8 @@ export function LayerCategoryPanel({
                           checked={item.checked}
                           onChange={item.onChange}
                           accent={item.accent}
+                          cautionTag={item.cautionTag}
+                          cautionHint={item.cautionHint}
                         />
                       ))}
                   </div>
@@ -303,6 +395,8 @@ export function LayerCategoryPanel({
                       onChange={item.onChange}
                       accent={item.accent}
                       disabled={item.disabled}
+                      cautionTag={item.cautionTag}
+                      cautionHint={item.cautionHint}
                     />
                   ))}
                 {category.footer ? (

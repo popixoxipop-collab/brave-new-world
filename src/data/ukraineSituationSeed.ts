@@ -3,6 +3,8 @@
  * 실데이터(통제 면·거주지)와 함께 표시용. 날짜는 통제 스냅샷과 별개 평가 문구.
  */
 
+import type { SituationCallout } from "@/data/situationCalloutTypes";
+
 export type UkraineCallout = {
   id: string;
   lat: number;
@@ -19,7 +21,7 @@ export type UkraineAxisPath = {
   points: { lat: number; lng: number }[];
 };
 
-export const UKRAINE_SITUATION_CALLOUTS: UkraineCallout[] = [
+const UA_RAW: UkraineCallout[] = [
   {
     id: "callout-zaporizhzhia-axis",
     lat: 47.55,
@@ -77,6 +79,19 @@ export const UKRAINE_SITUATION_CALLOUTS: UkraineCallout[] = [
     side: "neutral",
   },
 ];
+
+export const UKRAINE_SITUATION_CALLOUTS: UkraineCallout[] = UA_RAW;
+
+/** 공용 SituationCallout 형식으로 변환 */
+export const UKRAINE_SITUATION_CALLOUTS_SHARED: SituationCallout[] = UA_RAW.map((c) => ({
+  id: c.id,
+  theater: "russia-ukraine" as const,
+  lat: c.lat,
+  lng: c.lng,
+  title: c.title,
+  body: c.body,
+  side: c.side === "ua" ? "blue" : c.side === "ru" ? "red" : "neutral",
+}));
 
 export const UKRAINE_SITUATION_PATHS: UkraineAxisPath[] = [
   {

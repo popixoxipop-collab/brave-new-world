@@ -109,6 +109,26 @@ const TYPE_META: Record<NeptunThreatType, NeptunTypeMeta> = {
   unknown: { label: "공중 위협", shortLabel: "Невідомі", color: "#6b7790", severity: 1 },
 };
 
+const TYPE_META_EN: Record<NeptunThreatType, string> = {
+  uav: "UAV / Shahed",
+  recon: "Recon UAV",
+  missile: "Cruise missile",
+  ballistic: "Ballistic missile",
+  kab: "Guided bomb (KAB)",
+  mig31k: "MiG-31K launch",
+  unknown: "Air threat",
+};
+
+export function getNeptunTypeMeta(type: string): NeptunTypeMeta {
+  return TYPE_META[type as NeptunThreatType] ?? TYPE_META.unknown;
+}
+
+export function getNeptunTypeLabel(type: string, lang: "ko" | "en" = "ko"): string {
+  const key = (type as NeptunThreatType) in TYPE_META ? (type as NeptunThreatType) : "unknown";
+  if (lang === "en") return TYPE_META_EN[key];
+  return TYPE_META[key].label;
+}
+
 const EARTH_RADIUS_KM = 6371;
 
 /** 추측항법 최대 경과(시간) — 스텁·끊긴 피드가 지구 반대편으로 날아가는 것 방지 */
@@ -130,10 +150,6 @@ const MAX_PREDICT_KM = 380;
  */
 export function isInNeptunOpsBox(lat: number, lon: number): boolean {
   return lat >= 42 && lat <= 54.5 && lon >= 20 && lon <= 43.5;
-}
-
-export function getNeptunTypeMeta(type: string): NeptunTypeMeta {
-  return TYPE_META[type as NeptunThreatType] ?? TYPE_META.unknown;
 }
 
 /** 위도·경도·방위·거리(km)로 목적지 좌표 계산 */

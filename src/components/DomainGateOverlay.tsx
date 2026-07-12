@@ -1,15 +1,22 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useLocale } from "@/contexts/LocaleContext";
 import { t } from "@/lib/uiStrings";
 import type { ViewerMode } from "@/lib/viewerChrome";
+import { loadPerfPrefs } from "@/lib/ultraLiteMode";
 
 type DomainGateOverlayProps = {
-  onSelect: (mode: ViewerMode) => void;
+  onSelect: (mode: ViewerMode, ultraLite: boolean) => void;
 };
 
 export function DomainGateOverlay({ onSelect }: DomainGateOverlayProps) {
   const { lang } = useLocale();
+  const [ultraLite, setUltraLite] = useState(false);
+
+  useEffect(() => {
+    setUltraLite(loadPerfPrefs().ultraLite);
+  }, []);
 
   return (
     <div
@@ -30,10 +37,40 @@ export function DomainGateOverlay({ onSelect }: DomainGateOverlayProps) {
         </h1>
         <p className="mt-2 text-center text-sm text-slate-400">{t("domainGateSubtitle", lang)}</p>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-2">
+        <div className="mt-6 rounded-2xl border border-amber-400/25 bg-amber-500/[0.07] px-4 py-4">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-sm font-semibold text-amber-50">{t("domainUltraLiteLabel", lang)}</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={ultraLite}
+              aria-label={t("domainUltraLiteLabel", lang)}
+              onClick={() => setUltraLite((v) => !v)}
+              className={`relative h-7 w-12 shrink-0 rounded-full border transition ${
+                ultraLite
+                  ? "border-amber-300/55 bg-amber-400/85"
+                  : "border-slate-600 bg-slate-800/90"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${
+                  ultraLite ? "left-6" : "left-0.5"
+                }`}
+              />
+            </button>
+          </div>
+          <p className="mt-2.5 text-[13px] font-medium leading-snug text-amber-100/95">
+            {t("domainUltraLiteHook", lang)}
+          </p>
+          <p className="mt-1.5 text-[11px] text-amber-200/55">
+            {ultraLite ? t("domainUltraLiteOnHint", lang) : t("domainUltraLiteOffHint", lang)}
+          </p>
+        </div>
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <button
             type="button"
-            onClick={() => onSelect("conflict")}
+            onClick={() => onSelect("conflict", ultraLite)}
             className="flex flex-col rounded-2xl border border-orange-400/35 bg-orange-500/10 px-5 py-8 text-left transition hover:border-orange-300/55 hover:bg-orange-500/15"
           >
             <span className="text-lg font-semibold text-orange-50">{t("domainConflictTitle", lang)}</span>
@@ -43,7 +80,7 @@ export function DomainGateOverlay({ onSelect }: DomainGateOverlayProps) {
           </button>
           <button
             type="button"
-            onClick={() => onSelect("economy")}
+            onClick={() => onSelect("economy", ultraLite)}
             className="flex flex-col rounded-2xl border border-emerald-400/35 bg-emerald-500/10 px-5 py-8 text-left transition hover:border-emerald-300/55 hover:bg-emerald-500/15"
           >
             <span className="text-lg font-semibold text-emerald-50">{t("domainEconomyTitle", lang)}</span>

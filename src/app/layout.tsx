@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Caveat } from "next/font/google";
+import { Noto_Serif_KR } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 
@@ -14,10 +14,11 @@ const geistMono = localFont({
   weight: "100 900",
 });
 
-const letterEn = Caveat({
+/** 환영 편지지 — 펜글씨 대신 읽기 좋은 한글 명조 */
+const letterSerif = Noto_Serif_KR({
   weight: ["400", "600", "700"],
   subsets: ["latin"],
-  variable: "--font-letter-en",
+  variable: "--font-letter-serif",
   display: "swap",
 });
 
@@ -33,20 +34,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" suppressHydrationWarning style={{ background: "#02040a" }}>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap"
-          rel="stylesheet"
-        />
-      </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${letterEn.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${letterSerif.variable} antialiased`}
         style={{
           background: "#02040a",
           minHeight: "100vh",
-          ["--font-letter-ko" as string]: '"Nanum Pen Script", cursive',
         }}
       >
         {children}

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { HoverHint } from "@/components/HoverHint";
+import { useLocale } from "@/contexts/LocaleContext";
 
 type MapOverlayLegendAccent = "sky" | "orange" | "red";
 
@@ -88,6 +89,7 @@ export function LegendReopenButton({
   onClick: () => void;
   accent?: MapOverlayLegendAccent;
 }) {
+  const { t } = useLocale();
   const accentClass =
     accent === "orange"
       ? "border-orange-300/25 bg-orange-950/50 text-orange-100/90 hover:border-orange-200/40"
@@ -96,7 +98,7 @@ export function LegendReopenButton({
         : "border-sky-300/25 bg-[#0a1830]/75 text-sky-100/90 hover:border-sky-200/40";
 
   return (
-    <HoverHint placement="top" title={label} detail="닫힌 범례 패널을 다시 엽니다.">
+    <HoverHint placement="top" title={label} detail={t("hoverLegendReopen")}>
       <button
         type="button"
         onClick={onClick}

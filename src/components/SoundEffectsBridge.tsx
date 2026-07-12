@@ -5,151 +5,164 @@ import {
   AUDIO_MANIFEST,
   type AudioEventId,
 } from "@/data/audioManifest";
-import { useSoundStream } from "@/hooks/useSoundStream";
+import { useSoundStream, type PlaySoundOptions } from "@/hooks/useSoundStream";
 
-/** 깊은 prop drilling 없이 원샷 사운드 발사 (StockTickerStrip 등) */
+/** 공습경보 버튼 전용 버스 — 그 외 UI 클릭 사운드는 사용하지 않음 */
 export const CV_SOUND_EVENT = "cv-sound";
 
-export function emitDashboardSound(eventId: AudioEventId) {
+/** 버튼/칩으로만 재생 허용 */
+const AIR_RAID_EVENT_IDS = new Set<AudioEventId>([
+  "tzeva-red-alert",
+  "tzeva-all-clear",
+  "neptun-air-alert",
+]);
+
+export type DashboardSoundDetail = {
+  eventId: AudioEventId;
+} & PlaySoundOptions;
+
+export function emitDashboardSound(
+  eventId: AudioEventId,
+  playOpts?: PlaySoundOptions,
+) {
   if (typeof window === "undefined") return;
-  window.dispatchEvent(new CustomEvent(CV_SOUND_EVENT, { detail: { eventId } }));
+  // 공습경보만 — 티커·UI 등 클릭성 사운드 차단
+  if (!AIR_RAID_EVENT_IDS.has(eventId)) return;
+  window.dispatchEvent(
+    new CustomEvent(CV_SOUND_EVENT, {
+      detail: { eventId, ...playOpts } satisfies DashboardSoundDetail,
+    }),
+  );
 }
 
+/** 전선 간헐 교전음 — 총격·포격·폭격·폭발·다련장 */
+const FRONTLINE_COMBAT_ONESHOTS: AudioEventId[] = [
+  "frontline-gunfire",
+  "frontline-gunfire",
+  "frontline-artillery-shot",
+  "frontline-artillery-shot",
+  "frontline-bombing",
+  "neptun-impact",
+  "frontline-mlrs",
+];
+
+export type EconomyAmbientKind = "port" | "construction" | "datacenter" | "pipeline" | null;
+export type ConflictAmbientKind = "frontline" | "tension" | "carrier" | null;
+
 type SoundEffectsBridgeProps = {
-  /** 부트 완료 순간 */
-  bootReady?: boolean;
-  /** 지정학/지경학 모드 */
   viewerMode?: "conflict" | "economy";
-  /** load 치명 오류 메시지 */
-  loadError?: string | null;
-  /** NEPTUN impact flash id 목록 — 신규 id만 재생 */
-  neptunImpactIds?: string[];
-  /** NEPTUN 공습 경보 건수 — 증가 시 */
-  neptunAlertCount?: number;
-  /** Tzeva 활성 경보 건수 — 0→N 증가 시 사이렌 */
-  tzevaActiveCount?: number;
+  /** 뷰포트 안 NEPTUN 탄착이 있으면 true — 진입 시 폭발음 */
+  neptunImpactInView?: boolean;
+  /** 뷰포트 안 FIRMS 전투(폭격 추정) 화재가 있으면 true */
+  firmsCombatInView?: boolean;
   /**
-   * FIRMS 전투/훈련 미구분 교차 id — classify === "combat"
-   * 신규 id만 firms-combat-burst. exercise/산불은 자동 무음.
+   * 지정학 앰비언스 우선순위: frontline > tension > carrier
+   * (전선 교전음 윈도우는 frontline일 때만)
    */
-  firmsCombatFireIds?: string[];
-  /** 우크라 전선 근접 뷰면 전선 앰비언스 */
-  frontlineAmbient?: boolean;
-  /** 경제 허브/항만 앰비언스 */
-  economyAmbient?: "port" | "construction" | "datacenter" | null;
+  conflictAmbient?: ConflictAmbientKind;
+  /** 경제 허브/항만/파이프 등 해당 레이어 */
+  economyAmbient?: EconomyAmbientKind;
+  cameraAltitude?: number;
 };
 
 /**
- * 매니페스트 이벤트를 대시보드 신호에 최소 배선.
- * 실제 재생은 useSoundStream → /api/sound-stream.
+ * 사운드 규칙
+ * - 공습경보: 칩/버튼 fly 시에만 (emitDashboardSound)
+ * - 그 외: 카메라가 해당 지역·레이어 위에 있을 때 자동 재생 (클릭 없음)
  */
 export function SoundEffectsBridge({
-  bootReady,
   viewerMode,
-  loadError,
-  neptunImpactIds = [],
-  neptunAlertCount = 0,
-  tzevaActiveCount = 0,
-  firmsCombatFireIds = [],
-  frontlineAmbient = false,
+  neptunImpactInView = false,
+  firmsCombatInView = false,
+  conflictAmbient = null,
   economyAmbient = null,
+  cameraAltitude,
 }: SoundEffectsBridgeProps) {
-  const { play, setAmbient, stopAmbient, canPlay } = useSoundStream();
+  const { play, setAmbient, stopAmbient, setCameraAltitude, canPlay } = useSoundStream();
 
-  const bootPlayedRef = useRef(false);
-  const modeRef = useRef(viewerMode);
-  const loadErrorPlayedRef = useRef(false);
-  const seenImpactsRef = useRef<Set<string>>(new Set());
-  const seenFirmsCombatRef = useRef<Set<string>>(new Set());
-  const neptunAlertRef = useRef(neptunAlertCount);
-  const tzevaRef = useRef(tzevaActiveCount);
   const primedRef = useRef(false);
+  const neptunInViewRef = useRef(false);
+  const firmsInViewRef = useRef(false);
+  const frontlineAmbient = conflictAmbient === "frontline";
 
-  // 첫 unlock 이후 시드 — 이미 떠 있는 flash/alert에 사이렌 폭주 방지
+  useEffect(() => {
+    setCameraAltitude(cameraAltitude);
+  }, [cameraAltitude, setCameraAltitude]);
+
   useEffect(() => {
     if (!canPlay || primedRef.current) return;
     primedRef.current = true;
-    for (const id of neptunImpactIds) seenImpactsRef.current.add(id);
-    for (const id of firmsCombatFireIds) seenFirmsCombatRef.current.add(id);
-    neptunAlertRef.current = neptunAlertCount;
-    tzevaRef.current = tzevaActiveCount;
-  }, [canPlay, firmsCombatFireIds, neptunAlertCount, neptunImpactIds, tzevaActiveCount]);
+    // 현재 이미 보고 있는 구역은 "진입"으로 치지 않음 — 다음 진입부터
+    neptunInViewRef.current = neptunImpactInView;
+    firmsInViewRef.current = firmsCombatInView;
+  }, [canPlay, firmsCombatInView, neptunImpactInView]);
 
+  // 공습경보 버튼만
   useEffect(() => {
     const onBus = (event: Event) => {
-      const detail = (event as CustomEvent<{ eventId?: string }>).detail;
+      const detail = (event as CustomEvent<DashboardSoundDetail>).detail;
       const eventId = detail?.eventId;
-      if (!eventId || !(eventId in AUDIO_MANIFEST)) return;
-      void play(eventId as AudioEventId);
+      if (!eventId || !AIR_RAID_EVENT_IDS.has(eventId)) return;
+      if (!(eventId in AUDIO_MANIFEST)) return;
+      void play(eventId, {
+        altitude: detail.altitude ?? cameraAltitude,
+        volumeScale: detail.volumeScale,
+        durationMs: detail.durationMs,
+        force: detail.force,
+      });
     };
     window.addEventListener(CV_SOUND_EVENT, onBus);
     return () => window.removeEventListener(CV_SOUND_EVENT, onBus);
-  }, [play]);
+  }, [cameraAltitude, play]);
 
-  useEffect(() => {
-    if (!canPlay || !bootReady || bootPlayedRef.current) return;
-    bootPlayedRef.current = true;
-    void play("boot-ready");
-  }, [bootReady, canPlay, play]);
-
-  useEffect(() => {
-    if (!canPlay || !viewerMode) return;
-    if (modeRef.current === undefined) {
-      modeRef.current = viewerMode;
-      return;
-    }
-    if (modeRef.current === viewerMode) return;
-    modeRef.current = viewerMode;
-    void play("mode-switch");
-    if (viewerMode === "economy") {
-      void play("econ-hub-arrive");
-    }
-  }, [canPlay, play, viewerMode]);
-
-  useEffect(() => {
-    if (!canPlay || !loadError || loadErrorPlayedRef.current) return;
-    loadErrorPlayedRef.current = true;
-    void play("load-error");
-  }, [canPlay, loadError, play]);
-
+  // NEPTUN 탄착 지역 진입
   useEffect(() => {
     if (!canPlay || !primedRef.current) return;
-    for (const id of neptunImpactIds) {
-      if (seenImpactsRef.current.has(id)) continue;
-      seenImpactsRef.current.add(id);
-      void play("neptun-impact");
-      break; // 한 틱에 한 번
-    }
-  }, [canPlay, neptunImpactIds, play]);
+    const entered = neptunImpactInView && !neptunInViewRef.current;
+    neptunInViewRef.current = neptunImpactInView;
+    if (!entered) return;
+    void play("neptun-impact", {
+      altitude: cameraAltitude,
+      volumeScale: 1.2,
+      force: true,
+    });
+  }, [cameraAltitude, canPlay, neptunImpactInView, play]);
 
+  // FIRMS 폭격 추정 지역 진입 + 머무는 동안 간헐
   useEffect(() => {
     if (!canPlay || !primedRef.current) return;
-    if (neptunAlertCount > neptunAlertRef.current) {
-      void play("neptun-air-alert");
+    const entered = firmsCombatInView && !firmsInViewRef.current;
+    firmsInViewRef.current = firmsCombatInView;
+    if (entered) {
+      void play("firms-combat-burst", {
+        altitude: cameraAltitude,
+        volumeScale: 1.15,
+        force: true,
+      });
     }
-    neptunAlertRef.current = neptunAlertCount;
-  }, [canPlay, neptunAlertCount, play]);
+    if (!firmsCombatInView) return;
 
-  useEffect(() => {
-    if (!canPlay || !primedRef.current) return;
-    if (tzevaActiveCount > 0 && tzevaRef.current === 0) {
-      void play("tzeva-red-alert");
-    } else if (tzevaActiveCount === 0 && tzevaRef.current > 0) {
-      void play("tzeva-all-clear");
-    }
-    tzevaRef.current = tzevaActiveCount;
-  }, [canPlay, play, tzevaActiveCount]);
+    let cancelled = false;
+    let timer: number | null = null;
+    const schedule = () => {
+      timer = window.setTimeout(() => {
+        if (cancelled) return;
+        void play("firms-combat-burst", {
+          altitude: cameraAltitude,
+          volumeScale: 1.05,
+          force: true,
+        });
+        schedule();
+      }, 7000 + Math.floor(Math.random() * 8000));
+    };
+    schedule();
+    return () => {
+      cancelled = true;
+      if (timer != null) window.clearTimeout(timer);
+    };
+  }, [cameraAltitude, canPlay, firmsCombatInView, play]);
 
-  useEffect(() => {
-    if (!canPlay || !primedRef.current) return;
-    for (const id of firmsCombatFireIds) {
-      if (seenFirmsCombatRef.current.has(id)) continue;
-      seenFirmsCombatRef.current.add(id);
-      void play("firms-combat-burst");
-      break;
-    }
-  }, [canPlay, firmsCombatFireIds, play]);
-
+  // 지정학 / 경제 지역 앰비언스
   useEffect(() => {
     if (!canPlay) {
       stopAmbient();
@@ -157,17 +170,76 @@ export function SoundEffectsBridge({
     }
 
     let ambient: AudioEventId | null = null;
-    if (viewerMode === "conflict" && frontlineAmbient) {
-      ambient = "frontline-artillery-ambient";
+    if (viewerMode === "conflict") {
+      if (conflictAmbient === "frontline") ambient = "frontline-artillery-ambient";
+      else if (conflictAmbient === "tension") ambient = "dispute-tension-high";
+      else if (conflictAmbient === "carrier") ambient = "carrier-deck-ambient";
     } else if (viewerMode === "economy") {
-      if (economyAmbient === "port") ambient = "port-ambient";
-      else if (economyAmbient === "construction") ambient = "construction-ambient";
+      if (economyAmbient === "pipeline") ambient = "pipeline-hum";
       else if (economyAmbient === "datacenter") ambient = "datacenter-hum";
+      else if (economyAmbient === "port") ambient = "port-ambient";
+      else if (economyAmbient === "construction") ambient = "construction-ambient";
     }
 
     if (ambient) setAmbient(ambient);
     else stopAmbient();
-  }, [canPlay, economyAmbient, frontlineAmbient, setAmbient, stopAmbient, viewerMode]);
+  }, [canPlay, conflictAmbient, economyAmbient, setAmbient, stopAmbient, viewerMode]);
+
+  // 전선 위 — ~20초 교전 윈도우(번갈이·겹침), 우크라·중동·대만·한반도 공통
+  useEffect(() => {
+    if (!canPlay || !primedRef.current) return;
+    if (viewerMode !== "conflict" || !frontlineAmbient) return;
+
+    let cancelled = false;
+    let burstTimer: number | null = null;
+    let windowTimer: number | null = null;
+    const WINDOW_MS = 20_000;
+    const PAUSE_MS = 6_000;
+
+    const fireOne = () => {
+      const pick =
+        FRONTLINE_COMBAT_ONESHOTS[
+          Math.floor(Math.random() * FRONTLINE_COMBAT_ONESHOTS.length)
+        ]!;
+      void play(pick, {
+        altitude: cameraAltitude,
+        volumeScale: pick === "frontline-mlrs" ? 1.3 : 1.1,
+        force: true,
+        overlap: true,
+      });
+    };
+
+    const runWindow = () => {
+      if (cancelled) return;
+      const windowEnd = Date.now() + WINDOW_MS;
+
+      const tick = () => {
+        if (cancelled) return;
+        if (Date.now() >= windowEnd) {
+          windowTimer = window.setTimeout(runWindow, PAUSE_MS);
+          return;
+        }
+        fireOne();
+        const delay = 700 + Math.floor(Math.random() * 1100);
+        burstTimer = window.setTimeout(tick, delay);
+      };
+
+      fireOne();
+      burstTimer = window.setTimeout(() => {
+        if (cancelled) return;
+        fireOne();
+        tick();
+      }, 450);
+    };
+
+    runWindow();
+
+    return () => {
+      cancelled = true;
+      if (burstTimer != null) window.clearTimeout(burstTimer);
+      if (windowTimer != null) window.clearTimeout(windowTimer);
+    };
+  }, [cameraAltitude, canPlay, frontlineAmbient, play, viewerMode]);
 
   return null;
 }

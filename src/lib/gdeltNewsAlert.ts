@@ -1,6 +1,11 @@
 import type { EventTier } from "@/data/geoTypes";
 
 export const GDELT_NEWS_ALERT_LABEL = "뉴스 알림";
+export const GDELT_NEWS_ALERT_LABEL_EN = "News alert";
+
+export function gdeltNewsAlertLabel(lang: "ko" | "en" = "ko"): string {
+  return lang === "en" ? GDELT_NEWS_ALERT_LABEL_EN : GDELT_NEWS_ALERT_LABEL;
+}
 
 const TIER_BADGE_BORDER: Record<EventTier, string> = {
   war: "rgba(239, 68, 68, 0.6)",

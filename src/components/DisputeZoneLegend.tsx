@@ -1,6 +1,7 @@
 "use client";
 
 import { MapOverlayLegendPanel } from "@/components/MapOverlayLegendPanel";
+import { useLocale } from "@/contexts/LocaleContext";
 import { TENSION_GRADE_STYLES, type TensionGrade } from "@/lib/disputeHatch";
 
 type DisputeZoneLegendProps = {
@@ -55,19 +56,17 @@ function HatchSwatch({
 const LEGEND_GRADES: TensionGrade[] = ["combat", "high"];
 
 export function DisputeZoneLegendContent() {
+  const { t } = useLocale();
   return (
     <div className="space-y-2.5">
-      <p className="text-[11px] leading-relaxed text-sky-100/50">
-        전쟁구역(빨강)과 외교적 긴장구역(주황)을 각각 켤 수 있습니다. 사각 틀 안에만 빗금이
-        그려지며, 근접 줌에서는 세부 구역 세그먼트가 우선 표시됩니다.
-      </p>
+      <p className="text-[11px] leading-relaxed text-sky-100/50">{t("legendDisputeBody")}</p>
       <div className="grid gap-2 sm:grid-cols-2">
         {LEGEND_GRADES.map((grade) => {
           const spec = TENSION_GRADE_STYLES[grade];
           return (
             <HatchSwatch
               key={grade}
-              label={grade === "combat" ? "전쟁구역" : "외교적 긴장구역"}
+              label={grade === "combat" ? t("legendDisputeCombat") : t("legendDisputeDiplomatic")}
               detail={spec.pattern === "slash" ? "/" : "\\"}
               color={spec.hatch}
               style={spec.pattern}
@@ -80,12 +79,13 @@ export function DisputeZoneLegendContent() {
 }
 
 export function DisputeZoneLegend({ open, onClose }: DisputeZoneLegendProps) {
+  const { t } = useLocale();
   return (
     <MapOverlayLegendPanel
       open={open}
       onClose={onClose}
-      title="전쟁·외교 긴장 구역"
-      subtitle="마우스 올리기 · 클릭 → 상세"
+      title={t("hoverDisputeLegendTitle")}
+      subtitle={t("hoverDisputeLegendSubtitle")}
       accent="orange"
     >
       <DisputeZoneLegendContent />

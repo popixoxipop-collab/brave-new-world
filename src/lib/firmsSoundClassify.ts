@@ -39,6 +39,9 @@ export const FIRMS_EXERCISE_ZONES: FirmsExerciseZone[] = [];
 
 const DEFAULT_COMBAT_RADIUS_DEG = 2.2;
 const CONFLICT_ZONE_RADIUS_DEG = 1.8;
+/** 전쟁 뉴스 핀 근처 FIRMS — 폭격·화재 추정 반경 */
+const GDELT_WAR_NEWS_RADIUS_DEG = 1.35;
+const GDELT_WAR_HOTSPOT_MAX = 48;
 
 /** combat-grade 분쟁 + 긴장 있는 AI 전쟁지역 중심 → 핫스팟 */
 export function buildFirmsCombatHotspots(options: {
@@ -70,6 +73,32 @@ export function buildFirmsCombatHotspots(options: {
         radiusDeg: CONFLICT_ZONE_RADIUS_DEG,
       });
     }
+  }
+
+  return spots;
+}
+
+/**
+ * GDELT 전투·전쟁 뉴스 좌표 → FIRMS 교차 핫스팟.
+ * 중동 등에서 전쟁구역 빗금 대신 「전쟁뉴스 근처 화재경보」에 사용.
+ */
+export function buildGdeltWarNewsHotspots(
+  events: Array<{ lat: number; lng: number; eventTier?: string }> | null | undefined,
+  options?: { radiusDeg?: number; max?: number },
+): FirmsCombatHotspot[] {
+  const radiusDeg = options?.radiusDeg ?? GDELT_WAR_NEWS_RADIUS_DEG;
+  const max = options?.max ?? GDELT_WAR_HOTSPOT_MAX;
+  const spots: FirmsCombatHotspot[] = [];
+  const seen = new Set<string>();
+
+  for (const event of events ?? []) {
+    if (event.eventTier && event.eventTier !== "war") continue;
+    if (!Number.isFinite(event.lat) || !Number.isFinite(event.lng)) continue;
+    const key = `${Math.round(event.lat * 4)}:${Math.round(event.lng * 4)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    spots.push({ lat: event.lat, lng: event.lng, radiusDeg });
+    if (spots.length >= max) break;
   }
 
   return spots;
@@ -137,9 +166,17 @@ export function classifyFirmsFireForSound(
   return "none";
 }
 
-export function firmsFireSoundLabel(kind: FirmsSoundKind): string {
+export function firmsFireSoundLabel(
+  kind: FirmsSoundKind,
+  lang: "ko" | "en" = "ko",
+): string {
+  if (lang === "en") {
+    if (kind === "exercise") return "Thermal · exercise / range";
+    if (kind === "combat") return "Likely strike / fire · war-news cross";
+    return "Thermal · unclassified";
+  }
   if (kind === "exercise") return "열감지 · 훈련/사격장 구역";
-  if (kind === "combat") return "열감지 · 전투/훈련 미구분";
+  if (kind === "combat") return "폭격·화재 추정 · 전쟁뉴스 교차";
   return "열감지 · 원인 미분류";
 }
 

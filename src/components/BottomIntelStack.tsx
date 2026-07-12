@@ -38,7 +38,6 @@ import {
 import {
   flyTargetForTheater,
   matchesTheaterFilter,
-  THEATER_CHIP_LABELS,
   THEATER_CHIP_ORDER,
   type IntelTheaterFilter,
   type MapFlyTarget,
@@ -249,6 +248,8 @@ type IntelCompactBarProps = {
   showAllCarriers?: boolean;
   showTicker?: boolean;
   viewerMode?: ViewerMode;
+  /** 카메라 tween/드래그 중 티커 폴링·스크롤 일시정지 */
+  pauseUpdates?: boolean;
   onOpenSheet: (theater?: IntelTheaterFilter) => void;
 };
 
@@ -314,7 +315,7 @@ function HeroHeadlineBanner({
       </button>
       {hero.link ? (
         <div className="flex justify-end border-t border-white/8 px-2 py-1.5">
-          <HoverHint placement="top" title="원문 기사" detail="외부 사이트에서 전체 기사를 엽니다.">
+          <HoverHint placement="top" title={t("hoverOpenArticle")} detail={t("hoverOpenArticleHint")}>
             <a
               href={hero.link}
               target="_blank"
@@ -336,8 +337,10 @@ export function DynamicIntelStack({
   showAllCarriers = false,
   showTicker = true,
   viewerMode = "conflict",
+  pauseUpdates = false,
   onOpenSheet,
 }: IntelCompactBarProps) {
+  const { lang, t } = useLocale();
   const { payload, preferEconomyNews } = useNewsStreamContext();
   const isEconomy = viewerMode === "economy" || preferEconomyNews;
   const hero = payload?.hero ?? null;
@@ -383,11 +386,15 @@ export function DynamicIntelStack({
         {showCompactTicker ? (
           <HoverHint
             placement="top"
-            title="증시 티커"
+            title={t("hoverStockTicker")}
             detail={
               isAlert
-                ? `연관 심볼 · ${TICKER_SPIKE_THRESHOLD_PERCENT}%↑ 변동 시 SPIKE (10분 갱신)`
-                : "WTI·Brent·주요 지수 등 글로벌 매크로 (10분 갱신)"
+                ? lang === "en"
+                  ? `Related symbols · SPIKE at ${TICKER_SPIKE_THRESHOLD_PERCENT}%+ (10m refresh)`
+                  : `연관 심볼 · ${TICKER_SPIKE_THRESHOLD_PERCENT}%↑ 변동 시 SPIKE (10분 갱신)`
+                : lang === "en"
+                  ? "WTI · Brent · major indices (10m refresh)"
+                  : "WTI·Brent·주요 지수 등 글로벌 매크로 (10분 갱신)"
             }
             className="w-full"
           >
@@ -396,6 +403,7 @@ export function DynamicIntelStack({
               highlightSymbols={highlightSymbols}
               alertTone={isAlert && hero ? hero.heroStatus : undefined}
               showHeader
+              paused={pauseUpdates}
             />
           </HoverHint>
         ) : null}
@@ -412,17 +420,13 @@ export function DynamicIntelStack({
         {!isAlert ? (
           <HoverHint
             placement="top"
-            title={isEconomy ? "경제·증시" : "Intel 뉴스"}
-            detail={
-              isEconomy
-                ? "증시·매크로와 경제 RSS 헤드라인을 봅니다."
-                : "전체 화면 Tier별 검증 보도·속보를 봅니다. Telegram OSINT는 별도 패널입니다."
-            }
+            title={isEconomy ? t("hoverEconomyFab") : t("hoverIntelFab")}
+            detail={isEconomy ? t("hoverEconomyFabHint") : t("hoverIntelFabHint")}
           >
             <button
               type="button"
               onClick={() => onOpenSheet("all")}
-              aria-label={isEconomy ? "경제·증시 열기" : "Intel 뉴스 열기"}
+              aria-label={isEconomy ? t("hoverEconomyFabOpenAria") : t("hoverIntelFabOpenAria")}
               className={`intel-mini-fab pointer-events-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border text-sm shadow-lg backdrop-blur-md transition ${
                 isEconomy
                   ? "border-emerald-300/25 bg-emerald-950/85 text-emerald-100 hover:border-emerald-200/40 hover:bg-emerald-900/90"
@@ -450,24 +454,25 @@ function TheaterChipBar({
   onChange: (v: IntelTheaterFilter) => void;
   payload: NewsStreamPayload | null;
 }) {
+  const { lang, t } = useLocale();
   const chips: Array<{ id: IntelTheaterFilter; label: string; count?: number }> = [
-    { id: "all", label: "전체", count: payload?.verified.length },
+    { id: "all", label: t("hoverTheaterAll"), count: payload?.verified.length },
     ...THEATER_CHIP_ORDER.map((id) => ({
       id,
-      label: THEATER_CHIP_LABELS[id],
+      label: theaterLabel(id, lang),
       count: payload?.stats.theaters[id],
     })),
   ];
 
   const chipHints: Record<IntelTheaterFilter, string> = {
-    all: "모든 전장의 Tier별 뉴스를 표시합니다.",
-    "middle-east": "중동·이란·이스라엘·홍해 전선 뉴스만 필터링합니다.",
-    "russia-ukraine": "러시아·우크라이나 전선 뉴스만 필터링합니다.",
-    "china-taiwan": "대만해협·남중국해·중국 군사 뉴스만 필터링합니다.",
-    korea: "한반도·북한 핵·미사일 관련 뉴스만 필터링합니다.",
-    japan: "일본 안보·방위·해상 뉴스만 필터링합니다.",
-    "south-asia": "인도·파키스탄·LAC 등 남아시아 뉴스만 필터링합니다.",
-    global: "글로벌 방산·안보 뉴스만 필터링합니다.",
+    all: t("hoverTheaterAllHint"),
+    "middle-east": t("hoverTheaterMeHint"),
+    "russia-ukraine": t("hoverTheaterRuUaHint"),
+    "china-taiwan": t("hoverTheaterCnTwHint"),
+    korea: t("hoverTheaterKoreaHint"),
+    japan: t("hoverTheaterJapanHint"),
+    "south-asia": t("hoverTheaterSouthAsiaHint"),
+    global: t("hoverTheaterGlobalHint"),
   };
 
   return (
@@ -508,11 +513,12 @@ function TheaterChipBar({
 }
 
 function FlyToMapButton({ onClick }: { onClick: () => void }) {
+  const { t } = useLocale();
   return (
     <HoverHint
       placement="top"
-      title="지도에서 보기"
-      detail="뉴스 시트를 닫고 해당 전장 위치로 지구본이 이동합니다."
+      title={t("hoverViewOnMap")}
+      detail={t("hoverViewOnMapHint")}
     >
       <button
         type="button"
@@ -555,6 +561,7 @@ function IntelSheetTabBar({
   economyTab?: EconomyIntelTab;
   onEconomyTabChange?: (tab: EconomyIntelTab) => void;
 }) {
+  const { t } = useLocale();
   if (economyMode) {
     return (
       <div className="flex shrink-0 gap-1 border-b border-emerald-400/15 px-4 py-2">
@@ -589,7 +596,7 @@ function IntelSheetTabBar({
 
   return (
     <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-sky-300/10 px-4 py-2">
-      <HoverHint placement="bottom" title="뉴스" detail="Tier별 검증 보도·관영매체 속보 (RSS/GDELT)">
+      <HoverHint placement="bottom" title={t("hoverSheetNews")} detail={t("hoverSheetNewsHint")}>
         <button
           type="button"
           onClick={() => onChange("news")}
@@ -606,7 +613,7 @@ function IntelSheetTabBar({
         </button>
       </HoverHint>
       {showViina ? (
-        <HoverHint placement="bottom" title="VIINA 전선" detail="점령·경합 셀 기반 전선 이벤트 (화면 표시 전용)">
+        <HoverHint placement="bottom" title={t("hoverSheetViina")} detail={t("hoverSheetViinaHint")}>
           <button
             type="button"
             onClick={() => onChange("viina")}
@@ -624,7 +631,7 @@ function IntelSheetTabBar({
         </HoverHint>
       ) : null}
       {showTelegram ? (
-        <HoverHint placement="bottom" title="Telegram" detail="Raw OSINT 피드 · RSS/GDELT·AI 요약과 분리">
+        <HoverHint placement="bottom" title="Telegram" detail={t("hoverSheetTelegramHint")}>
           <button
             type="button"
             onClick={() => onChange("telegram")}
@@ -842,8 +849,8 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
             {sheetTab === "news" && (!preferEconomyNews || economyTab === "news") ? (
               <HoverHint
                 placement="bottom"
-                title="관영·미검증 속보"
-                detail="관영매체·미검증 속보를 함께 봅니다. 사실 단정 전 참고용 신호입니다."
+                title={t("hoverTier3Title")}
+                detail={t("hoverTier3Hint")}
               >
                 <label className="flex cursor-pointer items-center gap-1.5 text-[10px] text-amber-200/80">
                   <input
@@ -856,7 +863,7 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
                 </label>
               </HoverHint>
             ) : null}
-            <HoverHint placement="bottom" title="지도로 돌아가기" detail="전체 화면 뉴스를 닫고 3D 지구본으로 복귀합니다.">
+            <HoverHint placement="bottom" title={t("hoverBackToMap")} detail={t("hoverBackToMapHint")}>
               <button
                 type="button"
                 onClick={onClose}
@@ -989,8 +996,12 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
                       {newsSearchQuery.trim()
                         ? `"${newsSearchQuery.trim()}" 검색 결과가 없습니다.`
                         : theaterFilter === "all"
-                          ? "표시할 뉴스가 없습니다."
-                          : `${THEATER_CHIP_LABELS[theaterFilter]} 전장 뉴스가 없습니다.`}
+                          ? lang === "en"
+                            ? "No news to display."
+                            : "표시할 뉴스가 없습니다."
+                          : lang === "en"
+                            ? `No news for ${theaterLabel(theaterFilter, lang)}.`
+                            : `${theaterLabel(theaterFilter, lang)} 전장 뉴스가 없습니다.`}
                     </p>
                   ) : null}
                 </div>
@@ -1028,7 +1039,7 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
         ) : null}
 
         <div className="shrink-0 border-t border-sky-300/15 bg-[#050b14]/95 px-4 py-3 backdrop-blur-md">
-          <HoverHint placement="top" title="뉴스 닫기" detail="Intel 전체 화면을 닫고 지구본 조작으로 돌아갑니다.">
+          <HoverHint placement="top" title={t("hoverCloseNews")} detail={t("hoverCloseNewsHint")}>
             <button
               type="button"
               onClick={onClose}

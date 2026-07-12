@@ -91,11 +91,23 @@ const LAYER_SHARE = {
   ua: 0.28,
 } as const;
 
-/** RU 점령 영토 — 물감 채움 (전체 면) */
+/** RU 점령 영토 — 물감 채움 (전장 고정, 줌 컬링 없음) */
 const RU_FILL_MAX: Record<ViinaLod["mode"], number> = {
   hidden: 0,
-  overview: 520,
-  detail: 1400,
+  overview: 900,
+  detail: 2200,
+};
+
+const UA_FILL_MAX: Record<ViinaLod["mode"], number> = {
+  hidden: 0,
+  overview: 700,
+  detail: 1800,
+};
+
+const CONTESTED_FILL_MAX: Record<ViinaLod["mode"], number> = {
+  hidden: 0,
+  overview: 400,
+  detail: 900,
 };
 
 function longitudeDistance(a: number, b: number) {
@@ -267,13 +279,15 @@ export function filterViinaZones(
   view: ViewState,
   lod: ViinaLod,
   maxCount?: number,
+  options?: { /** 국경처럼 전장 전체 유지 — 카메라 반경 컬링 생략 */ theaterPinned?: boolean },
 ): UkraineControlZone[] {
   const budget = maxCount ?? lod.maxFeatures;
   if (lod.mode === "hidden" || budget <= 0) return [];
 
   const theater = zones.filter(zoneInUkraineTheater);
+  const theaterPinned = options?.theaterPinned === true;
   const candidates =
-    lod.radiusDeg > 0
+    !theaterPinned && lod.radiusDeg > 0
       ? theater.filter((zone) => zoneDistanceDeg(zone, view) <= lod.radiusDeg)
       : theater;
 
@@ -283,16 +297,6 @@ export function filterViinaZones(
     .slice()
     .sort((a, b) => zoneDistanceDeg(a, view) - zoneDistanceDeg(b, view))
     .slice(0, budget);
-}
-
-function filterLayer(
-  zones: UkraineControlZone[],
-  view: ViewState,
-  lod: ViinaLod,
-  share: number,
-): UkraineControlZone[] {
-  const budget = Math.max(0, Math.floor(lod.maxFeatures * share));
-  return filterViinaZones(zones, view, lod, budget).map(normalizeViinaZoneWinding);
 }
 
 export function selectViinaPolygons(
@@ -335,16 +339,37 @@ export function selectViinaPolygons(
   const contestedSource =
     lod.mode === "overview" ? contestedOverview : detailSplit.contestedZones;
 
-  const ruZones = filterLayer(ruSource, view, lod, LAYER_SHARE.ru);
-  const contestedZones = filterLayer(contestedSource, view, lod, LAYER_SHARE.contested);
-  const uaZones = filterLayer(uaSource, view, lod, LAYER_SHARE.ua);
-
-  const ruFillSource = lod.mode === "detail" ? detailSplit.ruZones : ruOverview;
+  // 점령·주장 면: 맵리브레 지면에 국경처럼 고정 — 줌인해도 theater 전체 유지
+  const pin = { theaterPinned: true as const };
   const ruFillZones = filterViinaZones(
-    ruFillSource,
+    lod.mode === "detail" ? detailSplit.ruZones : ruOverview,
     view,
     lod,
     RU_FILL_MAX[lod.mode],
+    pin,
+  ).map(normalizeViinaZoneWinding);
+  const uaZones = filterViinaZones(
+    uaSource,
+    view,
+    lod,
+    UA_FILL_MAX[lod.mode],
+    pin,
+  ).map(normalizeViinaZoneWinding);
+  const contestedZones = filterViinaZones(
+    contestedSource,
+    view,
+    lod,
+    CONTESTED_FILL_MAX[lod.mode],
+    pin,
+  ).map(normalizeViinaZoneWinding);
+
+  // 전선 edge 추출용 — 면과 동일 소스를 쓰면 확대 시에도 경계선이 끊기지 않음
+  const ruZones = filterViinaZones(
+    ruSource,
+    view,
+    lod,
+    Math.max(RU_FILL_MAX[lod.mode], Math.floor(lod.maxFeatures * LAYER_SHARE.ru)),
+    pin,
   ).map(normalizeViinaZoneWinding);
 
   const zones = [...ruFillZones, ...contestedZones, ...uaZones];

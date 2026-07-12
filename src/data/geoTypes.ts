@@ -130,6 +130,12 @@ export type TransportPath = {
     | "ukraine-ru-claim"
     | "ukraine-ua-claim"
     | "ukraine-ua-gain"
+    | "ukraine-ru-occupied"
+    | "ukraine-ua-occupied"
+    | "ukraine-ru-occupied-hatch"
+    | "ukraine-ua-occupied-hatch"
+    | "ukraine-ru-claim-hatch"
+    | "ukraine-ua-claim-hatch"
     | "neptun-trail"
     | "neptun-projection"
     | "neptun-trail-archived";

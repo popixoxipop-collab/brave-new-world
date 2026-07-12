@@ -9,6 +9,7 @@ import {
   useState,
   type ReactElement,
 } from "react";
+import { useLocale } from "@/contexts/LocaleContext";
 
 type HoverHintProps = {
   title: string;
@@ -26,6 +27,7 @@ export function HoverHint({
   className = "",
   children,
 }: HoverHintProps) {
+  const { t } = useLocale();
   const tooltipId = useId();
   const rootRef = useRef<HTMLSpanElement>(null);
   const [pinned, setPinned] = useState(false);
@@ -82,7 +84,7 @@ export function HoverHint({
         {detail ? (
           <span className="mt-1 block text-[11px] leading-5 text-sky-100/78">{detail}</span>
         ) : null}
-        <span className="mt-1.5 block text-[10px] text-sky-200/45 sm:hidden">탭하면 설명 고정</span>
+        <span className="mt-1.5 block text-[10px] text-sky-200/45 sm:hidden">{t("hoverTapToPin")}</span>
       </span>
     </span>
   );

@@ -45,20 +45,21 @@ const CARRIER_MIL_WATCH: LayerPatch = {
   showMilitaryActivity: true,
 };
 
-/** 중동 전선 — 전쟁/외교 빗금 + 신호 (Tzeva·AI전쟁지역은 수동) */
+/** 중동 전선 — 전쟁구역·초크포인트·공습경보·IRONSIGHT 콜아웃 */
 const MIDDLE_EAST_STACK: LayerPatch = {
   showWarZones: true,
   showDiplomaticTension: true,
-  showUcdpEvents: true,
+  showUcdpEvents: false,
   showConflictZones: false,
   showGdeltWar: true,
   showGdeltDiplomatic: true,
-  showMilitaryActivity: true,
+  showMilitaryActivity: false,
   showUsCarriers: true,
   showTelegramOsint: true,
   showLogisticsRisk: true,
   showShippingLanes: true,
-  showFirmsFires: false,
+  showPorts: true,
+  showFirmsFires: true,
   showTzevaAdom: false,
 };
 

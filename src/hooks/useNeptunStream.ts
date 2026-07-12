@@ -266,6 +266,10 @@ export function useNeptunStream(enabled: boolean, options: NeptunStreamOptions =
   const startAnimationLoop = useCallback(() => {
     if (rafRef.current != null) return;
     const tick = (nowMs: number) => {
+      if (pausePublishRef.current) {
+        rafRef.current = window.requestAnimationFrame(tick);
+        return;
+      }
       if (nowMs - lastPublishRef.current >= PUBLISH_MS) {
         applyThreatMap(nowMs);
         lastPublishRef.current = nowMs;

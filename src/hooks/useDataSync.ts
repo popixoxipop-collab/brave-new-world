@@ -22,9 +22,14 @@ const STARTUP_DELAY_MS = 8_000;
  * Periodically checks /api/data-sync and triggers snapshot refresh when stale.
  * Live feeds (GDELT/AIS/ADS-B) already poll their own APIs; this covers static snapshot refresh.
  */
-export function useDataSync(options?: { enabled?: boolean; mode?: "quick" | "default" | "full" }) {
+export function useDataSync(options?: {
+  enabled?: boolean;
+  mode?: "quick" | "default" | "full";
+  cameraMovingRef?: { current: boolean };
+}) {
   const enabled = options?.enabled !== false;
   const mode = options?.mode || "default";
+  const cameraMovingRef = options?.cameraMovingRef;
   const [syncInfo, setSyncInfo] = useState<DataSyncStatus | null>(null);
   const [syncGeneration, setSyncGeneration] = useState(0);
   const inFlightRef = useRef(false);
@@ -62,6 +67,8 @@ export function useDataSync(options?: { enabled?: boolean; mode?: "quick" | "def
 
   const triggerIfStale = useCallback(async () => {
     if (inFlightRef.current) return;
+    if (typeof document !== "undefined" && document.hidden) return;
+    if (cameraMovingRef?.current) return;
     inFlightRef.current = true;
     try {
       const status = await refreshStatus();
@@ -75,7 +82,7 @@ export function useDataSync(options?: { enabled?: boolean; mode?: "quick" | "def
     } finally {
       inFlightRef.current = false;
     }
-  }, [mode, pollUntilIdle, refreshStatus]);
+  }, [cameraMovingRef, mode, pollUntilIdle, refreshStatus]);
 
   const forceSync = useCallback(async () => {
     if (inFlightRef.current) return;

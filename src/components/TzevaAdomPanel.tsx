@@ -9,6 +9,12 @@ import {
   tzevaUi,
 } from "@/lib/tzevaAdomI18n";
 
+export type AirRaidFocusTarget = {
+  lat: number;
+  lng: number;
+  label?: string;
+};
+
 type TzevaAdomPanelProps = {
   active: TzevaAdomAlert[];
   history: TzevaAdomAlert[];
@@ -17,6 +23,8 @@ type TzevaAdomPanelProps = {
   geoRestricted?: boolean;
   error?: string | null;
   lang?: LabelLanguage;
+  /** 칩·목록 클릭 시 해당 지역으로 이동 */
+  onFocusRegion?: (target: AirRaidFocusTarget) => void;
 };
 
 function formatTime(iso: string, lang: LabelLanguage) {
@@ -61,6 +69,8 @@ function AlertBellIcon({ urgent }: { urgent: boolean }) {
   );
 }
 
+const ISRAEL_FALLBACK = { lat: 31.5, lng: 34.85 };
+
 export function TzevaAdomPanel({
   active,
   history,
@@ -69,6 +79,7 @@ export function TzevaAdomPanel({
   geoRestricted,
   error,
   lang = "ko",
+  onFocusRegion,
 }: TzevaAdomPanelProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -81,6 +92,8 @@ export function TzevaAdomPanel({
       region: translateOrefRegion(alert.region, lang),
       title: translateOrefTitle(alert.title, lang, alert.category),
       active: alert.active || hasActive,
+      lat: alert.lat,
+      lng: alert.lng,
     };
   }, [active, hasActive, history, lang]);
 
@@ -118,6 +131,16 @@ export function TzevaAdomPanel({
             ? tzevaUi("demo", lang)
             : tzevaUi("idle", lang);
 
+  function focusAlert(alert: Pick<TzevaAdomAlert, "lat" | "lng" | "region">) {
+    const lat = Number.isFinite(alert.lat) ? alert.lat : ISRAEL_FALLBACK.lat;
+    const lng = Number.isFinite(alert.lng) ? alert.lng : ISRAEL_FALLBACK.lng;
+    onFocusRegion?.({
+      lat,
+      lng,
+      label: translateOrefRegion(alert.region, lang),
+    });
+  }
+
   return (
     <div ref={rootRef} className="pointer-events-auto relative z-[62]">
       <button
@@ -126,7 +149,12 @@ export function TzevaAdomPanel({
         aria-haspopup="listbox"
         aria-label={tzevaUi("brand", lang)}
         title={tzevaUi("openList", lang)}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          const primary = active[0] ?? history[0];
+          if (primary) focusAlert(primary);
+          else if (onFocusRegion) onFocusRegion({ ...ISRAEL_FALLBACK });
+          setOpen((v) => !v);
+        }}
         className={`flex max-w-[min(52vw,280px)] items-center gap-2 border px-3 py-2 text-xs shadow-lg backdrop-blur-md transition-all duration-200 ${
           hasActive
             ? "border-red-400/45 bg-[#2a0c12]/72 text-red-50"
@@ -184,19 +212,27 @@ export function TzevaAdomPanel({
                   const title = translateOrefTitle(alert.title, lang, alert.category);
                   const isLive = alert.active || active.some((a) => a.id === alert.id);
                   return (
-                    <li key={alert.id} className="px-2.5 py-2">
-                      <div className="flex flex-wrap items-center gap-x-1.5 text-[9px] text-slate-500">
-                        <span className="text-slate-400">{formatTime(alert.alertDate, lang)}</span>
-                        {isLive ? (
-                          <span className="rounded border border-red-400/35 px-1 text-red-200">
-                            {tzevaUi("activeBadge", lang)}
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="mt-0.5 text-[12px] font-semibold leading-snug text-slate-50">
-                        {region}
-                      </p>
-                      <p className="mt-0.5 text-[10px] leading-snug text-slate-400">{title}</p>
+                    <li key={alert.id}>
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={isLive}
+                        onClick={() => focusAlert(alert)}
+                        className="w-full px-2.5 py-2 text-left transition hover:bg-red-500/10"
+                      >
+                        <div className="flex flex-wrap items-center gap-x-1.5 text-[9px] text-slate-500">
+                          <span className="text-slate-400">{formatTime(alert.alertDate, lang)}</span>
+                          {isLive ? (
+                            <span className="rounded border border-red-400/35 px-1 text-red-200">
+                              {tzevaUi("activeBadge", lang)}
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="mt-0.5 text-[12px] font-semibold leading-snug text-slate-50">
+                          {region}
+                        </p>
+                        <p className="mt-0.5 text-[10px] leading-snug text-slate-400">{title}</p>
+                      </button>
                     </li>
                   );
                 })}
