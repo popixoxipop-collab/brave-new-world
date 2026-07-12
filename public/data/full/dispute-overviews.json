@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-11T11:01:07.445Z",
+  "generatedAt": "2026-07-12T11:26:59.103Z",
   "items": [
     {
       "id": "dispute-main-IND-PAK-0",
@@ -55,7 +55,7 @@
         "China",
         "Taiwan"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "tension-kinmen-matsui",
@@ -64,7 +64,7 @@
         "China",
         "Taiwan"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "tension-senkaku-adiz",
@@ -74,7 +74,7 @@
         "China",
         "Taiwan"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "tension-ecs-adiz-overlap",
@@ -82,7 +82,7 @@
       "parties": [
         "Multiple"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "tension-spratly-gray",
@@ -94,7 +94,7 @@
         "Malaysia",
         "Brunei"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "tension-scarborough",
@@ -103,7 +103,7 @@
         "Philippines",
         "China"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "tension-second-thomas",
@@ -112,7 +112,7 @@
         "Philippines",
         "China"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "tension-paracel",
@@ -122,7 +122,7 @@
         "Vietnam",
         "Taiwan"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "tension-nll-west-sea",
@@ -131,7 +131,7 @@
         "South Korea",
         "North Korea"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "tension-dmz-corridor",
@@ -140,7 +140,7 @@
         "South Korea",
         "North Korea"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "tension-dokdo",
@@ -149,7 +149,7 @@
         "South Korea",
         "Japan"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "tension-ieodo",
@@ -158,7 +158,7 @@
         "South Korea",
         "China"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "tension-yellow-sea-eez",
@@ -166,7 +166,7 @@
       "parties": [
         "Multiple"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "tension-kuril-south",
@@ -175,7 +175,7 @@
         "Russia",
         "Japan"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "tension-miyako-chokepoint",
@@ -184,7 +184,7 @@
         "Japan",
         "China (transit)"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "tension-japan-sea-missile",
@@ -194,7 +194,7 @@
         "Japan",
         "Russia"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "tension-pratas-dongsha",
@@ -203,7 +203,7 @@
         "Taiwan",
         "China"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "tension-tsushima-korea-strait",
@@ -211,7 +211,7 @@
       "parties": [
         "Multiple"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "tension-ee-transnistria",
@@ -220,7 +220,7 @@
         "Moldova",
         "Russia"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "tension-ee-kaliningrad",
@@ -229,7 +229,7 @@
         "Russia",
         "NATO"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "tension-ee-suwalki",
@@ -238,7 +238,7 @@
         "NATO",
         "Russia (adjacent)"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "combat-me-gaza",
@@ -247,7 +247,7 @@
         "Israel",
         "Palestine"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "combat-me-lebanon-south",
@@ -256,17 +256,17 @@
         "Lebanon",
         "Israel"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "combat-me-red-sea-houthi",
-      "overviewKo": "홍해·바브엘만데브 · 미사일·무인기·상선 타격",
+      "overviewKo": "홍해·바브엘만데브 · 미사일·무인기·상선 타격·봉쇄 위협",
       "parties": [
         "Yemen (Houthi)",
         "Coalition",
         "Shipping"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "combat-me-syria-north",
@@ -278,7 +278,7 @@
         "Russia",
         "Iran (proxy)"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "combat-me-iraq-isis-belt",
@@ -288,7 +288,7 @@
         "Iran (proxy)",
         "US"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "tension-me-iran-israel",
@@ -297,15 +297,15 @@
         "Iran",
         "Israel"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "tension-me-hormuz",
-      "overviewKo": "호르무즈 해협 회색지대 · 해상억지·유조선 리스크",
+      "overviewKo": "호르무즈 해협 · 봉쇄·해상억지·유조선 리스크",
       "parties": [
         "Multiple"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "combat-sa-kashmir-loc",
@@ -314,7 +314,7 @@
         "India",
         "Pakistan"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "tension-sa-siachen",
@@ -323,7 +323,7 @@
         "India",
         "Pakistan"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "combat-sa-afghanistan",
@@ -332,7 +332,7 @@
         "Afghanistan",
         "Pakistan"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "tension-sa-india-china-lac",
@@ -341,7 +341,7 @@
         "India",
         "China"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "combat-sa-myanmar-rakhine",
@@ -350,7 +350,7 @@
         "Myanmar (junta",
         "resistance)"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "tension-ee-belarus-frontier",
@@ -360,7 +360,7 @@
         "Russia",
         "NATO"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "combat-me-israel",
@@ -368,7 +368,7 @@
       "parties": [
         "Israel"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "combat-me-yemen",
@@ -377,7 +377,7 @@
         "Yemen (Houthi)",
         "Saudi-led Coalition"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "combat-me-iran-nation",
@@ -385,7 +385,7 @@
       "parties": [
         "Iran"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "combat-me-iran-strike-corridor",
@@ -393,7 +393,7 @@
       "parties": [
         "Iran"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "tension-me-gulf-states",
@@ -402,7 +402,7 @@
         "GCC",
         "US"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "combat-me-iran-israel",
@@ -411,7 +411,7 @@
         "Iran",
         "Israel"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
     },
     {
       "id": "combat-me-iran-heartland",
@@ -419,7 +419,93 @@
       "parties": [
         "Iran"
       ],
-      "updatedAt": "2026-07-11"
+      "updatedAt": "2026-07-12"
+    },
+    {
+      "id": "combat-me-iran-natanz-isfahan",
+      "overviewKo": "나탄즈·이스파한 · 핵·미사일 시설 타격권",
+      "parties": [
+        "Iran"
+      ],
+      "updatedAt": "2026-07-12"
+    },
+    {
+      "id": "combat-me-iran-bushehr-kharg",
+      "overviewKo": "부셰르·하르그 · 원전·유전·유조선 타격권",
+      "parties": [
+        "Iran"
+      ],
+      "updatedAt": "2026-07-12"
+    },
+    {
+      "id": "combat-me-bandar-abbas",
+      "overviewKo": "반다르아바스 · IRGC 해군·해협 억지 거점",
+      "parties": [
+        "Iran"
+      ],
+      "updatedAt": "2026-07-12"
+    },
+    {
+      "id": "tension-me-persian-gulf",
+      "overviewKo": "페르시아만 · 해상 억지·유조선·미 5함대 리스크",
+      "parties": [
+        "Iran",
+        "GCC",
+        "US"
+      ],
+      "updatedAt": "2026-07-12"
+    },
+    {
+      "id": "tension-me-eastern-med",
+      "overviewKo": "동지중해 · 해군·항공모함·이스라엘 연안 억지",
+      "parties": [
+        "Israel",
+        "US",
+        "Regional"
+      ],
+      "updatedAt": "2026-07-12"
+    },
+    {
+      "id": "tension-me-saudi",
+      "overviewKo": "사우디 · 미사일·드론·에너지 인프라 피격 리스크",
+      "parties": [
+        "Saudi Arabia"
+      ],
+      "updatedAt": "2026-07-12"
+    },
+    {
+      "id": "tension-me-uae-oman",
+      "overviewKo": "UAE·오만 · 호르무즈 접근로·항만 리스크",
+      "parties": [
+        "UAE",
+        "Oman"
+      ],
+      "updatedAt": "2026-07-12"
+    },
+    {
+      "id": "tension-me-jordan",
+      "overviewKo": "요르단 · 공중 회랑·완충 지대",
+      "parties": [
+        "Jordan"
+      ],
+      "updatedAt": "2026-07-12"
+    },
+    {
+      "id": "tension-me-egypt-sinai",
+      "overviewKo": "이집트·시나이 · 수에즈·홍해 연계 긴장",
+      "parties": [
+        "Egypt"
+      ],
+      "updatedAt": "2026-07-12"
+    },
+    {
+      "id": "tension-me-kuwait",
+      "overviewKo": "쿠웨이트 · 북부 걸프·미사일 피격 노출",
+      "parties": [
+        "Kuwait",
+        "US"
+      ],
+      "updatedAt": "2026-07-12"
     }
   ]
 }

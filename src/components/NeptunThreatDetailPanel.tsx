@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import { localizeNeptunThreatCopy, neptunConfidenceLabel, neptunTypeLabel } from "@/lib/neptunDisplay";
 import { getNeptunTypeMeta, type NeptunLiveThreat } from "@/lib/neptun";
 
+import type { LabelLanguage } from "@/lib/layerPrefs";
+
 type NeptunThreatDetailPanelProps = {
   threat: NeptunLiveThreat;
-  translateKo: boolean;
+  lang: LabelLanguage;
   onClose: () => void;
 };
 
@@ -28,7 +30,7 @@ function formatTime(iso: string | null | undefined) {
 /** 우측 사이드바 — 드론·미사일 상세 */
 export function NeptunThreatDetailPanel({
   threat,
-  translateKo,
+  lang,
   onClose,
 }: NeptunThreatDetailPanelProps) {
   const meta = getNeptunTypeMeta(threat.type);
@@ -40,20 +42,20 @@ export function NeptunThreatDetailPanel({
 
   useEffect(() => {
     let cancelled = false;
-    void localizeNeptunThreatCopy(threat, translateKo).then((next) => {
+    void localizeNeptunThreatCopy(threat, lang).then((next) => {
       if (!cancelled) setCopy(next);
     });
     return () => {
       cancelled = true;
     };
-  }, [threat, translateKo]);
+  }, [threat, lang]);
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.28em] text-orange-200/75">우크라 공중 위협</p>
-          <h2 className="mt-2 text-xl font-semibold text-slate-100">{neptunTypeLabel(threat.type)}</h2>
+          <h2 className="mt-2 text-xl font-semibold text-slate-100">{neptunTypeLabel(threat.type, lang)}</h2>
         </div>
         <button
           type="button"
@@ -76,7 +78,7 @@ export function NeptunThreatDetailPanel({
       </section>
 
       <section className="grid grid-cols-2 gap-3">
-        <Metric label="신뢰도" value={neptunConfidenceLabel(threat.confidenceLevel)} />
+        <Metric label="신뢰도" value={neptunConfidenceLabel(threat.confidenceLevel, lang)} />
         <Metric label="궤적 점" value={`${threat.trail?.length ?? 0}개`} />
         <Metric label="위도" value={threat.predictedLat.toFixed(3)} />
         <Metric label="경도" value={threat.predictedLon.toFixed(3)} />

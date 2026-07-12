@@ -57,9 +57,9 @@ export const CONFLICT_ZONE_GROUP: NavMenuGroup = {
       label: "대만",
       lat: 24.2,
       lng: 121.0,
-      altitude: 0.82,
+      altitude: 1.7,
       description: "대만 본섬·진먼·마쭈·펑후 인접 해역",
-      bbox: { minLat: 21.5, maxLat: 26.8, minLng: 117.8, maxLng: 122.6 },
+      bbox: { minLat: 18, maxLat: 30, minLng: 112, maxLng: 128 },
       subItems: [
         {
           id: "taiwan-strait",
@@ -98,9 +98,9 @@ export const CONFLICT_ZONE_GROUP: NavMenuGroup = {
       label: "한반도",
       lat: 37.8,
       lng: 127.2,
-      altitude: 0.86,
+      altitude: 1.68,
       description: "남북 분단·DMZ·서해 분쟁",
-      bbox: { minLat: 33, maxLat: 43, minLng: 124, maxLng: 132 },
+      bbox: { minLat: 32, maxLat: 43, minLng: 122, maxLng: 133 },
       subItems: [
         {
           id: "dmz",
@@ -138,10 +138,10 @@ export const CONFLICT_ZONE_GROUP: NavMenuGroup = {
       id: "ukraine",
       label: "우크라이나",
       lat: 48.5,
-      lng: 37.2,
-      altitude: 0.72,
+      lng: 34.5,
+      altitude: 1.72,
       description: "동부·남부 전선·VIINA 점령지",
-      bbox: { minLat: 44, maxLat: 52.5, minLng: 22, maxLng: 40 },
+      bbox: { minLat: 42, maxLat: 54, minLng: 18, maxLng: 44 },
       actorCountries: ["UKR", "RUS"],
       subItems: [
         {
@@ -179,11 +179,11 @@ export const CONFLICT_ZONE_GROUP: NavMenuGroup = {
     {
       id: "iran",
       label: "이란",
-      lat: 32.5,
-      lng: 53.5,
-      altitude: 1.0,
+      lat: 29,
+      lng: 48,
+      altitude: 1.75,
       description: "중동·페르시아만·시리아",
-      bbox: { minLat: 24, maxLat: 40, minLng: 44, maxLng: 64 },
+      bbox: { minLat: 12, maxLat: 42, minLng: 32, maxLng: 66 },
       subItems: [
         {
           id: "persian-gulf",
@@ -269,11 +269,11 @@ export const INTERCONTINENTAL_GROUP: NavMenuGroup = {
     {
       id: "middle-east",
       label: "중동",
-      lat: 28,
-      lng: 45,
-      altitude: 1.2,
-      description: "걸프·시리아·이란-이스라엘",
-      bbox: { minLat: 12, maxLat: 38, minLng: 34, maxLng: 62 },
+      lat: 29.2,
+      lng: 42.5,
+      altitude: 2.05,
+      description: "걸프·레반트·이란 전역",
+      bbox: { minLat: 10, maxLat: 42, minLng: 28, maxLng: 66 },
       subItems: [
         {
           id: "gulf",

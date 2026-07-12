@@ -1,9 +1,11 @@
 "use client";
 
 import { HoverHint } from "@/components/HoverHint";
+import type { ViewerMode } from "@/lib/viewPackages";
 
 type FeatureGuidePanelProps = {
   open: boolean;
+  viewerMode?: ViewerMode;
   onClose: () => void;
 };
 
@@ -14,19 +16,19 @@ type GuideSection = {
 
 const GUIDE_SECTIONS: GuideSection[] = [
   {
-    title: "영토 분쟁·긴장 지역 (빗금 박스)",
+    title: "전쟁구역 · 외교적 긴장구역",
     steps: [
-      "우상단 ≡ 버튼 → 레이어 패널에서 「영토 분쟁·긴장 지역」을 켭니다.",
-      "지도 위 빗금 박스에 마우스를 올리면 이름·긴장도·요약이 표시됩니다.",
+      "우상단 ≡ 버튼 → 레이어 패널에서 「전쟁구역」또는 「외교적 긴장구역」을 켭니다.",
+      "지도 위 빗금 박스에 마우스를 올리면 이름·등급·요약이 표시됩니다.",
       "박스를 클릭하면 우측에 한국어 개요·관련 당사자·상세 메모가 열립니다.",
-      "색상: 빨강(실전투) · 주황(외교적 긴장) · 노랑(회색지대·위기) · 청록(저긴장). 보라는 동맹 뉴스 핀 전용입니다.",
+      "색상: 빨강(전쟁구역) · 주황(외교적 긴장). 근접 줌에서는 세부 구역이 우선 표시됩니다.",
     ],
   },
   {
     title: "AI 전쟁지역 (데모)",
     steps: [
-      "레이어 패널에서 「AI 전쟁지역 (데모)」을 켜면 분쟁 구역·전투 뉴스 밀도로 탐지된 지역에 붉은 링이 표시됩니다.",
-      "외부 AI API 없이 로컬 휴리스틱으로 동작하는 데모입니다.",
+      "레이어 패널에서 「AI 전쟁지역 (데모)」을 켜면 분쟁 구역·GDELT 전투 뉴스 밀도로 탐지된 지역에 붉은 링이 표시됩니다.",
+      "외부 AI API 없이 로컬 휴리스틱으로 동작하는 데모입니다. 중동 진입 시에는 자동으로 켜지지 않습니다.",
       "마우스를 올리면 지역명·긴장도·AI 신뢰도를 볼 수 있습니다.",
       "클릭하면 해당 지역으로 이동하며 우측 상세 패널이 열립니다.",
     ],
@@ -61,8 +63,44 @@ const GUIDE_SECTIONS: GuideSection[] = [
   },
 ];
 
-export function FeatureGuidePanel({ open, onClose }: FeatureGuidePanelProps) {
+const ECONOMY_GUIDE_SECTIONS: GuideSection[] = [
+  {
+    title: "제재 · 에너지 · 물류 레이어",
+    steps: [
+      "≡ 버튼 → 「인프라 · 시장」에서 제재·파이프라인·LNG·해운·초크포인트를 켭니다.",
+      "물류 리스크 핀에 마우스를 올리면 Brent·VIX 등 관련 시장 라벨이 표시됩니다.",
+      "경제 모드에서는 GDELT·Telegram fetch가 없습니다 — 경제 RSS와 티커를 사용하세요.",
+    ],
+  },
+  {
+    title: "하단 티커 · 경제 Intel",
+    steps: [
+      "하단 compact 패널에 주요 증시·VIX·유가 티커가 표시됩니다.",
+      "📈 버튼으로 경제 RSS·증시 embed Intel 시트를 엽니다.",
+      "뉴스 티어: 공식·와이어 / 시장 매체 / 미확인 속보",
+    ],
+  },
+  {
+    title: "Geo Markets Nav",
+    steps: [
+      "상단 검색·메뉴에서 호르무즈·수에즈·금융 허브·TSMC 등으로 이동합니다.",
+      "항목 클릭 시 우측 EconomyRegionPanel에서 관련 RSS·티커를 봅니다.",
+      "「주요 허브」 탭으로 빠르게 초크포인트·금융 도시로 이동할 수 있습니다.",
+    ],
+  },
+  {
+    title: "지도 조작",
+    steps: [
+      "드래그: 회전 · 스크롤: 줌 · 더블클릭: 해당 지점 확대",
+      "상단 「지정학 | 경제·시장」 스위치로 보기 모드를 전환합니다.",
+      "모드 전환 시 레이어·nav·하단 Intel이 함께 바뀝니다.",
+    ],
+  },
+];
+
+export function FeatureGuidePanel({ open, viewerMode = "conflict", onClose }: FeatureGuidePanelProps) {
   if (!open) return null;
+  const sections = viewerMode === "economy" ? ECONOMY_GUIDE_SECTIONS : GUIDE_SECTIONS;
 
   return (
     <>
@@ -91,7 +129,7 @@ export function FeatureGuidePanel({ open, onClose }: FeatureGuidePanelProps) {
           </button>
         </div>
         <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
-          {GUIDE_SECTIONS.map((section) => (
+          {sections.map((section) => (
             <section key={section.title} className="rounded-xl border border-sky-300/12 bg-black/20 p-3">
               <h3 className="text-sm font-medium text-sky-50/95">{section.title}</h3>
               <ol className="mt-2.5 list-decimal space-y-1.5 pl-4 text-[12px] leading-5 text-sky-100/75">
@@ -107,12 +145,23 @@ export function FeatureGuidePanel({ open, onClose }: FeatureGuidePanelProps) {
   );
 }
 
-export function FeatureGuideButton({ onClick }: { onClick: () => void }) {
+export function FeatureGuideButton({
+  onClick,
+  viewerMode = "conflict",
+}: {
+  onClick: () => void;
+  viewerMode?: ViewerMode;
+}) {
+  const isEconomy = viewerMode === "economy";
   return (
     <HoverHint
       placement="bottom"
       title="도움말"
-      detail="지도 조작, GDELT 핀, Intel 뉴스, 레이어 패널 사용법을 봅니다."
+      detail={
+        isEconomy
+          ? "경제·시장 모드: 제재·유가·해운·RSS 사용법"
+          : "지도 조작, GDELT 핀, Intel 뉴스, 레이어 패널 사용법을 봅니다."
+      }
     >
       <button
         type="button"

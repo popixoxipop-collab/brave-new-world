@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { NeptunAlertRegion, NeptunLiveThreat } from "@/lib/neptun";
 import { localizeNeptunAlertName, localizeNeptunThreatCopy } from "@/lib/neptunDisplay";
+import type { LabelLanguage } from "@/lib/layerPrefs";
 
 type ThreatCopy = {
   title: string;
@@ -13,7 +14,7 @@ type ThreatCopy = {
 export function useNeptunLocalizedCopy(
   threats: NeptunLiveThreat[],
   alerts: NeptunAlertRegion[],
-  translateKo: boolean,
+  lang: LabelLanguage,
 ) {
   const [threatCopy, setThreatCopy] = useState<Record<string, ThreatCopy>>({});
   const [alertNames, setAlertNames] = useState<Record<string, string>>({});
@@ -25,15 +26,15 @@ export function useNeptunLocalizedCopy(
     async function run() {
       const nextThreat: Record<string, ThreatCopy> = {};
       for (const threat of threats) {
-        nextThreat[threat.id] = await localizeNeptunThreatCopy(threat, translateKo);
+        nextThreat[threat.id] = await localizeNeptunThreatCopy(threat, lang);
       }
 
       const nextAlert: Record<string, string> = {};
       const nextOblast: Record<string, string> = {};
       for (const alert of alerts) {
-        nextAlert[alert.key] = await localizeNeptunAlertName(alert.name, translateKo);
+        nextAlert[alert.key] = await localizeNeptunAlertName(alert.name, lang);
         if (alert.oblast) {
-          nextOblast[alert.key] = await localizeNeptunAlertName(alert.oblast, translateKo);
+          nextOblast[alert.key] = await localizeNeptunAlertName(alert.oblast, lang);
         }
       }
 
@@ -48,7 +49,7 @@ export function useNeptunLocalizedCopy(
     return () => {
       cancelled = true;
     };
-  }, [alerts, threats, translateKo]);
+  }, [alerts, lang, threats]);
 
   return { threatCopy, alertNames, alertOblasts };
 }

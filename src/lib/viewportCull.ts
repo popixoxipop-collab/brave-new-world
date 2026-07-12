@@ -20,6 +20,25 @@ export function centerDistanceDeg(center: ViewPoint, view: ViewPoint): number {
   return Math.sqrt(latDist ** 2 + lngDist ** 2);
 }
 
+const EARTH_RADIUS_KM = 6371;
+
+/** Haversine — VIINA 정착지 라벨 뷰포트 반경 필터용 */
+export function haversineDistanceKm(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number,
+): number {
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return EARTH_RADIUS_KM * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 export function isCenterInView(center: ViewPoint, view: ViewPoint, radiusDeg: number): boolean {
   if (radiusDeg <= 0) return true;
   return centerDistanceDeg(center, view) <= radiusDeg;

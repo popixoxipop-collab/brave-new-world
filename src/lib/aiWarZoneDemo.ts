@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import type { ConflictEvent, ConflictZoneFeature, DisputeArea, GeoJsonGeometry } from "@/data/geoTypes";
+import { resolveDisputeCenter } from "@/lib/disputeCenter";
 import { disputeGeometryBbox, isCombatHazard } from "@/lib/disputeHatch";
 
 const ROOT = process.cwd();
@@ -120,15 +121,16 @@ function countWarHitsNear(center: { lat: number; lng: number }, points: GdeltPoi
 }
 
 function zoneFromDispute(dispute: DisputeArea, warPoints: GdeltPoint[]): AiWarZoneFeature | null {
+  const resolvedCenter = resolveDisputeCenter(dispute);
   let box =
     dispute.geometry != null ? disputeGeometryBbox(dispute.geometry) : null;
   if (!box) {
     const pad = 1.8;
     box = {
-      minLat: dispute.center.lat - pad,
-      maxLat: dispute.center.lat + pad,
-      minLng: dispute.center.lng - pad,
-      maxLng: dispute.center.lng + pad,
+      minLat: resolvedCenter.lat - pad,
+      maxLat: resolvedCenter.lat + pad,
+      minLng: resolvedCenter.lng - pad,
+      maxLng: resolvedCenter.lng + pad,
     };
   } else {
     box = padBbox(box, 0.12);
@@ -174,7 +176,7 @@ export function detectAiWarZonesDemo(): AiWarZoneFeature[] {
     if (isCombatHazard(dispute)) return true;
     if (dispute.tension === "high" || dispute.tension === "medium") return true;
     if (dispute.categories?.includes("①") || dispute.categories?.includes("③")) return true;
-    return countWarHitsNear(dispute.center, warPoints, 3.5) >= 3;
+    return countWarHitsNear(resolveDisputeCenter(dispute), warPoints, 3.5) >= 3;
   });
 
   const zones: AiWarZoneFeature[] = [];

@@ -51,14 +51,15 @@ function HatchSwatch({
   );
 }
 
-const LEGEND_GRADES: TensionGrade[] = ["combat", "gray", "high", "medium", "low"];
+/** 레이어 분리 후 표시 등급 — 전쟁(combat) · 외교(high) */
+const LEGEND_GRADES: TensionGrade[] = ["combat", "high"];
 
 export function DisputeZoneLegendContent() {
   return (
     <div className="space-y-2.5">
       <p className="text-[11px] leading-relaxed text-sky-100/50">
-        각 분쟁·긴장 구역의 사각 틀 안에만 등급별 빗금이 표시됩니다. 색상은 하단 뉴스 범례와
-        맞춥니다 — 빨강(전투) · 주황(외교) · 노랑(위기) · 청록(저긴장). 보라는 동맹 뉴스 핀 전용입니다.
+        전쟁구역(빨강)과 외교적 긴장구역(주황)을 각각 켤 수 있습니다. 사각 틀 안에만 빗금이
+        그려지며, 근접 줌에서는 세부 구역 세그먼트가 우선 표시됩니다.
       </p>
       <div className="grid gap-2 sm:grid-cols-2">
         {LEGEND_GRADES.map((grade) => {
@@ -66,8 +67,8 @@ export function DisputeZoneLegendContent() {
           return (
             <HatchSwatch
               key={grade}
-              label={spec.label}
-              detail={spec.pattern === "cross" ? "X" : spec.pattern === "slash" ? "/" : spec.pattern === "backslash" ? "\\" : "—"}
+              label={grade === "combat" ? "전쟁구역" : "외교적 긴장구역"}
+              detail={spec.pattern === "slash" ? "/" : "\\"}
               color={spec.hatch}
               style={spec.pattern}
             />
@@ -83,7 +84,7 @@ export function DisputeZoneLegend({ open, onClose }: DisputeZoneLegendProps) {
     <MapOverlayLegendPanel
       open={open}
       onClose={onClose}
-      title="영토 분쟁·긴장 지역"
+      title="전쟁·외교 긴장 구역"
       subtitle="마우스 올리기 · 클릭 → 상세"
       accent="orange"
     >

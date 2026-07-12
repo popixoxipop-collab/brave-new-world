@@ -2,20 +2,30 @@
  * RSS·GDELT 뉴스 스트림 빌드.
  * Telegram OSINT는 절대 포함하지 않음 — @see src/lib/licensing/telegramOsintPolicy.ts
  */
-import { ALL_NEWS_FEEDS, isFeedItemRelevant, type NewsFeedDef } from "@/lib/news/feedCatalog";
+import {
+  ALL_NEWS_FEEDS,
+  feedsForPackages,
+  isFeedItemRelevant,
+  type NewsFeedDef,
+} from "@/lib/news/feedCatalog";
 import { classifyMediaTier } from "@/lib/news/mediaTiers";
 import { fetchRssFeed } from "@/lib/news/rssParser";
 import type {
   HeroBreakingItem,
   HeroStatus,
   MediaTrustTier,
+  NewsFeedTopic,
   NewsStreamItem,
   NewsStreamPayload,
   NewsTheater,
 } from "@/lib/news/types";
+import type { ViewPackageId } from "@/lib/viewPackages";
 
 const URGENCY =
   /\b(breaking|urgent|just\s?in|live|attack|strike|missile|drone|explosion|war|invasion|ceasefire|nuclear|killed|dead|shelling|airstrike|bomb|blockade|escalat|retaliat|offensive|clash|troops|carrier|hormuz)\b/i;
+
+const ECON_URGENCY =
+  /\b(breaking|surge|plunge|crash|rally|cut|hike|sanction|embargo|blockade|default|bankrupt|strike|shutdown|record\s?high|record\s?low|selloff|soar|tumble)\b/i;
 
 const THEATER_URGENCY: Record<NewsTheater, number> = {
   "middle-east": 1.15,
@@ -72,7 +82,11 @@ function recencyScore(ageMinutes: number): number {
 function urgencyScore(item: NewsStreamItem, clusterSize: number): number {
   let score = recencyScore(parseAgeMinutes(item.pubDate));
   score *= THEATER_URGENCY[item.theater];
-  if (URGENCY.test(item.title)) score += 22;
+  if (item.feedTopic === "economy") {
+    if (ECON_URGENCY.test(item.title)) score += 22;
+  } else if (URGENCY.test(item.title)) {
+    score += 22;
+  }
   if (clusterSize >= 3) score += 18;
   else if (clusterSize >= 2) score += 10;
   if (item.trustTier === 1) score += 6;
@@ -97,13 +111,20 @@ function resolveHeroStatus(
   return "breaking";
 }
 
+function isHeroEligible(item: NewsStreamItem): boolean {
+  if (item.feedTopic === "economy") {
+    return ECON_URGENCY.test(item.title) || item.trustTier <= 2;
+  }
+  return URGENCY.test(item.title) || item.trustTier === 3;
+}
+
 function pickHero(items: NewsStreamItem[]): HeroBreakingItem | null {
   const eligible = items.filter(
     (item) =>
       isValidPubDate(item.pubDate) &&
       !SKIP_URL.test(item.link) &&
       !SKIP_TITLE.test(item.title.trim()) &&
-      (URGENCY.test(item.title) || item.trustTier === 3),
+      isHeroEligible(item),
   );
   if (eligible.length === 0) return null;
 
@@ -169,8 +190,15 @@ function sortByRecency(items: NewsStreamItem[]): NewsStreamItem[] {
   });
 }
 
-export async function buildNewsStream(): Promise<NewsStreamPayload> {
-  const results = await mapPool(ALL_NEWS_FEEDS, fetchFeedItems, 10);
+export type BuildNewsStreamOptions = {
+  packages?: ViewPackageId[];
+};
+
+export async function buildNewsStream(
+  options: BuildNewsStreamOptions = {},
+): Promise<NewsStreamPayload> {
+  const feeds = options.packages ? feedsForPackages(options.packages) : ALL_NEWS_FEEDS;
+  const results = await mapPool(feeds, fetchFeedItems, 10);
   const merged = results.flat();
 
   const seen = new Set<string>();
@@ -201,6 +229,7 @@ export async function buildNewsStream(): Promise<NewsStreamPayload> {
       tier1: deduped.filter((i) => i.trustTier === 1).length,
       tier2: deduped.filter((i) => i.trustTier === 2).length,
       tier3: deduped.filter((i) => i.trustTier === 3).length,
+      economy: deduped.filter((i) => i.feedTopic === "economy").length,
       theaters,
     },
   };
@@ -223,6 +252,7 @@ async function fetchFeedItems(feed: NewsFeedDef): Promise<NewsStreamItem[]> {
       const publisher = item.publisher || item.title.match(/- ([^-]+)$/)?.[1];
       const source = publisher || feed.name;
       const trustTier = classifyMediaTier(source, item.link);
+      const feedTopic: NewsFeedTopic = feed.topic ?? "defense";
       return {
         id: stableId(item.title, item.link, feed.theater),
         title: item.title,
@@ -232,6 +262,7 @@ async function fetchFeedItems(feed: NewsFeedDef): Promise<NewsStreamItem[]> {
         pubDate: item.pubDate!,
         theater: feed.theater,
         trustTier,
+        feedTopic,
         category: item.category,
         imageUrl: item.imageUrl,
         summary: item.summary,

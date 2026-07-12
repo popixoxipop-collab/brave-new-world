@@ -12,8 +12,8 @@ export const HEATMAP_UPDATE_CADENCE_MS = 420;
 export const LABEL_UPDATE_CADENCE_MS = 340;
 export const PATH_UPDATE_CADENCE_MS = 380;
 
-/** NEPTUN WebSocket → React state publish 간격 */
-export const NEPTUN_PUBLISH_THROTTLE_MS = DATA_UPDATE_THROTTLE_MS;
+/** NEPTUN WebSocket → React state publish 간격 (카메라 idle 시) */
+export const NEPTUN_PUBLISH_THROTTLE_MS = 220;
 
 /** MapLibre zoom — 이 값 초과에서만 정착지·세부 HTML 마커 허용 */
 export const SETTLEMENT_DETAIL_MIN_MAP_ZOOM = 6;

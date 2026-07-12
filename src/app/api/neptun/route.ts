@@ -1,12 +1,15 @@
 import fs from "fs";
 import { NextResponse } from "next/server";
 import { isApiStubMode } from "@/lib/apiStubMode";
-import { resolveNeptunSeedPath, streamPublicJsonFile } from "@/lib/streamPublicJson";
+import { resolveNeptunSeedPath } from "@/lib/streamPublicJson";
 import { getServerDataProfile, isNeptunEnabled } from "@/lib/serverEnv";
 import {
   NEPTUN_API_BASE,
+  isInNeptunOpsBox,
+  rebaseNeptunStubPayload,
   type NeptunAlerts,
   type NeptunPayload,
+  type NeptunThreat,
   type NeptunThreatsResponse,
 } from "@/lib/neptun";
 
@@ -44,14 +47,19 @@ function readSeedPayload(): NeptunPayload {
   }
 }
 
-function streamSeedResponse(extraHeaders?: Record<string, string>): NextResponse | null {
-  const seedPath = resolveNeptunSeedPath(getServerDataProfile());
-  if (!seedPath) return null;
-  return streamPublicJsonFile(seedPath, {
-    "X-Neptun-Stub": "true",
-    "X-Neptun-Live": "false",
-    ...extraHeaders,
-  });
+function stubSeedResponse(extraHeaders?: Record<string, string>): NextResponse {
+  const seed = rebaseNeptunStubPayload(readSeedPayload());
+  return NextResponse.json(
+    { ...seed, live: false, stub: true },
+    {
+      headers: {
+        "X-Neptun-Stub": "true",
+        "X-Neptun-Live": "false",
+        "Cache-Control": "no-store",
+        ...extraHeaders,
+      },
+    },
+  );
 }
 
 async function fetchNeptunLive(): Promise<NeptunPayload> {
@@ -86,24 +94,19 @@ async function fetchNeptunLive(): Promise<NeptunPayload> {
     fetchedAt: new Date().toISOString(),
     serverTime: threatsData.serverTime,
     live: true,
-    threats: Array.isArray(threatsData.threats) ? threatsData.threats : [],
+    threats: (Array.isArray(threatsData.threats) ? threatsData.threats : []).filter(
+      (threat: NeptunThreat) =>
+        Number.isFinite(threat.lat) &&
+        Number.isFinite(threat.lon) &&
+        isInNeptunOpsBox(threat.lat, threat.lon),
+    ),
     alerts,
   };
 }
 
 export async function GET() {
-  if (!isNeptunEnabled()) {
-    const streamed = streamSeedResponse();
-    if (streamed) return streamed;
-    const seed = readSeedPayload();
-    return NextResponse.json({ ...seed, live: false, stub: true });
-  }
-
-  if (isApiStubMode()) {
-    const streamed = streamSeedResponse();
-    if (streamed) return streamed;
-    const seed = readSeedPayload();
-    return NextResponse.json({ ...seed, live: false, stub: true });
+  if (!isNeptunEnabled() || isApiStubMode()) {
+    return stubSeedResponse();
   }
 
   const now = Date.now();
@@ -122,16 +125,6 @@ export async function GET() {
     });
   } catch (err) {
     console.error("NEPTUN fetch error:", err);
-    const streamed = streamSeedResponse({ "X-Neptun-Fallback": "true" });
-    if (streamed) return streamed;
-    const fallback = readSeedPayload();
-    return NextResponse.json(
-      {
-        ...fallback,
-        live: false,
-        error: err instanceof Error ? err.message : "fetch failed",
-      },
-      { status: 200 },
-    );
+    return stubSeedResponse({ "X-Neptun-Fallback": "true" });
   }
 }

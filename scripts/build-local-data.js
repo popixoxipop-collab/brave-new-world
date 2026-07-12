@@ -253,6 +253,30 @@ function pointInExpandedBbox(event, bbox, margin = 1) {
   );
 }
 
+/** Natural Earth LABEL_X/Y가 다른 국가(예: 쿠릴→러시아) 좌표를 가리키는 경우 거부 */
+function pickDisputeCenter(labelLat, labelLng, fallbackCenter, bbox) {
+  if (
+    labelLat == null ||
+    labelLng == null ||
+    !Number.isFinite(labelLat) ||
+    !Number.isFinite(labelLng)
+  ) {
+    return fallbackCenter;
+  }
+
+  const label = { lat: labelLat, lng: labelLng };
+  // 지오메트리 bbox에서 크게 벗어나면(대략 5°+) LABEL 오표기로 보고 centroid 사용
+  const marginDeg = 5;
+  if (bbox && !pointInExpandedBbox(label, bbox, marginDeg)) {
+    return fallbackCenter;
+  }
+
+  return {
+    lat: roundCoord(labelLat, 3),
+    lng: roundCoord(labelLng, 3),
+  };
+}
+
 async function readFeatures(filePath) {
   if (!fs.existsSync(filePath)) {
     throw new Error(`Natural Earth 파일을 찾을 수 없음: ${filePath}`);
@@ -547,8 +571,7 @@ function disputeFromFeature(feature, index, source, events) {
 
   const bbox = geometryBbox(geometry);
   const fallbackCenter = bbox ? bboxCenter(bbox) : { lat: 0, lng: 0 };
-  const lat = meta.labelLat ?? fallbackCenter.lat;
-  const lng = meta.labelLng ?? fallbackCenter.lng;
+  const center = pickDisputeCenter(meta.labelLat, meta.labelLng, fallbackCenter, bbox);
   const matchedEventCount = bbox
     ? events.filter((event) => pointInExpandedBbox(event, bbox)).length
     : 0;
@@ -566,10 +589,7 @@ function disputeFromFeature(feature, index, source, events) {
     note: meta.note,
     source,
     scalerank: meta.scalerank,
-    center: {
-      lat: roundCoord(lat, 3),
-      lng: roundCoord(lng, 3),
-    },
+    center,
     categories: disputeCategories(props, source),
     tension: tensionFromCount(matchedEventCount),
     matchedEventCount,

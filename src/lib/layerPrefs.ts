@@ -1,8 +1,10 @@
 export type LabelLanguage = "en" | "ko";
 
 export type LayerPrefs = {
-  /** Natural Earth + 동아시아 회색지대/긴장 면 */
-  showDisputes: boolean;
+  /** 전쟁구역 — 빨간 사각+빗금 (combat) */
+  showWarZones: boolean;
+  /** 외교적 긴장구역 — 주황 사각+빗금 (high) */
+  showDiplomaticTension: boolean;
   /** 도시 이름 강조 (구 showRoadCityGlow). 도로 레이어는 제거됨 */
   showCityLabels: boolean;
   showRailGlow: boolean;
@@ -14,6 +16,8 @@ export type LayerPrefs = {
   showLngTerminals: boolean;
   showAirports: boolean;
   showPorts: boolean;
+  /** 해상 초크포인트 · 핵심 물류 거점(터널·교량) */
+  showLogisticsRisk: boolean;
   showMilitaryBases: boolean;
   showResources: boolean;
   showNuclearSites: boolean;
@@ -43,19 +47,20 @@ export type LayerPrefs = {
   showTelegramOsint: boolean;
   /** 이스라엘 Tzeva Adom (Pikud HaOref) 실시간 경보 */
   showTzevaAdom: boolean;
-  /** 우크라이나 NEPTUN 공중 위협·경보 (neptun.in.ua) */
+  /** NEPTUN — 우크라이나 드론·미사일·탄도미사일 실시간 궤적 (neptun.in.ua) */
   showNeptun: boolean;
-  /** 사라진 드론·미사일의 지나간 이동 경로 (WebSocket delta 보존) */
+  /** 사라진 드론·미사일의 지나간 이동 경로 */
   showNeptunPreviousTrails: boolean;
   labelLanguage: LabelLanguage;
 };
 
-/** v19: 베이스맵 단일화 — mapStyle pref 제거 */
-export const LAYER_PREFS_KEY = "geowatch-layers-v19";
+/** v21: 분쟁 → 전쟁구역 / 외교적 긴장 분리 */
+export const LAYER_PREFS_KEY = "geowatch-layers-v21";
 
 /** 토글 가능 레이어는 전부 기본 OFF — 사용자가 켤 때만 로드·렌더 */
 export const DEFAULT_LAYER_PREFS: LayerPrefs = {
-  showDisputes: false,
+  showWarZones: false,
+  showDiplomaticTension: false,
   showCityLabels: false,
   showRailGlow: false,
   showAis: false,
@@ -66,6 +71,7 @@ export const DEFAULT_LAYER_PREFS: LayerPrefs = {
   showLngTerminals: false,
   showAirports: false,
   showPorts: false,
+  showLogisticsRisk: false,
   showMilitaryBases: false,
   showResources: false,
   showNuclearSites: false,
@@ -84,19 +90,21 @@ export const DEFAULT_LAYER_PREFS: LayerPrefs = {
   showCyberIncidents: false,
   showElectionEvents: false,
   showFirmsFires: false,
-  showUkraineControl: false,
+  showUkraineControl: true,
   showGdeltWar: false,
   showGdeltDiplomatic: false,
   showGdeltAlliance: false,
   showGdeltProtests: false,
   showTelegramOsint: false,
   showTzevaAdom: false,
-  showNeptun: false,
-  showNeptunPreviousTrails: false,
+  showNeptun: true,
+  showNeptunPreviousTrails: true,
   labelLanguage: "ko",
 };
 
 const LEGACY_LAYER_KEYS = [
+  "geowatch-layers-v20",
+  "geowatch-layers-v19",
   "geowatch-layers-v18",
   "geowatch-layers-v17",
   "geowatch-layers-v16",
@@ -122,7 +130,14 @@ type SavedLayerPrefs = Partial<LayerPrefs> & {
   showRoadCityGlow?: boolean;
   showCoastlines?: boolean;
   showCountryBorders?: boolean;
+  /** v20 이전 통합 분쟁 레이어 */
+  showDisputes?: boolean;
 };
+
+/** 전쟁·외교 분쟁 레이어 중 하나라도 ON */
+export function anyDisputeOverlay(prefs: Pick<LayerPrefs, "showWarZones" | "showDiplomaticTension">) {
+  return prefs.showWarZones || prefs.showDiplomaticTension;
+}
 
 /** v19 이전 저장값 — 도시명 언어만 이전, 레이어는 전부 OFF */
 function migrateLegacyLayerPrefs(parsed: SavedLayerPrefs): LayerPrefs {
@@ -133,13 +148,19 @@ function migrateLegacyLayerPrefs(parsed: SavedLayerPrefs): LayerPrefs {
 }
 
 function mergeSavedPrefs(parsed: SavedLayerPrefs): LayerPrefs {
-  const { showRoadCityGlow, ...rest } = parsed;
+  const { showRoadCityGlow, showDisputes, ...rest } = parsed;
   delete rest.showCoastlines;
   delete rest.showCountryBorders;
+
+  const warExplicit = typeof rest.showWarZones === "boolean";
+  const diploExplicit = typeof rest.showDiplomaticTension === "boolean";
+  const legacyDisputes = typeof showDisputes === "boolean" ? showDisputes : false;
 
   return {
     ...DEFAULT_LAYER_PREFS,
     ...rest,
+    showWarZones: warExplicit ? Boolean(rest.showWarZones) : legacyDisputes,
+    showDiplomaticTension: diploExplicit ? Boolean(rest.showDiplomaticTension) : legacyDisputes,
     showCityLabels:
       typeof rest.showCityLabels === "boolean"
         ? rest.showCityLabels
@@ -150,18 +171,45 @@ function mergeSavedPrefs(parsed: SavedLayerPrefs): LayerPrefs {
   };
 }
 
+function migrateV19ToV20(parsed: SavedLayerPrefs): LayerPrefs {
+  const merged = mergeSavedPrefs(parsed);
+  if (merged.showUkraineControl) {
+    return {
+      ...merged,
+      showNeptun: true,
+      showNeptunPreviousTrails: true,
+    };
+  }
+  return merged;
+}
+
+/** 로컬 dev: 새로고침마다 DEFAULT_LAYER_PREFS — 프로덕션만 localStorage 유지 */
+function shouldPersistLayerPrefs(): boolean {
+  return process.env.NODE_ENV === "production";
+}
+
 export function loadLayerPrefs(): LayerPrefs {
   if (typeof window === "undefined") return DEFAULT_LAYER_PREFS;
+  if (!shouldPersistLayerPrefs()) return DEFAULT_LAYER_PREFS;
   try {
-    const v18Raw = localStorage.getItem(LAYER_PREFS_KEY);
-    if (v18Raw) {
-      return mergeSavedPrefs(JSON.parse(v18Raw) as SavedLayerPrefs);
+    const v21Raw = localStorage.getItem(LAYER_PREFS_KEY);
+    if (v21Raw) {
+      return mergeSavedPrefs(JSON.parse(v21Raw) as SavedLayerPrefs);
+    }
+
+    const v19Raw = localStorage.getItem("geowatch-layers-v19");
+    if (v19Raw) {
+      const migrated = migrateV19ToV20(JSON.parse(v19Raw) as SavedLayerPrefs);
+      saveLayerPrefs(migrated);
+      return migrated;
     }
 
     for (const legacyKey of LEGACY_LAYER_KEYS) {
       const legacyRaw = localStorage.getItem(legacyKey);
       if (!legacyRaw) continue;
-      return migrateLegacyLayerPrefs(JSON.parse(legacyRaw) as SavedLayerPrefs);
+      const migrated = mergeSavedPrefs(JSON.parse(legacyRaw) as SavedLayerPrefs);
+      saveLayerPrefs(migrated);
+      return migrated;
     }
 
     return DEFAULT_LAYER_PREFS;
@@ -172,5 +220,6 @@ export function loadLayerPrefs(): LayerPrefs {
 
 export function saveLayerPrefs(prefs: LayerPrefs) {
   if (typeof window === "undefined") return;
+  if (!shouldPersistLayerPrefs()) return;
   localStorage.setItem(LAYER_PREFS_KEY, JSON.stringify(prefs));
 }

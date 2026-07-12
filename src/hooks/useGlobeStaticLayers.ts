@@ -9,7 +9,7 @@ import type {
   StaticPoint,
   TransportPath,
 } from "@/data/geoTypes";
-import { dataPath, getDataProfile } from "@/lib/dataProfile";
+import { dataPath } from "@/lib/dataProfile";
 import { expandStaticPoints, expandTransportPaths } from "@/lib/compactData";
 import type { GlobeLodTier } from "@/lib/globeLod";
 import {
@@ -24,6 +24,7 @@ import {
   SUBMARINE_CABLE_MAX_BY_TIER,
 } from "@/lib/staticLayerLod";
 import { filterStaticPointsForView } from "@/lib/staticGlobe";
+import { LOGISTICS_RISK_POINTS } from "@/data/logisticsRiskPoints";
 
 type ViewState = { lat: number; lng: number; altitude: number };
 
@@ -88,14 +89,6 @@ async function fetchJsonArray(relativePath: string) {
   return response.json();
 }
 
-async function fetchJsonArrayFromCandidates(paths: string[]) {
-  for (const path of paths) {
-    const response = await fetch(path, { cache: "no-store" });
-    if (response.ok) return response.json();
-  }
-  throw new Error(`No static layer found: ${paths.join(", ")}`);
-}
-
 async function fetchApiJson(apiPath: string): Promise<ApiPointsPayload> {
   const response = await fetch(apiPath, { cache: "no-store" });
   if (!response.ok) throw new Error(`${apiPath}: ${response.status}`);
@@ -141,6 +134,7 @@ export function useGlobeStaticLayers(options: {
   showLngTerminals: boolean;
   showAirports: boolean;
   showPorts: boolean;
+  showLogisticsRisk?: boolean;
   showMilitaryBases: boolean;
   showResources: boolean;
   showCableLandings: boolean;
@@ -155,16 +149,9 @@ export function useGlobeStaticLayers(options: {
   showIntelHotspots?: boolean;
   showConflictZones?: boolean;
   showArmsEmbargo?: boolean;
-  coastlineMaxByTier: Record<GlobeLodTier, number>;
-  countryBorderMaxByTier: Record<GlobeLodTier, number>;
-  uncappedTiers: Set<GlobeLodTier>;
-  /** 벡터 베이스맵: 해안·국경 전체를 뷰포트 컷 없이 한 번에 표시 */
-  vectorBaseMap?: boolean;
   /** Bump after live sync so cached layers re-fetch from disk/API. */
   reloadToken?: number;
 }) {
-  const [coastlinePaths, setCoastlinePaths] = useState<TransportPath[]>([]);
-  const [countryBorderPaths, setCountryBorderPaths] = useState<TransportPath[]>([]);
   const [disputeBoundaryPaths, setDisputeBoundaryPaths] = useState<TransportPath[]>([]);
   const [shippingPaths, setShippingPaths] = useState<TransportPath[]>([]);
   const [cablePaths, setCablePaths] = useState<TransportPath[]>([]);
@@ -265,42 +252,6 @@ export function useGlobeStaticLayers(options: {
     },
     [],
   );
-
-  useEffect(() => {
-    if (!options.vectorBaseMap) return;
-    if (loadedRef.current.coastlines) return;
-    const profile = getDataProfile();
-    const candidates =
-      profile === "lite"
-        ? ["/data/full/coastlines.json", dataPath("coastlines.json")]
-        : [dataPath("coastlines.json"), "/data/full/coastlines.json"];
-
-    fetchJsonArrayFromCandidates(candidates)
-      .then((raw) => {
-        setCoastlinePaths(expandPathsFromJson(raw as unknown[]));
-        loadedRef.current.coastlines = true;
-      })
-      .catch(() => {
-        // optional layer
-      });
-  }, [options.vectorBaseMap, reloadToken]);
-
-  useEffect(() => {
-    if (loadedRef.current.borders) return;
-    const candidates = [
-      "/data/lite/country-borders.json",
-      dataPath("country-borders.json"),
-      "/data/full/country-borders.json",
-    ];
-    fetchJsonArrayFromCandidates(candidates)
-      .then((raw) => {
-        setCountryBorderPaths(expandPathsFromJson(raw as unknown[]));
-        loadedRef.current.borders = true;
-      })
-      .catch(() => {
-        // optional layer
-      });
-  }, [reloadToken]);
 
   useEffect(() => {
     if (options.showDisputeBoundaries) {
@@ -470,25 +421,6 @@ export function useGlobeStaticLayers(options: {
     };
   }, [options.showDisputeBoundaries, reloadToken]);
 
-  const visibleCoastlines = useMemo(() => {
-    if (options.vectorBaseMap) return coastlinePaths;
-    const maxCount = options.uncappedTiers.has(options.globeTier)
-      ? coastlinePaths.length
-      : options.coastlineMaxByTier[options.globeTier];
-    return filterPaths(coastlinePaths, options.viewState, options.radiusDeg, maxCount);
-  }, [coastlinePaths, options]);
-
-  const visibleCountryBorders = useMemo(() => {
-    if (options.vectorBaseMap) return countryBorderPaths;
-    const maxCount = options.countryBorderMaxByTier[options.globeTier];
-    return filterPaths(
-      countryBorderPaths,
-      options.viewState,
-      options.radiusDeg,
-      maxCount,
-    );
-  }, [countryBorderPaths, options]);
-
   const visibleDisputeBoundariesFiltered = useMemo(() => {
     if (!options.showDisputeBoundaries) return [];
     const maxByTier: Record<GlobeLodTier, number> = {
@@ -548,6 +480,7 @@ export function useGlobeStaticLayers(options: {
     if (options.showSpaceLaunches) merged.push(...spaceLaunches);
     if (options.showIntelHotspots) merged.push(...intelHotspots);
     if (options.showLngTerminals) merged.push(...lngTerminals);
+    if (options.showLogisticsRisk) merged.push(...LOGISTICS_RISK_POINTS);
     return filterStaticPointsForView(
       merged,
       options.viewState,
@@ -624,8 +557,6 @@ export function useGlobeStaticLayers(options: {
   }, [armsEmbargoZones, options]);
 
   return {
-    visibleCoastlines,
-    visibleCountryBorders,
     visibleDisputeBoundaries: visibleDisputeBoundariesFiltered,
     visibleShipping,
     visibleCables,
@@ -637,8 +568,6 @@ export function useGlobeStaticLayers(options: {
     visibleArmsEmbargoZones,
     disputeOverviews,
     counts: {
-      coastlines: coastlinePaths.length,
-      countryBorders: countryBorderPaths.length,
       disputeBoundaries: disputeBoundaryPaths.length,
       shipping: shippingPaths.length,
       cables: cablePaths.length,
@@ -660,6 +589,7 @@ export function useGlobeStaticLayers(options: {
       sanctionsEntities: sanctionsEntities.length,
       spaceLaunches: spaceLaunches.length,
       intelHotspots: intelHotspots.length,
+      logisticsRisk: LOGISTICS_RISK_POINTS.length,
       conflictZones: conflictZones.length,
       armsEmbargoZones: armsEmbargoZones.length,
     },

@@ -8,9 +8,17 @@ type ExplorationTabsProps = {
   presets: ExplorationPreset[];
   activeId: string | null;
   onSelect: (preset: ExplorationPreset) => void;
+  label?: string;
+  hint?: string;
 };
 
-export function ExplorationTabs({ presets, activeId, onSelect }: ExplorationTabsProps) {
+export function ExplorationTabs({
+  presets,
+  activeId,
+  onSelect,
+  label = "주요전선",
+  hint = "대만·한반도·우크라이나·중동으로 이동하며 Intel 뉴스 시트가 해당 전장으로 열립니다.",
+}: ExplorationTabsProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -37,23 +45,23 @@ export function ExplorationTabs({ presets, activeId, onSelect }: ExplorationTabs
       onMouseLeave={() => setOpen(false)}
     >
       <div className="relative flex flex-col items-end">
-        <HoverHint
-          placement="bottom"
-          title="주요전선"
-          detail="대만·한반도·우크라이나·중동으로 이동하며 Intel 뉴스 시트가 해당 전장으로 열립니다."
-        >
+        <HoverHint placement="bottom" title={label} detail={hint}>
           <button
             type="button"
             aria-expanded={open}
             aria-haspopup="listbox"
             onClick={() => setOpen((value) => !value)}
-            className={`flex items-center gap-2 border border-sky-300/25 bg-[#0a1830]/88 px-3 py-2 text-xs text-sky-100/90 shadow-lg backdrop-blur-md transition-all duration-200 ${
+            className={`flex items-center gap-2 border px-3 py-2 text-xs shadow-lg backdrop-blur-md transition-all duration-200 ${
+              label === "주요 허브"
+                ? "border-emerald-300/25 bg-[#071018]/88 text-emerald-100/90 hover:border-emerald-200/35"
+                : "border-sky-300/25 bg-[#0a1830]/88 text-sky-100/90 hover:border-sky-200/35"
+            } ${
               open
-                ? "rounded-t-full rounded-b-md border-b-sky-300/10"
-                : "rounded-full hover:border-sky-200/35"
+                ? "rounded-t-full rounded-b-md border-b-emerald-300/10"
+                : "rounded-full"
             }`}
           >
-            <span className="font-medium tracking-tight">주요전선</span>
+            <span className="font-medium tracking-tight">{label}</span>
             <ChevronDown
               className={`text-sky-200/50 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
             />

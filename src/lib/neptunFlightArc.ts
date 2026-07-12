@@ -128,7 +128,8 @@ export function buildElevatedNeptunPath(
 
   const profile = getFlightProfile(threatType);
   const maxPoints = pointBudget ?? profile.maxPoints;
-  const perSegment = Math.max(2, Math.ceil(profile.subdivisions / groundPoints.length));
+  const subdivCap = mode === "flat" ? 3 : mode === "low" ? 4 : profile.subdivisions;
+  const perSegment = Math.max(2, Math.ceil(subdivCap / groundPoints.length));
   const dense = densifyGroundPath(groundPoints, perSegment, maxPoints);
 
   const cumDist: number[] = [0];

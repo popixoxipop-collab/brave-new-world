@@ -1,9 +1,12 @@
 "use client";
 
+import { useMemo } from "react";
 import type { ScoredEvent } from "@/data/eventTiers";
 import { TIER_LABELS } from "@/data/eventTiers";
 import { LocationPinIcon } from "@/components/LocationPinIcon";
 import type { NavSelection } from "@/data/navRegions";
+import { useLocale } from "@/contexts/LocaleContext";
+import { localizedDisplayText, useLocalizedTextMap } from "@/hooks/useLocalizedTextMap";
 
 type RegionNewsPanelProps = {
   selection: NavSelection;
@@ -18,16 +21,29 @@ export function RegionNewsPanel({
   onSelectEvent,
   onClose,
 }: RegionNewsPanelProps) {
+  const { lang, t } = useLocale();
   const title = selection.parentLabel
     ? `${selection.parentLabel} · ${selection.label}`
     : selection.label;
+
+  const textEntries = useMemo(() => {
+    const entries: Array<{ key: string; text: string }> = [];
+    for (const event of events) {
+      entries.push({ key: `cat:${event.id}`, text: event.category });
+      if (event.country) entries.push({ key: `co:${event.id}`, text: event.country });
+      if (event.actor1Country) entries.push({ key: `a1:${event.id}`, text: event.actor1Country });
+      if (event.actor2Country) entries.push({ key: `a2:${event.id}`, text: event.actor2Country });
+    }
+    return entries;
+  }, [events]);
+  const localizedMap = useLocalizedTextMap(textEntries, lang);
 
   return (
     <div className="flex h-full flex-col gap-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.24em] text-amber-200/70">
-            {selection.groupId === "conflict-zones" ? "충돌지역" : "대륙간 갈등과 협력"}
+            {selection.groupId === "conflict-zones" ? t("conflictZone") : t("intercontinental")}
           </p>
           <h2 className="mt-2 text-lg font-semibold text-slate-50">{title}</h2>
           <p className="mt-1 text-xs leading-5 text-slate-400">{selection.description}</p>
@@ -37,15 +53,16 @@ export function RegionNewsPanel({
           onClick={onClose}
           className="rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-400 hover:text-slate-100"
         >
-          닫기
+          {t("close")}
         </button>
       </div>
 
       <div className="rounded-xl border border-slate-800 bg-black/25 px-3 py-2 text-xs text-slate-400">
-        관련 뉴스 <span className="text-slate-200">{events.length.toLocaleString()}건</span>
+        {t("relatedNews")}{" "}
+        <span className="text-slate-200">{events.length.toLocaleString()}</span>
         {selection.actorCountries?.length ? (
           <span className="ml-2 text-slate-500">
-            · 행위자 {selection.actorCountries.slice(0, 4).join(", ")}
+            · {selection.actorCountries.slice(0, 4).join(", ")}
             {selection.actorCountries.length > 4 ? "…" : ""}
           </span>
         ) : null}
@@ -53,9 +70,7 @@ export function RegionNewsPanel({
 
       <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-slate-800 bg-black/20">
         {events.length === 0 ? (
-          <p className="p-4 text-sm leading-6 text-slate-500">
-            이 지역·동맹 범위에 해당하는 GDELT 이벤트가 없습니다.
-          </p>
+          <p className="p-4 text-sm leading-6 text-slate-500">{t("noGdeltEvents")}</p>
         ) : (
           <ul className="divide-y divide-slate-800/80">
             {events.map((event) => (
@@ -76,11 +91,13 @@ export function RegionNewsPanel({
                       )}
                     </span>
                     <span className="mt-1 block text-xs leading-5 text-slate-400">
-                      {event.category}
+                      {localizedDisplayText(localizedMap, `cat:${event.id}`, event.category)}
                       {event.actor1Country || event.actor2Country
-                        ? ` · ${event.actor1Country || "?"} ↔ ${event.actor2Country || "?"}`
+                        ? ` · ${localizedDisplayText(localizedMap, `a1:${event.id}`, event.actor1Country || "?")} ↔ ${localizedDisplayText(localizedMap, `a2:${event.id}`, event.actor2Country || "?")}`
                         : ""}
-                      {event.country ? ` · ${event.country}` : ""}
+                      {event.country
+                        ? ` · ${localizedDisplayText(localizedMap, `co:${event.id}`, event.country)}`
+                        : ""}
                     </span>
                     {event.sourceUrl && (
                       <span className="mt-1 block truncate text-[10px] text-slate-600">

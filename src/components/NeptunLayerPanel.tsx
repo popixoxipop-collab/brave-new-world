@@ -11,6 +11,7 @@ import {
   type NeptunAlerts,
   type NeptunLiveThreat,
 } from "@/lib/neptun";
+import type { LabelLanguage } from "@/lib/layerPrefs";
 
 type NeptunLayerPanelProps = {
   threats: NeptunLiveThreat[];
@@ -19,7 +20,7 @@ type NeptunLayerPanelProps = {
   liveStatus: NeptunStreamStatus;
   serverTime?: string | null;
   error?: string | null;
-  translateKo: boolean;
+  lang: LabelLanguage;
   viewportHint?: string | null;
   onSelectThreat: (threat: NeptunLiveThreat) => void;
 };
@@ -46,12 +47,12 @@ export function NeptunLayerPanel({
   liveStatus,
   serverTime,
   error,
-  translateKo,
+  lang,
   viewportHint,
   onSelectThreat,
 }: NeptunLayerPanelProps) {
   const alertItems = [...alerts.oblasts, ...alerts.raions];
-  const { threatCopy, alertNames, alertOblasts } = useNeptunLocalizedCopy(threats, alertItems, translateKo);
+  const { threatCopy, alertNames, alertOblasts } = useNeptunLocalizedCopy(threats, alertItems, lang);
 
   return (
     <div className="rounded-xl border border-orange-300/20 bg-orange-950/15 p-3">
@@ -120,7 +121,7 @@ export function NeptunLayerPanel({
             {threats.map((threat) => {
               const meta = getNeptunTypeMeta(threat.type);
               const copy = threatCopy[threat.id];
-              const typeLabel = neptunTypeLabel(threat.type);
+              const typeLabel = neptunTypeLabel(threat.type, lang);
               return (
                 <li key={threat.id}>
                   <button
@@ -138,7 +139,7 @@ export function NeptunLayerPanel({
                         {threat.count && threat.count > 1 ? ` ×${threat.count}` : ""}
                       </span>
                       <span className="shrink-0 text-[10px] text-slate-400">
-                        {neptunConfidenceLabel(threat.confidenceLevel)}
+                        {neptunConfidenceLabel(threat.confidenceLevel, lang)}
                       </span>
                     </span>
                     {copy?.title ? (

@@ -1,7 +1,7 @@
 import type { NeptunConfidence, NeptunThreat, NeptunThreatType } from "@/lib/neptun";
-import { translateTextToKorean } from "@/lib/koreanTranslate";
+import { translateText } from "@/lib/koreanTranslate";
+import type { LabelLanguage } from "@/lib/layerPrefs";
 
-/** 지도·메뉴용 한글 위협 유형 (영문 레퍼런스 제거) */
 export const NEPTUN_TYPE_LABEL_KO: Record<NeptunThreatType, string> = {
   uav: "드론 (샤헤드)",
   recon: "정찰 드론",
@@ -12,53 +12,66 @@ export const NEPTUN_TYPE_LABEL_KO: Record<NeptunThreatType, string> = {
   unknown: "공중 위협",
 };
 
+export const NEPTUN_TYPE_LABEL_EN: Record<NeptunThreatType, string> = {
+  uav: "UAV (Shahed)",
+  recon: "Recon drone",
+  missile: "Cruise missile",
+  ballistic: "Ballistic missile",
+  kab: "Guided bomb",
+  mig31k: "Fighter-launched missile",
+  unknown: "Air threat",
+};
+
 export const NEPTUN_CONFIDENCE_LABEL_KO: Record<NeptunConfidence, string> = {
   low: "낮음",
   medium: "보통",
   high: "높음",
 };
 
-export function neptunTypeLabel(type: string): string {
-  return NEPTUN_TYPE_LABEL_KO[type as NeptunThreatType] ?? NEPTUN_TYPE_LABEL_KO.unknown;
+export const NEPTUN_CONFIDENCE_LABEL_EN: Record<NeptunConfidence, string> = {
+  low: "Low",
+  medium: "Medium",
+  high: "High",
+};
+
+export function neptunTypeLabel(type: string, lang: LabelLanguage = "ko"): string {
+  const table = lang === "en" ? NEPTUN_TYPE_LABEL_EN : NEPTUN_TYPE_LABEL_KO;
+  return table[type as NeptunThreatType] ?? table.unknown;
 }
 
-export function neptunConfidenceLabel(level: NeptunConfidence): string {
-  return NEPTUN_CONFIDENCE_LABEL_KO[level] ?? level;
+export function neptunConfidenceLabel(level: NeptunConfidence, lang: LabelLanguage = "ko"): string {
+  const table = lang === "en" ? NEPTUN_CONFIDENCE_LABEL_EN : NEPTUN_CONFIDENCE_LABEL_KO;
+  return table[level] ?? level;
 }
 
 export async function localizeNeptunThreatCopy(
   threat: Pick<NeptunThreat, "title" | "region" | "district" | "locality" | "explanationShort">,
-  enabled: boolean,
+  lang: LabelLanguage,
 ): Promise<{
   title: string;
   location: string;
   explanation: string | null;
 }> {
   const location = [threat.locality, threat.district, threat.region].filter(Boolean).join(" · ");
-  if (!enabled) {
-    return {
-      title: threat.title || neptunTypeLabel("unknown"),
-      location,
-      explanation: threat.explanationShort ?? null,
-    };
-  }
 
   const [title, loc, explanation] = await Promise.all([
-    threat.title ? translateTextToKorean(threat.title) : Promise.resolve(""),
-    location ? translateTextToKorean(location) : Promise.resolve(""),
+    threat.title
+      ? translateText(threat.title, lang)
+      : Promise.resolve(neptunTypeLabel("unknown", lang)),
+    location ? translateText(location, lang) : Promise.resolve(""),
     threat.explanationShort
-      ? translateTextToKorean(threat.explanationShort)
+      ? translateText(threat.explanationShort, lang)
       : Promise.resolve(null),
   ]);
 
   return {
-    title: title || threat.title,
+    title: title || threat.title || neptunTypeLabel("unknown", lang),
     location: loc || location,
     explanation: explanation ?? threat.explanationShort ?? null,
   };
 }
 
-export async function localizeNeptunAlertName(name: string, enabled: boolean): Promise<string> {
-  if (!enabled || !name.trim()) return name;
-  return translateTextToKorean(name);
+export async function localizeNeptunAlertName(name: string, lang: LabelLanguage): Promise<string> {
+  if (!name.trim()) return name;
+  return translateText(name, lang);
 }

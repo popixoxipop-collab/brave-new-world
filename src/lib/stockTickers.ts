@@ -20,6 +20,7 @@ export type StockTickerItem = {
  */
 export const STOCK_TICKER_SYMBOLS: StockTickerSymbol[] = [
   { symbol: "^VIX", label: "VIX" },
+  { symbol: "CL=F", label: "WTI" },
   { symbol: "BZ=F", label: "Brent" },
   { symbol: "GC=F", label: "Gold" },
   { symbol: "DX-Y.NYB", label: "DXY" },
@@ -31,9 +32,10 @@ export const STOCK_TICKER_SYMBOLS: StockTickerSymbol[] = [
   { symbol: "000001.SS", label: "Shanghai" },
 ];
 
-/** 하단 스크롤 스트립 — 매크로·미국 지수 6종 (항상 우선 표시) */
+/** 하단 스크롤 스트립 — 매크로·에너지·미국 지수 (지정학 트레이더 우선) */
 export const TICKER_STRIP_SYMBOLS: string[] = [
   "^VIX",
+  "CL=F",
   "BZ=F",
   "GC=F",
   "DX-Y.NYB",
@@ -45,7 +47,7 @@ export type MarketGroupId = "risk" | "commodities" | "us-equities" | "asia";
 
 export const MARKET_GROUPS: Array<{ id: MarketGroupId; label: string; symbols: string[] }> = [
   { id: "risk", label: "리스크 · 달러", symbols: ["^VIX", "DX-Y.NYB"] },
-  { id: "commodities", label: "에너지 · 금", symbols: ["BZ=F", "GC=F"] },
+  { id: "commodities", label: "에너지 · 금", symbols: ["CL=F", "BZ=F", "GC=F"] },
   { id: "us-equities", label: "미국 지수", symbols: ["^GSPC", "^IXIC"] },
   { id: "asia", label: "아시아 지수", symbols: ["^N225", "^KS11", "^HSI", "000001.SS"] },
 ];
@@ -74,9 +76,9 @@ export type TheaterMarketFilter = NewsTheater | "all";
 
 /** 전장별 우선 표시할 매크로·증시 심볼 (^VIX 등) */
 export const THEATER_RELATED_SYMBOLS: Record<TheaterMarketFilter, string[]> = {
-  all: ["^VIX", "BZ=F", "GC=F", "DX-Y.NYB", "^GSPC", "^IXIC"],
-  "middle-east": ["BZ=F", "GC=F", "DX-Y.NYB", "^VIX", "^GSPC", "^IXIC"],
-  "russia-ukraine": ["BZ=F", "GC=F", "^GSPC", "DX-Y.NYB", "^VIX", "^IXIC"],
+  all: ["^VIX", "CL=F", "BZ=F", "GC=F", "DX-Y.NYB", "^GSPC", "^IXIC"],
+  "middle-east": ["CL=F", "BZ=F", "GC=F", "DX-Y.NYB", "^VIX", "^GSPC", "^IXIC"],
+  "russia-ukraine": ["CL=F", "BZ=F", "GC=F", "^GSPC", "DX-Y.NYB", "^VIX", "^IXIC"],
   "china-taiwan": ["000001.SS", "^HSI", "^IXIC", "DX-Y.NYB", "^GSPC", "^VIX"],
   korea: ["^KS11", "^IXIC", "^HSI", "^VIX", "BZ=F", "^GSPC"],
   japan: ["^N225", "^HSI", "^IXIC", "^GSPC", "BZ=F", "^VIX"],

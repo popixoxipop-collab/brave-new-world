@@ -1,8 +1,9 @@
 /**
- * RSS·GDELT 뉴스 한국어 번역.
+ * RSS·GDELT 뉴스 번역 (ko: 한국어, en: 원문 유지).
  * Telegram OSINT 텍스트는 이 경로에 절대 넣지 않음 — @see src/lib/licensing/telegramOsintPolicy.ts
  */
 import { isKoreanTranslationEnabled, mapPool, translateTextToKorean } from "@/lib/koreanTranslate";
+import type { LabelLanguage } from "@/lib/layerPrefs";
 import type { HeroBreakingItem, NewsStreamItem, NewsStreamPayload } from "@/lib/news/types";
 
 async function translateNewsItem(item: NewsStreamItem): Promise<NewsStreamItem> {
@@ -18,8 +19,9 @@ async function translateHero(hero: HeroBreakingItem): Promise<HeroBreakingItem> 
 
 export async function translateNewsStreamPayload(
   payload: NewsStreamPayload,
+  lang: LabelLanguage = "ko",
 ): Promise<NewsStreamPayload> {
-  if (!isKoreanTranslationEnabled()) return payload;
+  if (lang === "en" || !isKoreanTranslationEnabled()) return payload;
 
   const verified = await mapPool(payload.verified, translateNewsItem, 6);
   const stateMedia = await mapPool(payload.stateMedia, translateNewsItem, 4);

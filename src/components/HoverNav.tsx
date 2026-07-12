@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { getNavMenuGroups } from "@/data/econNavRegions";
 import {
-  NAV_MENU_GROUPS,
   toNavSelection,
   type NavMenuGroup,
   type NavMenuItem,
@@ -10,8 +10,11 @@ import {
   type NavSubItem,
 } from "@/data/navRegions";
 import type { SearchPlace } from "@/data/geoTypes";
+import { getViewerChrome } from "@/lib/viewerChrome";
+import type { ViewerMode } from "@/lib/viewPackages";
 
 type HoverNavProps = {
+  viewerMode: ViewerMode;
   onNavigate: (selection: NavSelection) => void;
   lastUpdated: string | null;
   liveStatus: "idle" | "loading" | "ok" | "error";
@@ -22,6 +25,7 @@ type HoverNavProps = {
 };
 
 export function HoverNav({
+  viewerMode,
   onNavigate,
   lastUpdated,
   liveStatus,
@@ -33,6 +37,9 @@ export function HoverNav({
   const [navOpen, setNavOpen] = useState(false);
   const [openKey, setOpenKey] = useState<string | null>(null);
   const navRef = useRef<HTMLElement>(null);
+  const isEconomy = viewerMode === "economy";
+  const chrome = getViewerChrome(viewerMode);
+  const navGroups = useMemo(() => getNavMenuGroups(viewerMode), [viewerMode]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -61,6 +68,14 @@ export function HoverNav({
     setOpenKey(null);
   }
 
+  const borderTone = isEconomy ? "border-emerald-200/10" : "border-sky-200/10";
+  const bgTone = isEconomy ? "bg-[#0a1f18]/45" : "bg-[#162a48]/45";
+  const menuBg = isEconomy ? "bg-[#0a1f18]/75" : "bg-[#162a48]/75";
+  const accentHover = isEconomy ? "hover:bg-emerald-400/10" : "hover:bg-sky-400/10";
+  const accentActive = isEconomy
+    ? "bg-emerald-400/15 text-emerald-50 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.25)]"
+    : "bg-sky-400/15 text-sky-50 shadow-[inset_0_0_0_1px_rgba(125,211,252,0.25)]";
+
   return (
     <div className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center px-3 pt-3">
       <nav
@@ -69,27 +84,34 @@ export function HoverNav({
           navOpen ? "max-w-6xl" : ""
         }`}
       >
-        {/* 검색창 — 항상 반투명 노출 */}
         <div
-          className={`relative rounded-2xl border border-sky-200/10 bg-[#162a48]/45 shadow-lg backdrop-blur-xl transition-all duration-300 ${
+          className={`relative rounded-2xl border ${borderTone} ${bgTone} shadow-lg backdrop-blur-xl transition-all duration-300 ${
             navOpen ? "rounded-b-none border-b-0" : ""
           }`}
         >
           <div className="flex items-center gap-2 px-3 py-2">
-            <SearchIcon className="shrink-0 text-sky-200/50" />
+            <SearchIcon
+              className={`shrink-0 ${isEconomy ? "text-emerald-200/50" : "text-sky-200/50"}`}
+            />
             <input
               value={query}
               onChange={(event) => onQueryChange(event.target.value)}
               onFocus={() => setNavOpen(true)}
               onClick={() => setNavOpen(true)}
-              placeholder="지명 · 국가 · 분쟁 검색"
-              className="w-full bg-transparent text-sm text-sky-50/90 outline-none placeholder:text-sky-100/35"
+              placeholder={chrome.searchPlaceholder}
+              className={`w-full bg-transparent text-sm outline-none placeholder:opacity-35 ${
+                isEconomy
+                  ? "text-emerald-50/90 placeholder:text-emerald-100/35"
+                  : "text-sky-50/90 placeholder:text-sky-100/35"
+              }`}
             />
             {query && (
               <button
                 type="button"
                 onClick={() => onQueryChange("")}
-                className="shrink-0 rounded-full px-1.5 py-0.5 text-xs text-sky-100/40 transition hover:text-sky-50"
+                className={`shrink-0 rounded-full px-1.5 py-0.5 text-xs transition hover:opacity-90 ${
+                  isEconomy ? "text-emerald-100/40 hover:text-emerald-50" : "text-sky-100/40 hover:text-sky-50"
+                }`}
                 aria-label="검색어 지우기"
               >
                 ✕
@@ -98,19 +120,31 @@ export function HoverNav({
           </div>
 
           {searchResults.length > 0 && (
-            <div className="absolute left-0 right-0 top-full z-40 max-h-72 overflow-y-auto rounded-b-2xl border border-t-0 border-sky-200/10 bg-[#0f1d35]/92 shadow-2xl backdrop-blur-xl">
+            <div
+              className={`absolute left-0 right-0 top-full z-40 max-h-72 overflow-y-auto rounded-b-2xl border border-t-0 ${borderTone} bg-[#0f1d35]/92 shadow-2xl backdrop-blur-xl`}
+            >
               {searchResults.map((place) => (
                 <button
                   key={place.id}
                   type="button"
                   onClick={() => handleSearchPick(place)}
-                  className="flex w-full items-center justify-between border-b border-sky-200/8 px-4 py-2.5 text-left text-sm transition last:border-b-0 hover:bg-sky-400/10"
+                  className={`flex w-full items-center justify-between border-b ${borderTone} px-4 py-2.5 text-left text-sm transition last:border-b-0 ${accentHover}`}
                 >
                   <span>
-                    <span className="block text-sky-50/95">{place.name}</span>
-                    <span className="text-xs text-sky-100/40">{place.country}</span>
+                    <span className={`block ${isEconomy ? "text-emerald-50/95" : "text-sky-50/95"}`}>
+                      {place.name}
+                    </span>
+                    <span className={`text-xs ${isEconomy ? "text-emerald-100/40" : "text-sky-100/40"}`}>
+                      {place.country}
+                    </span>
                   </span>
-                  <span className="rounded-full border border-sky-200/15 px-2 py-0.5 text-[10px] uppercase text-sky-100/45">
+                  <span
+                    className={`rounded-full border px-2 py-0.5 text-[10px] uppercase ${
+                      isEconomy
+                        ? "border-emerald-200/15 text-emerald-100/45"
+                        : "border-sky-200/15 text-sky-100/45"
+                    }`}
+                  >
                     {place.type}
                   </span>
                 </button>
@@ -119,18 +153,21 @@ export function HoverNav({
           )}
         </div>
 
-        {/* 네비 메뉴 — 클릭/포커스 시 등장 */}
         <div
-          className={`overflow-hidden rounded-b-2xl border border-sky-200/10 border-t-0 bg-[#162a48]/75 shadow-xl backdrop-blur-xl transition-all duration-300 ease-out ${
-            navOpen
-              ? "max-h-[80vh] opacity-100"
-              : "pointer-events-none max-h-0 opacity-0"
+          className={`overflow-hidden rounded-b-2xl border ${borderTone} border-t-0 ${menuBg} shadow-xl backdrop-blur-xl transition-all duration-300 ease-out ${
+            navOpen ? "max-h-[80vh] opacity-100" : "pointer-events-none max-h-0 opacity-0"
           }`}
         >
           <div className="px-4 py-3">
             <div className="mb-3 flex items-center justify-between gap-3 px-1">
-              <p className="text-[10px] uppercase tracking-[0.28em] text-sky-200/80">Conflict View</p>
-              <p className="text-[10px] text-sky-100/45">
+              <p
+                className={`text-[10px] uppercase tracking-[0.28em] ${
+                  isEconomy ? "text-emerald-200/80" : "text-sky-200/80"
+                }`}
+              >
+                {chrome.navHeaderLabel}
+              </p>
+              <p className={`text-[10px] ${isEconomy ? "text-emerald-100/45" : "text-sky-100/45"}`}>
                 {liveStatus === "loading" && "로컬 데이터 로딩 중…"}
                 {liveStatus === "ok" && lastUpdated && `로컬 갱신 ${formatShortTime(lastUpdated)}`}
                 {liveStatus === "error" && "로컬 데이터 로드 실패"}
@@ -139,9 +176,13 @@ export function HoverNav({
             </div>
 
             <div className="flex flex-wrap items-start justify-center gap-x-8 gap-y-4">
-              {NAV_MENU_GROUPS.map((group) => (
+              {navGroups.map((group) => (
                 <div key={group.id} className="min-w-[260px]">
-                  <p className="mb-2 px-1 text-[10px] uppercase tracking-[0.22em] text-sky-100/55">
+                  <p
+                    className={`mb-2 px-1 text-[10px] uppercase tracking-[0.22em] ${
+                      isEconomy ? "text-emerald-100/55" : "text-sky-100/55"
+                    }`}
+                  >
                     {group.label}
                   </p>
                   <ul className="space-y-1">
@@ -162,8 +203,10 @@ export function HoverNav({
                             onClick={() => handleSelect(group, item)}
                             className={`flex w-full items-center justify-between gap-2 rounded-full px-3 py-1.5 text-left text-xs transition-all duration-200 ${
                               isOpen
-                                ? "bg-sky-400/15 text-sky-50 shadow-[inset_0_0_0_1px_rgba(125,211,252,0.25)]"
-                                : "text-sky-100/85 hover:bg-white/8 hover:text-white"
+                                ? accentActive
+                                : isEconomy
+                                  ? "text-emerald-100/85 hover:bg-white/8 hover:text-white"
+                                  : "text-sky-100/85 hover:bg-white/8 hover:text-white"
                             }`}
                           >
                             <span className="truncate">{item.label}</span>
@@ -186,10 +229,18 @@ export function HoverNav({
                                     key={sub.id}
                                     type="button"
                                     onClick={() => handleSelect(group, sub, item.label)}
-                                    className="block w-full rounded-lg px-2.5 py-2 text-left text-xs transition hover:bg-sky-400/10"
+                                    className={`block w-full rounded-lg px-2.5 py-2 text-left text-xs transition ${accentHover}`}
                                   >
-                                    <span className="block text-sky-50/95">{sub.label}</span>
-                                    <span className="mt-0.5 block text-[10px] leading-4 text-sky-100/40">
+                                    <span
+                                      className={`block ${isEconomy ? "text-emerald-50/95" : "text-sky-50/95"}`}
+                                    >
+                                      {sub.label}
+                                    </span>
+                                    <span
+                                      className={`mt-0.5 block text-[10px] leading-4 ${
+                                        isEconomy ? "text-emerald-100/40" : "text-sky-100/40"
+                                      }`}
+                                    >
                                       {sub.description}
                                     </span>
                                   </button>

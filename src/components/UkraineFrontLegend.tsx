@@ -5,68 +5,30 @@ type UkraineFrontLegendProps = {
   controlDate: string | null;
   lodLabel?: string | null;
   compact?: boolean;
-  /** 증시·속보 스택이 숨겨질 때 하단에 붙임 */
   dockLow?: boolean;
 };
-
-function FillSwatch({
-  label,
-  detail,
-  color,
-}: {
-  label: string;
-  detail: string;
-  color: string;
-}) {
-  return (
-    <div className="flex items-center gap-2.5">
-      <span
-        className="h-3 w-6 shrink-0 rounded-sm border border-white/12"
-        style={{ backgroundColor: color }}
-      />
-      <span className="min-w-0">
-        <span className="font-medium text-sky-50/95">{label}</span>
-        <span className="ml-1.5 text-sky-100/45">{detail}</span>
-      </span>
-    </div>
-  );
-}
 
 function LineSwatch({
   label,
   detail,
   color,
+  thick = false,
 }: {
   label: string;
   detail: string;
   color: string;
+  thick?: boolean;
 }) {
   return (
     <div className="flex items-center gap-2.5">
       <span
-        className="h-0.5 w-6 shrink-0 rounded-full"
+        className={`shrink-0 rounded-full ${thick ? "h-1 w-6" : "h-0.5 w-6"}`}
         style={{ backgroundColor: color }}
       />
       <span className="min-w-0">
         <span className="font-medium text-sky-50/95">{label}</span>
         <span className="ml-1.5 text-sky-100/45">{detail}</span>
       </span>
-    </div>
-  );
-}
-
-function AdvanceSwatch({ label, color }: { label: string; color: string }) {
-  return (
-    <div className="flex items-center gap-2.5">
-      <span className="relative h-0.5 w-6 shrink-0 overflow-hidden rounded-full">
-        <span
-          className="absolute inset-0"
-          style={{
-            backgroundImage: `repeating-linear-gradient(90deg, ${color} 0 5px, transparent 5px 8px)`,
-          }}
-        />
-      </span>
-      <span className="text-sky-50/90">{label}</span>
     </div>
   );
 }
@@ -92,29 +54,14 @@ export function UkraineFrontLegendContent({
           </p>
         </div>
       )}
-      <div className={`grid gap-2 ${compact ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-3"}`}>
-        <FillSwatch label="RU 점령" detail="빨간 면" color="rgba(220,38,38,0.72)" />
-        <FillSwatch label="UA 주장" detail="청색 면" color="rgba(56,189,248,0.55)" />
-        <FillSwatch label="경합" detail="주황 면" color="rgba(255,120,0,0.72)" />
-      </div>
-      <div className={compact ? "" : "border-t border-sky-300/10 pt-2"}>
-        <LineSwatch label="전선" detail="붉은 직선" color="rgba(220,38,38,0.98)" />
-      </div>
-      <div className={`flex flex-wrap gap-x-4 gap-y-1.5 ${compact ? "pt-0.5" : "border-t border-sky-300/10 pt-2"}`}>
-        <AdvanceSwatch label="UA 방어·반격" color="rgba(255,160,0,0.95)" />
-        <AdvanceSwatch label="RU 압박·진격" color="rgba(255,90,40,0.9)" />
-        {!compact && (
-          <>
-            <span className="text-sky-100/45">·</span>
-            <span className="text-sky-100/55">전선 근처 요충지만 표시</span>
-          </>
-        )}
+      <LineSwatch label="점령 경계 전선" detail="지표면 · 진한 빨강" color="rgba(220,38,38,1)" thick />
+      <div className="mt-1.5">
+        <LineSwatch label="UA 경계 전선" detail="지표면 · 파랑" color="rgba(37,99,235,0.95)" />
       </div>
     </div>
   );
 }
 
-/** 우크라이나 전선 레이어 ON 시 지도 위에 함께 뜨는 범례 패널 */
 export function UkraineFrontLegend({
   visible,
   controlDate,

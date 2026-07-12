@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   formatTickerChangePercent,
   formatTickerPrice,
@@ -9,6 +9,9 @@ import {
   tickerChangeTone,
   type StockTickerItem,
 } from "@/lib/stockTickers";
+import type { HeroStatus } from "@/lib/news/types";
+import { TICKER_SPIKE_THRESHOLD_PERCENT, type IntelStackMode } from "@/lib/news/intelStackMode";
+import { emitDashboardSound } from "@/components/SoundEffectsBridge";
 
 const POLL_MS = 10 * 60 * 1000;
 
@@ -28,6 +31,21 @@ const SPARKLINE_STROKE = {
   down: "#fb7185",
   flat: "#94a3b8",
 } as const;
+
+export type StockTickerStripProps = {
+  mode?: IntelStackMode;
+  highlightSymbols?: string[];
+  alertTone?: HeroStatus;
+  /** L2 패널 헤더 라벨 표시 */
+  showHeader?: boolean;
+};
+
+function orderStripSymbols(highlightSymbols: string[]): string[] {
+  const base = [...TICKER_STRIP_SYMBOLS];
+  const highlight = highlightSymbols.filter((s) => base.includes(s));
+  const rest = base.filter((s) => !highlight.includes(s));
+  return [...highlight, ...rest];
+}
 
 function TickerSparkline({
   data,
@@ -74,42 +92,95 @@ function TickerSparkline({
   );
 }
 
-function SkeletonStrip() {
+function SkeletonStrip({ symbols }: { symbols: string[] }) {
   return (
     <div className="flex h-10 min-w-0 items-center gap-4 overflow-hidden px-3">
-      {TICKER_STRIP_SYMBOLS.map((symbol) => {
+      {symbols.map((symbol) => {
         const item = STOCK_TICKER_SYMBOLS.find((entry) => entry.symbol === symbol);
         if (!item) return null;
         return (
-        <div key={item.symbol} className="flex shrink-0 items-center gap-2">
-          <span className="h-3 w-12 animate-pulse rounded bg-white/10" />
-          <span className="h-[18px] w-[52px] animate-pulse rounded bg-white/10" />
-          <span className="h-3 w-16 animate-pulse rounded bg-white/10" />
-          <span className="h-3 w-10 animate-pulse rounded bg-white/10" />
-        </div>
+          <div key={item.symbol} className="flex shrink-0 items-center gap-2">
+            <span className="h-3 w-12 animate-pulse rounded bg-white/10" />
+            <span className="h-[18px] w-[52px] animate-pulse rounded bg-white/10" />
+            <span className="h-3 w-16 animate-pulse rounded bg-white/10" />
+            <span className="h-3 w-10 animate-pulse rounded bg-white/10" />
+          </div>
         );
       })}
     </div>
   );
 }
 
-function TickerRow({ item }: { item: StockTickerItem }) {
+function formatSpikeBadge(changePercent: number | null): string | null {
+  if (changePercent === null || Math.abs(changePercent) < TICKER_SPIKE_THRESHOLD_PERCENT) {
+    return null;
+  }
+  const sign = changePercent > 0 ? "▲" : "▼";
+  return `${sign}${Math.abs(changePercent).toFixed(1)}% SPIKE`;
+}
+
+function TickerRow({
+  item,
+  highlighted,
+  showSpike,
+}: {
+  item: StockTickerItem;
+  highlighted?: boolean;
+  showSpike?: boolean;
+}) {
   const tone = tickerChangeTone(item.changePercent);
   const changeText = formatTickerChangePercent(item.changePercent);
+  const spikeBadge = showSpike && highlighted ? formatSpikeBadge(item.changePercent) : null;
 
   return (
-    <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap">
-      <span className="text-slate-300">{item.label}</span>
+    <span
+      className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap ${
+        highlighted ? (spikeBadge ? "ticker-row--spike" : "ticker-row--highlight") : ""
+      }`}
+    >
+      <span className={highlighted ? "font-semibold text-rose-100" : "text-slate-300"}>
+        {item.label}
+      </span>
       <TickerSparkline data={item.sparkline} tone={tone} />
-      <span className="text-slate-100">{formatTickerPrice(item.price)}</span>
-      <span className={TONE_CLASS[tone]}>{changeText}</span>
+      <span className={highlighted ? "font-semibold text-white" : "text-slate-100"}>
+        {formatTickerPrice(item.price)}
+      </span>
+      {spikeBadge ? (
+        <span className="ticker-spike-badge rounded px-1 py-0.5 text-[10px] font-bold tracking-wide text-rose-100">
+          {spikeBadge}
+        </span>
+      ) : (
+        <span className={TONE_CLASS[tone]}>{changeText}</span>
+      )}
     </span>
   );
 }
 
-export function StockTickerStrip() {
+function alertStripClass(mode: IntelStackMode, alertTone?: HeroStatus): string {
+  if (mode !== "alert" || !alertTone) {
+    return "border-y border-white/10 bg-[#0b0c10]/60";
+  }
+  if (alertTone === "confirmed") return "stock-ticker-strip--alert-confirmed border-y";
+  if (alertTone === "unverified") return "stock-ticker-strip--alert-unverified border-y";
+  return "stock-ticker-strip--alert-breaking border-y";
+}
+
+export function StockTickerStrip({
+  mode = "calm",
+  highlightSymbols = [],
+  alertTone,
+  showHeader = false,
+}: StockTickerStripProps) {
   const [tickers, setTickers] = useState<StockTickerItem[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const spikedSymbolsRef = useRef<Set<string>>(new Set());
+
+  const orderedSymbols = useMemo(
+    () => orderStripSymbols(mode === "alert" ? highlightSymbols : []),
+    [highlightSymbols, mode],
+  );
+
+  const highlightSet = useMemo(() => new Set(highlightSymbols), [highlightSymbols]);
 
   const refresh = useCallback(async () => {
     try {
@@ -131,16 +202,46 @@ export function StockTickerStrip() {
     return () => window.clearInterval(timer);
   }, [refresh]);
 
+  useEffect(() => {
+    if (!tickers?.length) return;
+    for (const item of tickers) {
+      const pct = item.changePercent;
+      if (pct === null || Math.abs(pct) < TICKER_SPIKE_THRESHOLD_PERCENT) continue;
+      if (spikedSymbolsRef.current.has(item.symbol)) continue;
+      spikedSymbolsRef.current.add(item.symbol);
+      const eventId =
+        item.symbol === "^VIX"
+          ? "vix-spike"
+          : item.symbol === "CL=F" || item.symbol === "BZ=F"
+            ? "oil-spike"
+            : "ticker-spike";
+      emitDashboardSound(eventId);
+      break;
+    }
+  }, [tickers]);
+
   return (
     <div
-      className="pointer-events-auto h-10 w-full overflow-hidden border-y border-white/10 bg-[#0b0c10]/60 backdrop-blur-md"
+      className={`pointer-events-auto w-full overflow-hidden backdrop-blur-md ${alertStripClass(mode, alertTone)} ${
+        showHeader ? "rounded-b-2xl" : "h-10 rounded-none"
+      }`}
       aria-label="글로벌 매크로·주요 증시 티커"
     >
+      {showHeader ? (
+        <div className="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-1.5">
+          <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-200/85">
+            Markets
+          </span>
+          <span className="text-[10px] text-slate-500">
+            {mode === "alert" ? "전장 연관 · 변동성 강조" : "10분 갱신"}
+          </span>
+        </div>
+      ) : null}
       {loading && !tickers ? (
-        <SkeletonStrip />
+        <SkeletonStrip symbols={orderedSymbols} />
       ) : (
         <div className="stock-ticker-scroll flex h-10 items-center gap-5 overflow-x-auto px-3 text-xs font-mono">
-          {TICKER_STRIP_SYMBOLS.map((symbol) => {
+          {orderedSymbols.map((symbol) => {
             const item =
               tickers?.find((entry) => entry.symbol === symbol) ??
               (() => {
@@ -154,7 +255,15 @@ export function StockTickerStrip() {
                 } satisfies StockTickerItem;
               })();
             if (!item) return null;
-            return <TickerRow key={item.symbol} item={item} />;
+            const highlighted = mode === "alert" && highlightSet.has(item.symbol);
+            return (
+              <TickerRow
+                key={item.symbol}
+                item={item}
+                highlighted={highlighted}
+                showSpike={mode === "alert"}
+              />
+            );
           })}
         </div>
       )}

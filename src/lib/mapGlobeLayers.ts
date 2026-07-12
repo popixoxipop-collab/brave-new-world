@@ -83,8 +83,10 @@ export function buildPolygonsGeoJson<T extends { geometry: unknown }>(
     geometry: Accessor<T, GeoJSON.Geometry>;
     fillColor: Accessor<T, string>;
     strokeColor: Accessor<T, string>;
+    fillOpacity?: Accessor<T, number>;
   },
 ): FeatureCollection<Polygon | GeoJSON.MultiPolygon> {
+  const fillOpacity = accessors.fillOpacity ?? (() => 0.72);
   return {
     type: "FeatureCollection",
     features: items.flatMap((item, index) => {
@@ -100,6 +102,7 @@ export function buildPolygonsGeoJson<T extends { geometry: unknown }>(
             index,
             fill: accessors.fillColor(item),
             stroke: accessors.strokeColor(item),
+            fillOpacity: fillOpacity(item),
           },
         },
       ];

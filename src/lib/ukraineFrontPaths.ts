@@ -1,12 +1,26 @@
-import type { TransportPath, UkraineControlZone } from "@/data/geoTypes";
+import type { TransportPath, TransportPathPoint, UkraineControlZone } from "@/data/geoTypes";
 import type { RegionBBox } from "@/data/navRegions";
-import { appendAdvanceArrowHead } from "@/lib/ukraineAdvancePaths";
+import type { GlobeLodTier } from "@/lib/globeLod";
 
 type ControlStatus = UkraineControlZone["controlStatus"];
 type FrontEdgeKind = "ukraine-ru-front" | "ukraine-ua-front" | "ukraine-contested-front";
+type ClaimKind = "ukraine-ru-claim" | "ukraine-ua-claim";
 
 type Point = { lat: number; lng: number };
 type FrontEdge = { p1: Point; p2: Point; kind: FrontEdgeKind };
+
+/** 전투지역 반경 5km ≈ 위도 48° 기준 */
+const COMBAT_ZONE_RADIUS_DEG = 5 / 111;
+
+const ALL_FRONT_KINDS = new Set<FrontEdgeKind>([
+  "ukraine-ru-front",
+  "ukraine-contested-front",
+  "ukraine-ua-front",
+]);
+
+function groundPoint(point: Point): TransportPathPoint {
+  return { lat: point.lat, lng: point.lng, alt: 0 };
+}
 
 function longitudeDistance(a: number, b: number) {
   const diff = Math.abs(a - b);
@@ -105,7 +119,6 @@ function edgeMidpoint(edge: FrontEdge): Point {
   };
 }
 
-/** 위도 밴드별로 전선 구간을 나눠 직선 세그먼트로 단순화 */
 const FRONT_LAT_BANDS = [
   { id: "north", minLat: 49.35, maxLat: 52.5 },
   { id: "donbas", minLat: 48.0, maxLat: 49.35 },
@@ -117,6 +130,89 @@ function edgesInBand(edges: FrontEdge[], minLat: number, maxLat: number) {
     const mid = edgeMidpoint(edge);
     return mid.lat >= minLat && mid.lat < maxLat;
   });
+}
+
+function pathFromEdge(edge: FrontEdge, index: number): TransportPath {
+  const points = [groundPoint(edge.p1), groundPoint(edge.p2)];
+  const lats = points.map((p) => p.lat);
+  const lngs = points.map((p) => p.lng);
+  return {
+    id: `ukraine-front-edge-${edge.kind}-${index}`,
+    kind: edge.kind,
+    name: null,
+    scalerank: 1,
+    lengthKm: null,
+    bbox: {
+      minLat: Math.min(...lats),
+      minLng: Math.min(...lngs),
+      maxLat: Math.max(...lats),
+      maxLng: Math.max(...lngs),
+    },
+    points,
+  };
+}
+
+function extractExteriorEdges(zones: UkraineControlZone[]): Array<{ p1: Point; p2: Point }> {
+  const edgeCounts = new Map<string, { p1: Point; p2: Point; count: number }>();
+
+  for (const zone of zones) {
+    for (const edge of collectZoneEdges(zone)) {
+      const existing = edgeCounts.get(edge.key);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        edgeCounts.set(edge.key, { p1: edge.p1, p2: edge.p2, count: 1 });
+      }
+    }
+  }
+
+  return [...edgeCounts.values()]
+    .filter((entry) => entry.count === 1)
+    .map(({ p1, p2 }) => ({ p1, p2 }));
+}
+
+function buildClaimOutlinePaths(
+  zones: UkraineControlZone[],
+  kind: ClaimKind,
+  lodTier: GlobeLodTier,
+): TransportPath[] {
+  const maxSegments =
+    lodTier === "village"
+      ? 900
+      : lodTier === "near"
+        ? 620
+        : lodTier === "regional"
+          ? 280
+          : lodTier === "continent"
+            ? 80
+            : 0;
+  if (maxSegments <= 0 || zones.length === 0) return [];
+
+  const edges = extractExteriorEdges(zones);
+  return edges.slice(0, maxSegments).map((edge, index) => {
+    const points = [groundPoint(edge.p1), groundPoint(edge.p2)];
+    const lats = points.map((p) => p.lat);
+    const lngs = points.map((p) => p.lng);
+    return {
+      id: `${kind}-${index}`,
+      kind,
+      name: null,
+      scalerank: 1,
+      lengthKm: null,
+      bbox: {
+        minLat: Math.min(...lats),
+        minLng: Math.min(...lngs),
+        maxLat: Math.max(...lats),
+        maxLng: Math.max(...lngs),
+      },
+      points,
+    };
+  });
+}
+
+function edgeSegmentsToPaths(edges: FrontEdge[], maxSegments: number): TransportPath[] {
+  const filtered = edges.filter((edge) => ALL_FRONT_KINDS.has(edge.kind));
+  return filtered.slice(0, maxSegments).map((edge, index) => pathFromEdge(edge, index));
 }
 
 function straightSegmentFromEdges(
@@ -133,7 +229,7 @@ function straightSegmentFromEdges(
   const end = sorted[sorted.length - 1];
   if (pointDistanceDeg(start, end) < 0.04) return null;
 
-  const points = [start, end];
+  const points = [groundPoint(start), groundPoint(end)];
   const lats = points.map((p) => p.lat);
   const lngs = points.map((p) => p.lng);
 
@@ -155,7 +251,7 @@ function straightSegmentFromEdges(
 
 function simplifyEdgesToStraightPaths(edges: FrontEdge[]): TransportPath[] {
   const paths: TransportPath[] = [];
-  const kinds: FrontEdgeKind[] = ["ukraine-ru-front", "ukraine-ua-front", "ukraine-contested-front"];
+  const kinds = [...ALL_FRONT_KINDS];
 
   for (const band of FRONT_LAT_BANDS) {
     const bandEdges = edgesInBand(edges, band.minLat, band.maxLat);
@@ -164,7 +260,6 @@ function simplifyEdgesToStraightPaths(edges: FrontEdge[]): TransportPath[] {
       const path = straightSegmentFromEdges(kindEdges, kind, band.id, 0);
       if (path) paths.push(path);
 
-      // 긴 전선은 경도 중앙 기준 2분할 직선
       if (kindEdges.length >= 12) {
         const mids = kindEdges.map(edgeMidpoint).sort((a, b) => a.lng - b.lng);
         const midLng = mids[Math.floor(mids.length / 2)].lng;
@@ -179,6 +274,72 @@ function simplifyEdgesToStraightPaths(edges: FrontEdge[]): TransportPath[] {
   }
 
   return paths;
+}
+
+function buildFrontlinePaths(edges: FrontEdge[], lodTier: GlobeLodTier): TransportPath[] {
+  const frontEdges = edges.filter((edge) => ALL_FRONT_KINDS.has(edge.kind));
+  if (lodTier === "near" || lodTier === "village") {
+    return edgeSegmentsToPaths(frontEdges, lodTier === "village" ? 1400 : 900);
+  }
+  if (lodTier === "regional") {
+    return edgeSegmentsToPaths(frontEdges, 420);
+  }
+  return simplifyEdgesToStraightPaths(frontEdges);
+}
+
+function circleRing(center: Point, radiusDeg: number, segments = 14): Point[] {
+  const cosLat = Math.cos((center.lat * Math.PI) / 180) || 1e-6;
+  const ring: Point[] = [];
+  for (let i = 0; i <= segments; i += 1) {
+    const angle = (i / segments) * Math.PI * 2;
+    ring.push({
+      lat: center.lat + radiusDeg * Math.sin(angle),
+      lng: center.lng + (radiusDeg * Math.cos(angle)) / cosLat,
+    });
+  }
+  return ring;
+}
+
+/** 전선 인접 경합지 — 반경 5km 회색 전투지역 링 */
+function buildCombatZoneRings(
+  contestedZones: UkraineControlZone[],
+  view: Point,
+  lodTier: GlobeLodTier,
+): TransportPath[] {
+  const maxRings =
+    lodTier === "village"
+      ? 48
+      : lodTier === "near"
+        ? 36
+        : lodTier === "regional"
+          ? 18
+          : 8;
+  const segments = lodTier === "global" || lodTier === "continent" ? 10 : 14;
+
+  const ranked = contestedZones
+    .slice()
+    .sort((a, b) => pointDistanceDeg(a.center, view) - pointDistanceDeg(b.center, view))
+    .slice(0, maxRings);
+
+  return ranked.map((zone, index) => {
+    const points = circleRing(zone.center, COMBAT_ZONE_RADIUS_DEG, segments).map(groundPoint);
+    const lats = points.map((p) => p.lat);
+    const lngs = points.map((p) => p.lng);
+    return {
+      id: `ukraine-combat-${zone.id}-${index}`,
+      kind: "ukraine-combat-zone" as const,
+      name: null,
+      scalerank: 1,
+      lengthKm: null,
+      bbox: {
+        minLat: Math.min(...lats),
+        minLng: Math.min(...lngs),
+        maxLat: Math.max(...lats),
+        maxLng: Math.max(...lngs),
+      },
+      points,
+    };
+  });
 }
 
 function findNearestZone(
@@ -197,8 +358,33 @@ function findNearestZone(
   return best;
 }
 
-/** 경합지 샘플에서 전선·방어 방향 화살표 생성 */
-function buildDynamicFrontArrows(
+function advancePathFromPoints(
+  from: Point,
+  to: Point,
+  kind: "ua-advance" | "ru-advance",
+  id: string,
+): TransportPath | null {
+  if (pointDistanceDeg(from, to) < 0.02) return null;
+  const points = [groundPoint(from), groundPoint(to)];
+  const lats = points.map((p) => p.lat);
+  const lngs = points.map((p) => p.lng);
+  return {
+    id,
+    kind,
+    name: null,
+    scalerank: 1,
+    lengthKm: null,
+    bbox: {
+      minLat: Math.min(...lats),
+      minLng: Math.min(...lngs),
+      maxLat: Math.max(...lats),
+      maxLng: Math.max(...lngs),
+    },
+    points,
+  };
+}
+
+function buildDynamicAdvanceLines(
   contestedZones: UkraineControlZone[],
   ruZones: UkraineControlZone[],
   uaZones: UkraineControlZone[],
@@ -225,49 +411,71 @@ function buildDynamicFrontArrows(
     const nearestRu = findNearestZone(contested.center, ruZones);
 
     if (nearestUa && pointDistanceDeg(nearestUa.center, contested.center) <= 1.8) {
-      const raw = [nearestUa.center, contested.center];
-      const points = appendAdvanceArrowHead(raw, 0.06, 20);
-      const lats = points.map((p) => p.lat);
-      const lngs = points.map((p) => p.lng);
-      paths.push({
-        id: `ukraine-ua-arrow-${contested.id}`,
-        kind: "ua-advance",
-        name: "UA 방어·반격축",
-        scalerank: 1,
-        lengthKm: null,
-        bbox: {
-          minLat: Math.min(...lats),
-          minLng: Math.min(...lngs),
-          maxLat: Math.max(...lats),
-          maxLng: Math.max(...lngs),
-        },
-        points,
-      });
+      const path = advancePathFromPoints(
+        nearestUa.center,
+        contested.center,
+        "ua-advance",
+        `ukraine-ua-advance-${contested.id}`,
+      );
+      if (path) paths.push(path);
     }
 
     if (nearestRu && pointDistanceDeg(nearestRu.center, contested.center) <= 1.8) {
-      const raw = [nearestRu.center, contested.center];
-      const points = appendAdvanceArrowHead(raw, 0.06, 20);
-      const lats = points.map((p) => p.lat);
-      const lngs = points.map((p) => p.lng);
-      paths.push({
-        id: `ukraine-ru-arrow-${contested.id}`,
-        kind: "ru-advance",
-        name: "RU 압박·진격축",
-        scalerank: 1,
-        lengthKm: null,
-        bbox: {
-          minLat: Math.min(...lats),
-          minLng: Math.min(...lngs),
-          maxLat: Math.max(...lats),
-          maxLng: Math.max(...lngs),
-        },
-        points,
-      });
+      const path = advancePathFromPoints(
+        nearestRu.center,
+        contested.center,
+        "ru-advance",
+        `ukraine-ru-advance-${contested.id}`,
+      );
+      if (path) paths.push(path);
     }
   }
 
   return paths;
+}
+
+function buildUaGainOutlinePaths(
+  contestedZones: UkraineControlZone[],
+  uaZones: UkraineControlZone[],
+  lodTier: GlobeLodTier,
+): TransportPath[] {
+  const gainZones = contestedZones.filter((zone) =>
+    uaZones.some((ua) => pointDistanceDeg(ua.center, zone.center) <= 2.4),
+  );
+  if (gainZones.length === 0) return [];
+
+  const maxSegments =
+    lodTier === "village"
+      ? 480
+      : lodTier === "near"
+        ? 320
+        : lodTier === "regional"
+          ? 180
+          : lodTier === "continent"
+            ? 60
+            : 0;
+  if (maxSegments <= 0) return [];
+
+  const edges = extractExteriorEdges(gainZones);
+  return edges.slice(0, maxSegments).map((edge, index) => {
+    const points = [groundPoint(edge.p1), groundPoint(edge.p2)];
+    const lats = points.map((p) => p.lat);
+    const lngs = points.map((p) => p.lng);
+    return {
+      id: `ukraine-ua-gain-${index}`,
+      kind: "ukraine-ua-gain" as const,
+      name: null,
+      scalerank: 1,
+      lengthKm: null,
+      bbox: {
+        minLat: Math.min(...lats),
+        minLng: Math.min(...lngs),
+        maxLat: Math.max(...lats),
+        maxLng: Math.max(...lngs),
+      },
+      points,
+    };
+  });
 }
 
 function filterFrontZones(zones: UkraineControlZone[], view: Point, maxCount: number) {
@@ -277,18 +485,20 @@ function filterFrontZones(zones: UkraineControlZone[], view: Point, maxCount: nu
     .slice(0, maxCount);
 }
 
-/**
- * 점령지 면 대신 최전방 직선 전선 + 동적 진격/방어 화살표.
- */
-export function buildUkraineCleanFrontLines(
+export type UkraineFrontRender = {
+  paths: TransportPath[];
+};
+
+/** RU·UA 주장 외곽선 + 점령 경계 전선 + 전투지역 링 + 진격 방향선 (지표면) */
+export function buildUkraineFrontRender(
   ruZones: UkraineControlZone[],
   uaZones: UkraineControlZone[],
   contestedZones: UkraineControlZone[],
   view: Point,
-  options: { maxZones?: number; maxArrows?: number } = {},
-): TransportPath[] {
+  options: { maxZones?: number; maxArrows?: number; lodTier?: GlobeLodTier } = {},
+): UkraineFrontRender {
   const maxZones = options.maxZones ?? 2400;
-  const maxArrows = options.maxArrows ?? 8;
+  const lodTier = options.lodTier ?? "regional";
 
   const frontUa = filterFrontZones(
     uaZones.filter((z) => z.center.lng >= 30.5 && z.center.lat <= 50.8),
@@ -308,11 +518,25 @@ export function buildUkraineCleanFrontLines(
 
   const allZones = [...frontRu, ...frontUa, ...frontContested];
   const frontEdges = extractFrontEdges(allZones);
-  const linePaths = simplifyEdgesToStraightPaths(frontEdges);
-  const arrowPaths = buildDynamicFrontArrows(frontContested, frontRu, frontUa, view, maxArrows);
+  const linePaths = buildFrontlinePaths(frontEdges, lodTier);
 
-  return [...linePaths, ...arrowPaths];
+  // 면형(주장 외곽·전투 링·회복 영역·진격 화살)은 표시하지 않고 전선만 유지
+  return {
+    paths: linePaths,
+  };
 }
+
+/** @deprecated buildUkraineFrontRender 사용 */
+export function buildUkraineCleanFrontLines(
+  ruZones: UkraineControlZone[],
+  uaZones: UkraineControlZone[],
+  contestedZones: UkraineControlZone[],
+  view: Point,
+  options: { maxZones?: number; maxArrows?: number } = {},
+): TransportPath[] {
+  return buildUkraineFrontRender(ruZones, uaZones, contestedZones, view, options).paths;
+}
+
 const DEFAULT_FRONT_BBOX: RegionBBox = {
   minLat: 45.8,
   maxLat: 51.0,
@@ -320,7 +544,6 @@ const DEFAULT_FRONT_BBOX: RegionBBox = {
   maxLng: 39.8,
 };
 
-/** 전선·진격축·양측 점령지가 한 화면에 들어오는 bbox */
 export function computeUkraineFrontFitBbox(
   zones: UkraineControlZone[],
   extraPoints: { lat: number; lng: number }[] = [],

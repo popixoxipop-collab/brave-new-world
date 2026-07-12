@@ -416,5 +416,91 @@
       "Iran"
     ],
     "updatedAt": "2026-07-11"
+  },
+  {
+    "id": "combat-me-iran-natanz-isfahan",
+    "overviewKo": "나탄즈·이스파한 · 핵·미사일 시설 타격권",
+    "parties": [
+      "Iran"
+    ],
+    "updatedAt": "2026-07-12"
+  },
+  {
+    "id": "combat-me-iran-bushehr-kharg",
+    "overviewKo": "부셰르·하르그 · 원전·유전·유조선 타격권",
+    "parties": [
+      "Iran"
+    ],
+    "updatedAt": "2026-07-12"
+  },
+  {
+    "id": "combat-me-bandar-abbas",
+    "overviewKo": "반다르아바스 · IRGC 해군·해협 억지 거점",
+    "parties": [
+      "Iran"
+    ],
+    "updatedAt": "2026-07-12"
+  },
+  {
+    "id": "tension-me-persian-gulf",
+    "overviewKo": "페르시아만 · 해상 억지·유조선·미 5함대 리스크",
+    "parties": [
+      "Iran",
+      "GCC",
+      "US"
+    ],
+    "updatedAt": "2026-07-12"
+  },
+  {
+    "id": "tension-me-eastern-med",
+    "overviewKo": "동지중해 · 해군·항공모함·이스라엘 연안 억지",
+    "parties": [
+      "Israel",
+      "US",
+      "Regional"
+    ],
+    "updatedAt": "2026-07-12"
+  },
+  {
+    "id": "tension-me-saudi",
+    "overviewKo": "사우디 · 미사일·드론·에너지 인프라 피격 리스크",
+    "parties": [
+      "Saudi Arabia"
+    ],
+    "updatedAt": "2026-07-12"
+  },
+  {
+    "id": "tension-me-uae-oman",
+    "overviewKo": "UAE·오만 · 호르무즈 접근로·항만 리스크",
+    "parties": [
+      "UAE",
+      "Oman"
+    ],
+    "updatedAt": "2026-07-12"
+  },
+  {
+    "id": "tension-me-jordan",
+    "overviewKo": "요르단 · 공중 회랑·완충 지대",
+    "parties": [
+      "Jordan"
+    ],
+    "updatedAt": "2026-07-12"
+  },
+  {
+    "id": "tension-me-egypt-sinai",
+    "overviewKo": "이집트·시나이 · 수에즈·홍해 연계 긴장",
+    "parties": [
+      "Egypt"
+    ],
+    "updatedAt": "2026-07-12"
+  },
+  {
+    "id": "tension-me-kuwait",
+    "overviewKo": "쿠웨이트 · 북부 걸프·미사일 피격 노출",
+    "parties": [
+      "Kuwait",
+      "US"
+    ],
+    "updatedAt": "2026-07-12"
   }
 ]

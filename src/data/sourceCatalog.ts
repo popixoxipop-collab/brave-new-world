@@ -165,6 +165,17 @@ export const NEWS_LAYER_SOURCE_CATALOG: NewsLayerSourceNote[] = [
     ingest: "mapped-existing",
   },
   {
+    layerId: "logistics-risk",
+    source: "Curated seed",
+    url: "src/data/logisticsRiskPoints.ts",
+    cadence: "Project versioned",
+    attribution: "Conflict View editorial",
+    notes:
+      "Maritime chokepoints (Suez, Hormuz, Malacca, etc.) and critical logistics hubs (Eurotunnel, Crimea bridge). Hover shows risk note and related macro tickers.",
+    status: "shipped",
+    ingest: "static-build",
+  },
+  {
     layerId: "oil-pipelines",
     source: "Global Energy Monitor (GEM)",
     url: "/data/{profile}/oil-pipelines.json",
@@ -257,6 +268,17 @@ export const NEWS_LAYER_SOURCE_CATALOG: NewsLayerSourceNote[] = [
       "Country-level arms embargo zones from official sources with Wikidata SPARQL fallback.",
     status: "shipped",
     ingest: "cached-api",
+  },
+  {
+    layerId: "news-economy-rss",
+    source: "Reuters / WSJ / CNBC / FT / Google News",
+    url: "/api/news-stream?packages=geo-trader",
+    cadence: "90s cache",
+    attribution: "Each outlet RSS terms",
+    notes:
+      "Macro, energy, shipping, and sanctions headlines for geo-trader view. Fetched via feedCatalog ALL_ECON_FEEDS with ECON_RELEVANCE filter.",
+    status: "shipped",
+    ingest: "live-poll",
   },
   {
     layerId: "telegram-osint",

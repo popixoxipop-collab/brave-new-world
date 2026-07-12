@@ -1,9 +1,12 @@
-import type { NewsTheater } from "@/lib/news/types";
+import type { NewsFeedTopic, NewsTheater } from "@/lib/news/types";
+import { DEFAULT_PACKAGE_SELECTION, type ViewPackageId } from "@/lib/viewPackages";
 
 export type NewsFeedDef = {
   url: string;
   name: string;
   theater: NewsTheater;
+  /** defense (default) | economy — geo-trader 전용 피드 */
+  topic?: NewsFeedTopic;
   /** Skip theater keyword filter */
   unfiltered?: boolean;
 };
@@ -172,6 +175,72 @@ const SOUTH_ASIA: NewsFeedDef[] = [
   },
 ];
 
+const SHARED_ECONOMY: NewsFeedDef[] = [
+  {
+    url: "https://feeds.reuters.com/reuters/businessNews",
+    name: "Reuters Business",
+    theater: "global",
+    topic: "economy",
+    unfiltered: true,
+  },
+  {
+    url: "https://feeds.content.dowjones.io/public/rss/RSSMarketsMain",
+    name: "WSJ Markets",
+    theater: "global",
+    topic: "economy",
+    unfiltered: true,
+  },
+  {
+    url: "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114",
+    name: "CNBC",
+    theater: "global",
+    topic: "economy",
+    unfiltered: true,
+  },
+  {
+    url: "https://www.ft.com/?format=rss",
+    name: "Financial Times",
+    theater: "global",
+    topic: "economy",
+    unfiltered: true,
+  },
+  {
+    url: G('"oil price" OR OPEC OR "natural gas" OR LNG OR Brent'),
+    name: "Google · Energy",
+    theater: "global",
+    topic: "economy",
+    unfiltered: true,
+  },
+  {
+    url: G('sanctions OR tariff OR "central bank" OR "interest rate" OR inflation'),
+    name: "Google · Macro",
+    theater: "global",
+    topic: "economy",
+    unfiltered: true,
+  },
+  {
+    url: G('"Red Sea" OR Suez OR Hormuz OR "shipping rates" OR freight'),
+    name: "Google · Shipping",
+    theater: "middle-east",
+    topic: "economy",
+    unfiltered: true,
+  },
+  {
+    url: G('Russia Ukraine gas pipeline OR "energy crisis" OR Nord Stream'),
+    name: "Google · EU Energy",
+    theater: "russia-ukraine",
+    topic: "economy",
+    unfiltered: true,
+  },
+  {
+    url: G('Taiwan semiconductor OR "TSMC" OR "chip export"'),
+    name: "Google · Chips",
+    theater: "china-taiwan",
+    topic: "economy",
+    unfiltered: true,
+  },
+];
+
 /** 중앙아시아 — global 전장 Google 쿼리 (NewsTheater 별도 버킷 없음) */
 const CENTRAL_ASIA_GOOGLE: NewsFeedDef[] = [
   {
@@ -193,7 +262,14 @@ export const GOOGLE_NEWS_QUERIES: Record<string, string> = {
     '(India OR Modi) AND (geopolitics OR "foreign policy" OR security) AND (site:thehindu.com OR site:indianexpress.com)',
   "south-asia-lac": '("Line of Actual Control" OR India OR Pakistan) AND (border OR tension)',
   "central-asia": '(Central Asia) AND ("Great Game" OR "Geopolitics" OR "Security")',
+  "economy-energy": '"oil price" OR OPEC OR "natural gas" OR LNG OR Brent',
+  "economy-macro": 'sanctions OR tariff OR "central bank" OR "interest rate" OR inflation',
+  "economy-shipping": '"Red Sea" OR Suez OR Hormuz OR "shipping rates" OR freight',
+  "economy-chips": 'Taiwan semiconductor OR "TSMC" OR "chip export"',
 };
+
+export const ECON_RELEVANCE =
+  /oil|gas|lng|opec|brent|wti|crude|sanction|tariff|trade|fed|ecb|rate|inflation|gdp|recession|supply\s?chain|shipping|freight|container|hormuz|suez|red\s?sea|semiconductor|chip|datacenter|data\s?center|cloud|market|stocks|bond|dollar|yuan|yen|euro|commodit|energy|pipeline|bank|currency|imf|wto|export|import|port\b|vix/i;
 
 export const THEATER_RELEVANCE: Record<NewsTheater, RegExp> = {
   "middle-east":
@@ -225,6 +301,8 @@ export const ALL_NEWS_FEEDS: NewsFeedDef[] = dedupeFeedsByUrl([
   ...SHARED_DEFENSE,
 ]);
 
+export const ALL_ECON_FEEDS: NewsFeedDef[] = dedupeFeedsByUrl(SHARED_ECONOMY);
+
 function dedupeFeedsByUrl(feeds: NewsFeedDef[]): NewsFeedDef[] {
   const seen = new Set<string>();
   return feeds.filter((feed) => {
@@ -232,6 +310,23 @@ function dedupeFeedsByUrl(feeds: NewsFeedDef[]): NewsFeedDef[] {
     seen.add(feed.url);
     return true;
   });
+}
+
+/** view 패키지에 따라 defense / economy RSS 목록 선택 */
+export function feedsForPackages(packages: ViewPackageId[]): NewsFeedDef[] {
+  const ids = packages.length > 0 ? packages : DEFAULT_PACKAGE_SELECTION;
+  const wantEcon = ids.includes("geo-trader");
+  const wantDefense = ids.some((id) => id !== "geo-trader") || ids.length > 1;
+
+  const merged: NewsFeedDef[] = [];
+  if (wantDefense) merged.push(...ALL_NEWS_FEEDS);
+  if (wantEcon) merged.push(...ALL_ECON_FEEDS);
+  return dedupeFeedsByUrl(merged);
+}
+
+export function isEconomyNewsMode(packages: ViewPackageId[]): boolean {
+  const ids = packages.filter((id) => id !== "custom");
+  return ids.length > 0 && ids.every((id) => id === "geo-trader");
 }
 
 export function isFeedItemRelevant(
@@ -242,5 +337,6 @@ export function isFeedItemRelevant(
   if (NOISE.test(title)) return false;
   if (feed.unfiltered) return true;
   const blob = `${title} ${category || ""}`;
+  if (feed.topic === "economy") return ECON_RELEVANCE.test(blob);
   return THEATER_RELEVANCE[feed.theater].test(blob);
 }

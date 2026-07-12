@@ -15,16 +15,21 @@ function bboxNearView(point: StaticPoint, view: ViewState, radiusDeg: number): b
   return Math.sqrt(latDistance ** 2 + lngDistance ** 2) <= radiusDeg;
 }
 
+/** 전역 줌에서도 항상 표시 — 전략 병목·물류 거점 */
+const PINNED_STATIC_KINDS = new Set<StaticPoint["kind"]>(["chokepoint", "logistics-hub"]);
+
 export function filterStaticPointsForView(
   points: StaticPoint[],
   view: ViewState,
   tier: GlobeLodTier,
   radiusDeg: number,
 ): StaticPoint[] {
+  const pinned: StaticPoint[] = [];
   const military: StaticPoint[] = [];
   const others: StaticPoint[] = [];
   for (const point of points) {
-    if (point.kind === "military-base") military.push(point);
+    if (PINNED_STATIC_KINDS.has(point.kind)) pinned.push(point);
+    else if (point.kind === "military-base") military.push(point);
     else others.push(point);
   }
 
@@ -50,7 +55,7 @@ export function filterStaticPointsForView(
     }
   }
 
-  return [...visibleOthers, ...visibleMilitary];
+  return [...pinned, ...visibleOthers, ...visibleMilitary];
 }
 
 export const STATIC_POINT_COLORS: Record<StaticPoint["kind"], string> = {
@@ -68,6 +73,8 @@ export const STATIC_POINT_COLORS: Record<StaticPoint["kind"], string> = {
   "sanctions-entity": "rgba(244, 114, 182, 0.9)",
   "space-launch": "rgba(96, 165, 250, 0.9)",
   "lng-terminal": "rgba(251, 146, 60, 0.92)",
+  chokepoint: "rgba(251, 113, 133, 0.95)",
+  "logistics-hub": "rgba(244, 63, 94, 0.92)",
 };
 
 /** 공항/항구/미군기지는 HTML 마커로 표시 (일반 points와 이중 렌더 금지) */
@@ -130,6 +137,8 @@ export function staticPointRadius(kind: StaticPoint["kind"], altitude = 1): numb
     "sanctions-entity": 0.18,
     "space-launch": 0.22,
     "lng-terminal": 0.21,
+    chokepoint: 0.28,
+    "logistics-hub": 0.26,
   };
   return map[kind] * getZoomOutScale(altitude);
 }

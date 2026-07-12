@@ -133,14 +133,18 @@ export function LayerCategoryPanel({
   batchStatus,
   autoExpandCategoryId,
   autoExpandWhen,
+  expandActiveCategories = false,
 }: {
   categories: LayerCategory[];
   batchStatus?: string | null;
   /** 조건이 true일 때 해당 카테고리를 자동 펼침 */
   autoExpandCategoryId?: string;
   autoExpandWhen?: boolean;
+  /** 켜진 레이어가 있는 카테고리를 자동 펼침 (저장된 접기 상태는 존중) */
+  expandActiveCategories?: boolean;
 }) {
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
+  const [storageLoaded, setStorageLoaded] = useState(false);
 
   useEffect(() => {
     try {
@@ -151,6 +155,7 @@ export function LayerCategoryPanel({
     } catch {
       // ignore — default collapsed
     }
+    setStorageLoaded(true);
   }, []);
 
   useEffect(() => {
@@ -166,6 +171,28 @@ export function LayerCategoryPanel({
       return next;
     });
   }, [autoExpandCategoryId, autoExpandWhen]);
+
+  useEffect(() => {
+    if (!expandActiveCategories || !storageLoaded) return;
+    setOpenMap((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const category of categories) {
+        const hasActive = category.items.some((item) => item.checked);
+        if (hasActive && prev[category.id] !== false && !next[category.id]) {
+          next[category.id] = true;
+          changed = true;
+        }
+      }
+      if (!changed) return prev;
+      try {
+        localStorage.setItem(OPEN_STATE_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, [categories, expandActiveCategories, storageLoaded]);
 
   const toggleCategory = useCallback((id: string) => {
     setOpenMap((prev) => {

@@ -43,10 +43,20 @@ function tierBadgeClass(tier: NewsStreamItem["trustTier"], tier3?: boolean): str
 type NewsArticleCardProps = {
   item: NewsStreamItem;
   tier3?: boolean;
+  economyMode?: boolean;
+  titleOverride?: string;
+  summaryOverride?: string;
 };
 
-export function NewsArticleCard({ item, tier3 }: NewsArticleCardProps) {
+export function NewsArticleCard({
+  item,
+  tier3,
+  economyMode,
+  titleOverride,
+  summaryOverride,
+}: NewsArticleCardProps) {
   const [imageFailed, setImageFailed] = useState(false);
+  const isEconomy = economyMode || item.feedTopic === "economy";
   const showImage = item.imageUrl && !imageFailed;
   const tierLabel = item.trustTier === 1 ? "T1" : item.trustTier === 2 ? "T2" : "T3";
 
@@ -58,7 +68,9 @@ export function NewsArticleCard({ item, tier3 }: NewsArticleCardProps) {
       className={`news-article-card group flex w-[min(72vw,220px)] shrink-0 flex-col overflow-hidden rounded-xl border bg-[#0a1428]/90 shadow-lg backdrop-blur-md transition hover:-translate-y-0.5 hover:shadow-xl ${
         tier3
           ? "border-amber-400/25 hover:border-amber-300/45"
-          : "border-sky-300/15 hover:border-sky-200/35"
+          : isEconomy
+            ? "border-emerald-400/20 hover:border-emerald-300/40"
+            : "border-sky-300/15 hover:border-sky-200/35"
       }`}
     >
       <div className="relative h-[104px] w-full overflow-hidden bg-slate-900/80">
@@ -100,13 +112,15 @@ export function NewsArticleCard({ item, tier3 }: NewsArticleCardProps) {
 
       <div className="flex min-h-0 flex-1 flex-col gap-1.5 p-3">
         <h3 className="line-clamp-2 text-[12px] font-semibold leading-4 text-slate-50 group-hover:text-white">
-          {item.title}
+          {titleOverride ?? item.title}
         </h3>
-        {item.summary ? (
-          <p className="line-clamp-2 text-[10px] leading-4 text-slate-400">{item.summary}</p>
+        {item.summary || summaryOverride ? (
+          <p className="line-clamp-2 text-[10px] leading-4 text-slate-400">
+            {summaryOverride ?? item.summary}
+          </p>
         ) : (
           <p className="line-clamp-2 text-[10px] leading-4 text-slate-500">
-            {item.source} · {THEATER_LABELS[item.theater]} 분쟁·안보 관련 보도
+            {item.source} · {isEconomy ? "경제·시장" : `${THEATER_LABELS[item.theater]} 분쟁·안보`} 관련 보도
           </p>
         )}
         <div className="mt-auto flex items-center justify-between gap-2 pt-1 text-[10px] text-slate-500">

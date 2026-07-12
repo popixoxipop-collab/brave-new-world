@@ -27,12 +27,12 @@ export const THEATER_CHIP_LABELS: Record<NewsTheater, string> = {
 };
 
 export const THEATER_FLY_TO: Record<NewsTheater, { lat: number; lng: number; altitude: number }> = {
-  "middle-east": { lat: 31.5, lng: 48, altitude: 0.95 },
-  "russia-ukraine": { lat: 48.5, lng: 37.5, altitude: 1.0 },
-  "china-taiwan": { lat: 24.5, lng: 121, altitude: 0.9 },
-  korea: { lat: 37.5, lng: 127, altitude: 0.95 },
-  japan: { lat: 36, lng: 138, altitude: 1.1 },
-  "south-asia": { lat: 28, lng: 78, altitude: 1.15 },
+  "middle-east": { lat: 29.2, lng: 42.5, altitude: 2.05 },
+  "russia-ukraine": { lat: 48.5, lng: 34, altitude: 1.72 },
+  "china-taiwan": { lat: 20, lng: 118, altitude: 1.7 },
+  korea: { lat: 37.5, lng: 127, altitude: 1.68 },
+  japan: { lat: 36, lng: 138, altitude: 1.7 },
+  "south-asia": { lat: 22, lng: 78, altitude: 1.75 },
   global: { lat: 25, lng: 20, altitude: 2.2 },
 };
 

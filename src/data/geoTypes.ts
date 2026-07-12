@@ -126,6 +126,10 @@ export type TransportPath = {
     | "ukraine-ru-front"
     | "ukraine-ua-front"
     | "ukraine-contested-front"
+    | "ukraine-combat-zone"
+    | "ukraine-ru-claim"
+    | "ukraine-ua-claim"
+    | "ukraine-ua-gain"
     | "neptun-trail"
     | "neptun-projection"
     | "neptun-trail-archived";
@@ -164,7 +168,9 @@ export type StaticPointKind =
   | "economic-center"
   | "sanctions-entity"
   | "space-launch"
-  | "lng-terminal";
+  | "lng-terminal"
+  | "chokepoint"
+  | "logistics-hub";
 
 export type StaticPoint = {
   id: string;

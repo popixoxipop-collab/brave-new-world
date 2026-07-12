@@ -66,11 +66,11 @@
     "id": "combat-me-red-sea-houthi",
     "kind": "dispute",
     "name": "Red Sea / Bab el-Mandeb Strike Zone",
-    "nameLong": "홍해·바브엘만데브 · 미사일·무인기·상선 타격",
+    "nameLong": "홍해·바브엘만데브 · 미사일·무인기·상선 타격·봉쇄 위협",
     "admin": "Yemen / Red Sea",
     "sovereignty": "Yemen (Houthi) / Coalition / Shipping",
-    "type": "Active bombardment / maritime strike",
-    "note": "IRONSIGHT maritimeRegions · Red Sea strikeLocations",
+    "type": "Active bombardment / maritime blockade threat",
+    "note": "IRONSIGHT maritimeRegions · Red Sea strikeLocations · 해상 봉쇄·우회",
     "hazardClass": "bombardment",
     "source": "main",
     "scalerank": 1,
@@ -189,6 +189,69 @@
     }
   },
   {
+    "id": "combat-me-iran-natanz-isfahan",
+    "kind": "dispute",
+    "name": "Natanz–Isfahan Nuclear Strike Belt",
+    "nameLong": "나탄즈·이스파한 · 핵·미사일 시설 타격권",
+    "admin": "Iran",
+    "sovereignty": "Iran",
+    "type": "Active combat / bombardment",
+    "note": "IRONSIGHT strikeLocations · Natanz·Isfahan Missile Base",
+    "hazardClass": "combat",
+    "source": "main",
+    "scalerank": 1,
+    "center": { "lat": 33.1, "lng": 51.7 },
+    "categories": ["③"],
+    "tension": "high",
+    "matchedEventCount": 0,
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[50.8, 32.2], [52.6, 32.2], [52.6, 34.0], [50.8, 34.0], [50.8, 32.2]]]
+    }
+  },
+  {
+    "id": "combat-me-iran-bushehr-kharg",
+    "kind": "dispute",
+    "name": "Bushehr–Kharg Energy Strike Zone",
+    "nameLong": "부셰르·하르그 · 원전·유전·유조선 타격권",
+    "admin": "Iran",
+    "sovereignty": "Iran",
+    "type": "Active combat / bombardment",
+    "note": "IRONSIGHT strikeLocations · Bushehr·Kharg Island·South Pars",
+    "hazardClass": "combat",
+    "source": "main",
+    "scalerank": 1,
+    "center": { "lat": 28.8, "lng": 50.7 },
+    "categories": ["③"],
+    "tension": "high",
+    "matchedEventCount": 0,
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[49.5, 27.2], [52.8, 27.2], [52.8, 30.2], [49.5, 30.2], [49.5, 27.2]]]
+    }
+  },
+  {
+    "id": "combat-me-bandar-abbas",
+    "kind": "dispute",
+    "name": "Bandar Abbas / IRGCN Naval Hub",
+    "nameLong": "반다르아바스 · IRGC 해군·해협 억지 거점",
+    "admin": "Iran",
+    "sovereignty": "Iran",
+    "type": "Active combat / naval strike",
+    "note": "IRONSIGHT strikeLocations · Bandar Abbas · Hormuz approach",
+    "hazardClass": "combat",
+    "source": "main",
+    "scalerank": 1,
+    "center": { "lat": 27.19, "lng": 56.28 },
+    "categories": ["③"],
+    "tension": "high",
+    "matchedEventCount": 0,
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[55.4, 26.4], [57.2, 26.4], [57.2, 27.9], [55.4, 27.9], [55.4, 26.4]]]
+    }
+  },
+  {
     "id": "tension-me-iran-israel",
     "kind": "dispute",
     "name": "Iran–Israel Strategic Exchange Corridor",
@@ -212,12 +275,12 @@
   {
     "id": "tension-me-hormuz",
     "kind": "dispute",
-    "name": "Strait of Hormuz Gray Zone",
-    "nameLong": "호르무즈 해협 회색지대 · 해상억지·유조선 리스크",
+    "name": "Strait of Hormuz Blockade / Gray Zone",
+    "nameLong": "호르무즈 해협 · 봉쇄·해상억지·유조선 리스크",
     "admin": "Iran / Oman / UAE",
     "sovereignty": "Multiple",
-    "type": "Maritime gray zone / chokepoint",
-    "note": "IRONSIGHT maritimeRegions · Strait of Hormuz · IRGCN patrol",
+    "type": "Maritime blockade / chokepoint gray zone",
+    "note": "IRONSIGHT maritimeRegions · Strait of Hormuz · IRGCN patrol · 봉쇄 위협",
     "hazardClass": "gray-zone",
     "source": "main",
     "scalerank": 1,
@@ -228,6 +291,48 @@
     "geometry": {
       "type": "Polygon",
       "coordinates": [[[55.2, 25.5], [57.5, 25.5], [57.5, 27.3], [55.2, 27.3], [55.2, 25.5]]]
+    }
+  },
+  {
+    "id": "tension-me-persian-gulf",
+    "kind": "dispute",
+    "name": "Persian Gulf Maritime Threat Zone",
+    "nameLong": "페르시아만 · 해상 억지·유조선·미 5함대 리스크",
+    "admin": "Persian Gulf",
+    "sovereignty": "Iran / GCC / US",
+    "type": "Maritime gray zone / blockade risk",
+    "note": "IRONSIGHT maritimeRegions · Persian Gulf",
+    "hazardClass": "gray-zone",
+    "source": "main",
+    "scalerank": 1,
+    "center": { "lat": 27.0, "lng": 51.5 },
+    "categories": ["③"],
+    "tension": "high",
+    "matchedEventCount": 0,
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[48.5, 24.5], [56.5, 24.5], [56.5, 30.0], [48.5, 30.0], [48.5, 24.5]]]
+    }
+  },
+  {
+    "id": "tension-me-eastern-med",
+    "kind": "dispute",
+    "name": "Eastern Mediterranean Naval Zone",
+    "nameLong": "동지중해 · 해군·항공모함·이스라엘 연안 억지",
+    "admin": "Eastern Med",
+    "sovereignty": "Israel / US / Regional",
+    "type": "Maritime gray zone / naval presence",
+    "note": "IRONSIGHT maritimeRegions · Eastern Med",
+    "hazardClass": "gray-zone",
+    "source": "main",
+    "scalerank": 2,
+    "center": { "lat": 33.5, "lng": 32.5 },
+    "categories": ["③"],
+    "tension": "high",
+    "matchedEventCount": 0,
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[30, 31], [35.5, 31], [35.5, 36], [30, 36], [30, 31]]]
     }
   },
   {
@@ -249,6 +354,111 @@
     "geometry": {
       "type": "Polygon",
       "coordinates": [[[45, 23], [51, 23], [51, 27], [45, 27], [45, 23]]]
+    }
+  },
+  {
+    "id": "tension-me-saudi",
+    "kind": "dispute",
+    "name": "Saudi Arabia Strike Exposure",
+    "nameLong": "사우디 · 미사일·드론·에너지 인프라 피격 리스크",
+    "admin": "Saudi Arabia",
+    "sovereignty": "Saudi Arabia",
+    "type": "Regional threat / strike exposure",
+    "note": "IRONSIGHT regionBoxes · Saudi Arabia · Abqaiq/energy corridor risk",
+    "hazardClass": "tension",
+    "source": "main",
+    "scalerank": 2,
+    "center": { "lat": 24.5, "lng": 45 },
+    "categories": ["③"],
+    "tension": "high",
+    "matchedEventCount": 0,
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[34, 16], [56, 16], [56, 33], [34, 33], [34, 16]]]
+    }
+  },
+  {
+    "id": "tension-me-uae-oman",
+    "kind": "dispute",
+    "name": "UAE–Oman Gulf Approach",
+    "nameLong": "UAE·오만 · 호르무즈 접근로·항만 리스크",
+    "admin": "UAE / Oman",
+    "sovereignty": "UAE / Oman",
+    "type": "Maritime gray zone / chokepoint approach",
+    "note": "IRONSIGHT regionBoxes · UAE·Oman",
+    "hazardClass": "gray-zone",
+    "source": "main",
+    "scalerank": 2,
+    "center": { "lat": 24.5, "lng": 56 },
+    "categories": ["③"],
+    "tension": "high",
+    "matchedEventCount": 0,
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[51, 21], [60, 21], [60, 27], [51, 27], [51, 21]]]
+    }
+  },
+  {
+    "id": "tension-me-jordan",
+    "kind": "dispute",
+    "name": "Jordan Air Corridor / Buffer",
+    "nameLong": "요르단 · 공중 회랑·완충 지대",
+    "admin": "Jordan",
+    "sovereignty": "Jordan",
+    "type": "Strategic corridor / gray zone",
+    "note": "IRONSIGHT regionBoxes · Jordan · Iran–Israel flight path buffer",
+    "hazardClass": "gray-zone",
+    "source": "main",
+    "scalerank": 2,
+    "center": { "lat": 31.5, "lng": 36.5 },
+    "categories": ["③"],
+    "tension": "medium",
+    "matchedEventCount": 0,
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[35, 30], [40, 30], [40, 34], [35, 34], [35, 30]]]
+    }
+  },
+  {
+    "id": "tension-me-egypt-sinai",
+    "kind": "dispute",
+    "name": "Egypt / Sinai Contingency Zone",
+    "nameLong": "이집트·시나이 · 수에즈·홍해 연계 긴장",
+    "admin": "Egypt",
+    "sovereignty": "Egypt",
+    "type": "Regional threat / chokepoint approach",
+    "note": "IRONSIGHT regionBoxes · Egypt · Suez–Red Sea link",
+    "hazardClass": "tension",
+    "source": "main",
+    "scalerank": 2,
+    "center": { "lat": 28, "lng": 32 },
+    "categories": ["③"],
+    "tension": "medium",
+    "matchedEventCount": 0,
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[30, 27], [35, 27], [35, 31.5], [30, 31.5], [30, 27]]]
+    }
+  },
+  {
+    "id": "tension-me-kuwait",
+    "kind": "dispute",
+    "name": "Kuwait Northern Gulf Exposure",
+    "nameLong": "쿠웨이트 · 북부 걸프·미사일 피격 노출",
+    "admin": "Kuwait",
+    "sovereignty": "Kuwait / US",
+    "type": "Regional threat / strike exposure",
+    "note": "IRONSIGHT strikeLocations · Kuwait",
+    "hazardClass": "tension",
+    "source": "main",
+    "scalerank": 2,
+    "center": { "lat": 29.3, "lng": 47.5 },
+    "categories": ["③"],
+    "tension": "high",
+    "matchedEventCount": 0,
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[46.5, 28.5], [48.5, 28.5], [48.5, 30.1], [46.5, 30.1], [46.5, 28.5]]]
     }
   }
 ]

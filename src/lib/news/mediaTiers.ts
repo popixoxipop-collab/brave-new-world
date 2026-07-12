@@ -22,6 +22,8 @@ const TIER1_SOURCE = [
   "new york times",
   "guardian",
   "bloomberg",
+  "cnbc",
+  "financial times",
   "kyiv independent",
   "kyiv post",
   "ukrinform",
@@ -56,6 +58,8 @@ const TIER2_SOURCE = [
   "ukrainska pravda",
   "nv",
   "google news",
+  "cnbc",
+  "financial times",
 ];
 
 /** Tier 3 — state/party controlled — breaking signal only */
@@ -77,7 +81,7 @@ const TIER3_SOURCE = [
 ];
 
 const TIER1_HOST =
-  /(?:^|\.)((?:reuters|apnews|afp|bbc|nytimes|wsj|theguardian|bloomberg|washingtonpost|kyivindependent|kyivpost|ukrinform|meduza|themoscowtimes|defense)\.)/i;
+  /(?:^|\.)((?:reuters|apnews|afp|bbc|nytimes|wsj|theguardian|bloomberg|washingtonpost|kyivindependent|kyivpost|ukrinform|meduza|themoscowtimes|defense|ft)\.)/i;
 
 const TIER3_HOST =
   /(?:^|\.)((?:presstv|irna|farsnews|tasnimnews|tass|rt\.com|kcna|xinhuanet|news\.cn|globaltimes|sputniknews)\.)/i;
@@ -117,4 +121,13 @@ export const TIER_LABELS: Record<MediaTrustTier, string> = {
   1: "Tier 1 · 확인 매체",
   2: "Tier 2 · 보완 매체",
   3: "Tier 3 · 당사자 입장",
+};
+
+export const ECONOMY_TIER_LABELS: Record<
+  MediaTrustTier,
+  { label: string; detail: string }
+> = {
+  1: { label: "공식·와이어", detail: "Reuters · WSJ · FT" },
+  2: { label: "시장 매체", detail: "CNBC · Google News" },
+  3: { label: "미확인 속보", detail: "참고용" },
 };

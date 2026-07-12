@@ -111,6 +111,27 @@ const TYPE_META: Record<NeptunThreatType, NeptunTypeMeta> = {
 
 const EARTH_RADIUS_KM = 6371;
 
+/** 추측항법 최대 경과(시간) — 스텁·끊긴 피드가 지구 반대편으로 날아가는 것 방지 */
+const MAX_PREDICT_HOURS: Record<NeptunThreatType, number> = {
+  ballistic: 5 / 60,
+  missile: 25 / 60,
+  uav: 40 / 60,
+  recon: 40 / 60,
+  kab: 8 / 60,
+  mig31k: 15 / 60,
+  unknown: 25 / 60,
+};
+
+const MAX_PREDICT_KM = 380;
+
+/**
+ * NEPTUN 작전 박스 (우크라·흑해·접경).
+ * 이 밖 좌표는 표시·추측항법에서 제외.
+ */
+export function isInNeptunOpsBox(lat: number, lon: number): boolean {
+  return lat >= 42 && lat <= 54.5 && lon >= 20 && lon <= 43.5;
+}
+
 export function getNeptunTypeMeta(type: string): NeptunTypeMeta {
   return TYPE_META[type as NeptunThreatType] ?? TYPE_META.unknown;
 }
@@ -133,24 +154,43 @@ export function neptunDest(lat: number, lon: number, bearingDeg: number, km: num
   return { lat: (lat2 * 180) / Math.PI, lon: (lon2 * 180) / Math.PI };
 }
 
-/** NEPTUN SDK와 동일한 dead-reckon 추측항법 */
+/** NEPTUN SDK와 동일한 dead-reckon 추측항법 (경과·거리·작전박스 상한 적용) */
 export function neptunPredict(threat: NeptunThreat, nowMs = Date.now()): NeptunPredicted {
+  const anchor = {
+    lat: threat.lat,
+    lon: threat.lon,
+    heading: threat.heading,
+    flying: false,
+  };
+
+  if (!Number.isFinite(threat.lat) || !Number.isFinite(threat.lon)) {
+    return anchor;
+  }
+  if (!isInNeptunOpsBox(threat.lat, threat.lon)) {
+    return anchor;
+  }
+
   const speed = threat.velocity?.speedKmh ?? 0;
-  if (speed <= 0 || !Number.isFinite(threat.lat) || !Number.isFinite(threat.lon)) {
-    return {
-      lat: threat.lat,
-      lon: threat.lon,
-      heading: threat.heading,
-      flying: false,
-    };
+  if (speed <= 0) {
+    return { ...anchor, flying: false };
   }
 
   const anchorIso = threat.confirmedAt || threat.updatedAt;
   const anchorMs = anchorIso ? Date.parse(anchorIso) : nowMs;
-  const elapsedH = Math.max(0, (nowMs - anchorMs) / 3_600_000);
-  const km = speed * elapsedH;
+  if (!Number.isFinite(anchorMs)) {
+    return anchor;
+  }
+
+  const typeKey = (TYPE_META[threat.type] ? threat.type : "unknown") as NeptunThreatType;
+  const maxHours = MAX_PREDICT_HOURS[typeKey] ?? MAX_PREDICT_HOURS.unknown;
+  const elapsedH = Math.min(maxHours, Math.max(0, (nowMs - anchorMs) / 3_600_000));
+  const km = Math.min(MAX_PREDICT_KM, speed * elapsedH);
   const bearing = threat.velocity?.bearingDeg ?? threat.heading ?? 0;
   const pos = neptunDest(threat.lat, threat.lon, bearing, km);
+
+  if (!isInNeptunOpsBox(pos.lat, pos.lon)) {
+    return anchor;
+  }
 
   return {
     lat: pos.lat,
@@ -164,12 +204,83 @@ export function isNeptunThreatVisible(threat: NeptunThreat): boolean {
   return (
     threat.status === "active" &&
     Number.isFinite(threat.lat) &&
-    Number.isFinite(threat.lon)
+    Number.isFinite(threat.lon) &&
+    isInNeptunOpsBox(threat.lat, threat.lon)
   );
 }
 
 export function formatNeptunLocation(threat: NeptunThreat): string {
   return [threat.locality, threat.district, threat.region].filter(Boolean).join(" · ");
+}
+
+function shiftIso(iso: string | undefined, deltaMs: number): string | undefined {
+  if (!iso) return iso;
+  const ms = Date.parse(iso);
+  if (!Number.isFinite(ms)) return iso;
+  return new Date(ms + deltaMs).toISOString();
+}
+
+/**
+ * 스텁 시드의 고정 시각을 "방금 전"으로 밀어 데모 궤적이 아시아로 표류하지 않게 함.
+ */
+export function rebaseNeptunStubPayload(payload: NeptunPayload, nowMs = Date.now()): NeptunPayload {
+  const stamps: number[] = [];
+  const collect = (iso?: string) => {
+    if (!iso) return;
+    const ms = Date.parse(iso);
+    if (Number.isFinite(ms)) stamps.push(ms);
+  };
+
+  for (const threat of payload.threats ?? []) {
+    collect(threat.confirmedAt);
+    collect(threat.updatedAt);
+    for (const point of threat.trail ?? []) collect(point.t);
+  }
+  for (const threat of payload.archivedThreats ?? []) {
+    collect(threat.confirmedAt);
+    collect(threat.updatedAt);
+    collect(threat.archivedAt);
+    for (const point of threat.trail ?? []) collect(point.t);
+  }
+  collect(payload.serverTime);
+  collect(payload.fetchedAt);
+
+  if (stamps.length === 0) {
+    return {
+      ...payload,
+      fetchedAt: new Date(nowMs).toISOString(),
+      serverTime: new Date(nowMs).toISOString(),
+      live: false,
+      stub: true,
+    };
+  }
+
+  const newest = Math.max(...stamps);
+  // 최신 관측이 약 90초 전이 되도록 이동
+  const deltaMs = nowMs - 90_000 - newest;
+
+  const rebaseThreat = <T extends NeptunThreat>(threat: T): T => ({
+    ...threat,
+    updatedAt: shiftIso(threat.updatedAt, deltaMs) ?? threat.updatedAt,
+    confirmedAt: shiftIso(threat.confirmedAt, deltaMs),
+    trail: threat.trail?.map((point) => ({
+      ...point,
+      t: shiftIso(point.t, deltaMs) ?? point.t,
+    })),
+  });
+
+  return {
+    ...payload,
+    fetchedAt: new Date(nowMs).toISOString(),
+    serverTime: new Date(nowMs).toISOString(),
+    live: false,
+    stub: true,
+    threats: (payload.threats ?? []).map(rebaseThreat),
+    archivedThreats: (payload.archivedThreats ?? []).map((threat) => ({
+      ...rebaseThreat(threat),
+      archivedAt: shiftIso(threat.archivedAt, deltaMs) ?? threat.archivedAt,
+    })),
+  };
 }
 
 export const NEPTUN_ATTRIBUTION_URL = "https://neptun.in.ua/";

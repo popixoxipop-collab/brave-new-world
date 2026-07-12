@@ -1,9 +1,11 @@
 import type { UkraineControlZone, UkraineSettlement } from "@/data/geoTypes";
+import { getGlobeLod, type GlobeLodTier } from "@/lib/globeLod";
 import {
   getUkraineSettlementTier,
   isUkraineSettlementLabelVisible,
   UA_SETTLEMENT_MAX_VISIBLE_ALTITUDE,
 } from "@/lib/ukraineSettlementLabels";
+import { filterViinaSettlementLabelsByViewport, VIINA_SETTLEMENT_LABEL_BUDGET } from "@/lib/viinaLod";
 import { getLodEffectiveAltitude } from "@/lib/zoomScale";
 
 type ViewState = { lat: number; lng: number; altitude: number };
@@ -29,21 +31,23 @@ function frontlineBufferDeg(altitude: number): number {
   return 0.2;
 }
 
-/** 근접·마을 줌에서 뷰포트 밖 라벨 제거 — 약 10~20km 반경 */
-function settlementViewportRadiusDeg(altitude: number, bufferDeg: number): number {
+/** regional 이상 — 전선 인접 거주지 라벨 상한 */
+function maxSettlementLabelCount(altitude: number, tier: GlobeLodTier): number {
+  if (tier === "near") return VIINA_SETTLEMENT_LABEL_BUDGET.near;
+  if (tier === "village") return VIINA_SETTLEMENT_LABEL_BUDGET.village;
   const a = getLodEffectiveAltitude(altitude);
-  if (a <= UA_SETTLEMENT_MAX_VISIBLE_ALTITUDE) return 0.14;
+  if (a <= 0.72) return 10;
+  return 8;
+}
+
+function settlementViewportRadiusDeg(altitude: number, bufferDeg: number, tier: GlobeLodTier): number {
+  if (tier === "near" || tier === "village") return 0;
+  const a = getLodEffectiveAltitude(altitude);
   if (a <= 0.28) return bufferDeg + 0.22;
   return bufferDeg + 0.35;
 }
 
-function maxSettlementLabelCount(altitude: number): number {
-  const a = getLodEffectiveAltitude(altitude);
-  if (a <= UA_SETTLEMENT_MAX_VISIBLE_ALTITUDE) return 12;
-  if (a <= 0.28) return 14;
-  if (a <= 0.72) return 10;
-  return 8;
-}
+const TIER_RANK = { megacity: 4, city: 3, town: 2, village: 1 } as const;
 
 function buildHostileCenters(
   settlements: UkraineSettlement[],
@@ -86,6 +90,15 @@ export function isCombatRelevantSettlement(
 
   if (settlement.controlStatus === "CONTESTED") {
     return isNearHostileFront(settlement, hostileCenters, frontlineBufferDeg(altitude));
+  }
+
+  const lod = getGlobeLod(altitude);
+  if (
+    (lod.tier === "near" || lod.tier === "village") &&
+    settlement.controlStatus === "RU" &&
+    isUkraineSettlementLabelVisible(tier, altitude)
+  ) {
+    return true;
   }
 
   const bufferDeg = frontlineBufferDeg(altitude);
@@ -133,22 +146,34 @@ export function filterCombatSettlementsForView(
   const candidates = buildCombatSettlementCandidates(settlements, zones);
   const hostileCenters = buildHostileCenters(settlements, zones);
   const bufferDeg = frontlineBufferDeg(altitude);
-  const maxCount = maxSettlementLabelCount(altitude);
-  const viewportRadius = settlementViewportRadiusDeg(altitude, bufferDeg);
+  const { tier } = getGlobeLod(altitude);
+  const maxCount = maxSettlementLabelCount(altitude, tier);
+  const viewportRadius = settlementViewportRadiusDeg(altitude, bufferDeg, tier);
 
   const filtered = candidates.filter((settlement) => {
     if (!isCombatRelevantSettlement(settlement, hostileCenters, altitude)) return false;
+    if (tier === "near" || tier === "village") return true;
     return pointDistanceDeg(settlement, view) <= viewportRadius;
   });
 
-  const tierRank = { megacity: 4, city: 3, town: 2, village: 1 } as const;
+  if (tier === "near" || tier === "village") {
+    return filterViinaSettlementLabelsByViewport(
+      filtered.map((settlement) => ({
+        ...settlement,
+        tierRank: TIER_RANK[getUkraineSettlementTier(settlement.population)],
+      })),
+      tier,
+      view.lat,
+      view.lng,
+    );
+  }
 
   return filtered
     .slice()
     .sort((a, b) => {
       const tierDiff =
-        tierRank[getUkraineSettlementTier(b.population)] -
-        tierRank[getUkraineSettlementTier(a.population)];
+        TIER_RANK[getUkraineSettlementTier(b.population)] -
+        TIER_RANK[getUkraineSettlementTier(a.population)];
       if (tierDiff !== 0) return tierDiff;
       return pointDistanceDeg(a, view) - pointDistanceDeg(b, view);
     })

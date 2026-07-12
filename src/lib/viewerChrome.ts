@@ -1,0 +1,233 @@
+import type { NavMenuGroup } from "@/data/navRegions";
+import { NAV_MENU_GROUPS } from "@/data/navRegions";
+import { ECON_NAV_MENU_GROUPS } from "@/data/econNavRegions";
+import type { LayerPrefs } from "@/lib/layerPrefs";
+import { saveLayerPrefs } from "@/lib/layerPrefs";
+import {
+  applyViewPackages,
+  capLayerCountForMode,
+  packagesForViewerMode,
+  type MergedViewConfig,
+  type ViewPackageId,
+  type ViewerMode,
+  type ViewTheaterChoice,
+  saveViewConfig,
+  loadViewConfig,
+} from "@/lib/viewPackages";
+import type { EconomyHubChoice } from "@/lib/autoFlyTarget";
+import { mergeConceptLayerPrefs } from "@/lib/conceptLayers";
+
+export type { ViewerMode };
+
+export type LayerCategoryId =
+  | "map"
+  | "conflict"
+  | "military"
+  | "transport"
+  | "intel"
+  | "energy"
+  | "economy"
+  | "live";
+
+export type BottomStackLayout = "conflict" | "economy";
+
+export type NewsTierLabel = { label: string; detail: string };
+
+export type ViewerChromePreset = {
+  mode: ViewerMode;
+  packageId: ViewPackageId;
+  layerCategoryIds: LayerCategoryId[];
+  forceLayerOn: Partial<LayerPrefs>;
+  forceLayerOff: Partial<LayerPrefs>;
+  fetchGdelt: boolean;
+  fetchTelegram: boolean;
+  bottomStack: BottomStackLayout;
+  newsTierLabels: Record<1 | 2 | 3, NewsTierLabel>;
+  navProfile: NavMenuGroup[];
+  searchPlaceholder: string;
+  navHeaderLabel: string;
+  modePickerTitle: string;
+  modePickerTagline: string;
+  modePickerBullets: string[];
+  layerPanelTitle: string;
+};
+
+const CONFLICT_FORCE_ON: Partial<LayerPrefs> = {
+  showUkraineControl: true,
+  showNeptun: true,
+  showNeptunPreviousTrails: true,
+  showGdeltWar: true,
+  showGdeltDiplomatic: true,
+  showTelegramOsint: true,
+};
+
+const CONFLICT_FORCE_OFF: Partial<LayerPrefs> = {
+  showAiDataCenters: false,
+};
+
+const ECONOMY_FORCE_ON: Partial<LayerPrefs> = {
+  showOilPipelines: true,
+  showGasPipelines: true,
+  showLngTerminals: true,
+  showShippingLanes: true,
+  showLogisticsRisk: true,
+  showSanctionsEntities: true,
+  showAiDataCenters: true,
+  showInternetExchanges: true,
+  showPorts: true,
+  showEconomicCenters: true,
+};
+
+const ECONOMY_FORCE_OFF: Partial<LayerPrefs> = {
+  showGdeltWar: false,
+  showGdeltDiplomatic: false,
+  showGdeltAlliance: false,
+  showGdeltProtests: false,
+  showTelegramOsint: false,
+  showUkraineControl: false,
+  showNeptun: false,
+  showNeptunPreviousTrails: false,
+  showTzevaAdom: false,
+  showConflictZones: false,
+  showUcdpEvents: false,
+  showMilitaryBases: false,
+  showMilitaryActivity: false,
+  showUsCarriers: false,
+};
+
+export const VIEWER_CHROME: Record<ViewerMode, ViewerChromePreset> = {
+  conflict: {
+    mode: "conflict",
+    packageId: "frontline-live",
+    layerCategoryIds: ["map", "conflict", "military", "transport", "live"],
+    forceLayerOn: CONFLICT_FORCE_ON,
+    forceLayerOff: CONFLICT_FORCE_OFF,
+    fetchGdelt: true,
+    fetchTelegram: true,
+    bottomStack: "conflict",
+    newsTierLabels: {
+      1: { label: "확인", detail: "주요 통신·공식" },
+      2: { label: "보완", detail: "지역·전문 매체" },
+      3: { label: "속보", detail: "미확인·참고용" },
+    },
+    navProfile: NAV_MENU_GROUPS,
+    searchPlaceholder: "지명 · 국가 · 분쟁 검색",
+    navHeaderLabel: "Conflict View",
+    modePickerTitle: "지정학",
+    modePickerTagline: "전선 · GDELT · Telegram OSINT",
+    modePickerBullets: [
+      "우크라이나 전선·NEPTUN 드론·미사일 궤적",
+      "GDELT 전투·외교 뉴스 핀",
+      "Telegram OSINT · VIINA 점령지",
+      "하단: 속보 + GDELT 범례",
+    ],
+    layerPanelTitle: "레이어 · 전선",
+  },
+  economy: {
+    mode: "economy",
+    packageId: "geo-trader",
+    layerCategoryIds: ["map", "energy", "transport", "economy"],
+    forceLayerOn: ECONOMY_FORCE_ON,
+    forceLayerOff: ECONOMY_FORCE_OFF,
+    fetchGdelt: false,
+    fetchTelegram: false,
+    bottomStack: "economy",
+    newsTierLabels: {
+      1: { label: "공식·와이어", detail: "Reuters · WSJ · FT" },
+      2: { label: "시장 매체", detail: "CNBC · Google News" },
+      3: { label: "미확인 속보", detail: "참고용" },
+    },
+    navProfile: ECON_NAV_MENU_GROUPS,
+    searchPlaceholder: "유가 · 제재 · 항로 · 허브 검색",
+    navHeaderLabel: "Geo Markets",
+    modePickerTitle: "경제 · 시장",
+    modePickerTagline: "유가 · VIX · 제재 · 물류",
+    modePickerBullets: [
+      "주요 증시·VIX·유가 티커",
+      "경제 RSS · 시장 속보",
+      "제재·파이프라인·해운·초크포인트 레이어",
+      "하단: 티커 + 시장 속보 (GDELT/TG 없음)",
+    ],
+    layerPanelTitle: "인프라 · 시장",
+  },
+};
+
+export function getViewerChrome(mode: ViewerMode): ViewerChromePreset {
+  return VIEWER_CHROME[mode];
+}
+
+export function mergeChromeLayers(base: LayerPrefs, mode: ViewerMode): LayerPrefs {
+  const preset = getViewerChrome(mode);
+  const next: LayerPrefs = { ...base };
+
+  for (const [key, value] of Object.entries(preset.forceLayerOff) as [keyof LayerPrefs, boolean][]) {
+    if (value === false) {
+      (next as Record<keyof LayerPrefs, LayerPrefs[keyof LayerPrefs]>)[key] = false;
+    }
+  }
+  for (const [key, value] of Object.entries(preset.forceLayerOn) as [keyof LayerPrefs, boolean][]) {
+    if (value === true) {
+      (next as Record<keyof LayerPrefs, LayerPrefs[keyof LayerPrefs]>)[key] = true;
+    }
+  }
+
+  return capLayerCountForMode(next, mode);
+}
+
+export type ApplyViewerModeResult = {
+  mode: ViewerMode;
+  merged: MergedViewConfig;
+  packages: ViewPackageId[];
+  theater: ViewTheaterChoice;
+  economyHub: EconomyHubChoice;
+};
+
+/** 모드 전환 = 패키지 + chrome 레이어 + view config 한 번에 */
+export function applyViewerMode(
+  mode: ViewerMode,
+  theater: ViewTheaterChoice = "auto",
+  economyHub: EconomyHubChoice = "auto",
+): ApplyViewerModeResult {
+  const packages = packagesForViewerMode(mode);
+  const effectiveTheater = mode === "conflict" ? theater : "auto";
+  const effectiveHub = mode === "economy" ? economyHub : "auto";
+  const mergedBase = applyViewPackages(packages, effectiveTheater, effectiveHub);
+  const chromeLayers = mergeChromeLayers(mergedBase.layers, mode);
+  const conceptLayers = capLayerCountForMode(
+    mergeConceptLayerPrefs(chromeLayers, mode, effectiveTheater, effectiveHub),
+    mode,
+  );
+  saveLayerPrefs(conceptLayers);
+
+  const existing = loadViewConfig();
+  saveViewConfig({
+    version: 1,
+    packages: mergedBase.packages,
+    theater: effectiveTheater,
+    economyHub: effectiveHub,
+    appliedAt: new Date().toISOString(),
+    viewerMode: mode,
+    customizedLayers: existing?.customizedLayers,
+  });
+
+  const merged: MergedViewConfig = {
+    ...mergedBase,
+    layers: conceptLayers,
+    ui: {
+      ...mergedBase.ui,
+      showTicker: mode === "economy",
+    },
+  };
+
+  return { mode, merged, packages, theater: effectiveTheater, economyHub: effectiveHub };
+}
+
+export function resolveViewerModeFromConfig(
+  packages: ViewPackageId[],
+  savedMode?: ViewerMode,
+): ViewerMode {
+  if (savedMode) return savedMode;
+  const ids = packages.filter((id) => id !== "custom");
+  if (ids.length === 1 && ids[0] === "geo-trader") return "economy";
+  return "conflict";
+}

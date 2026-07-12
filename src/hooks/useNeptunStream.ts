@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isClientApiStubMode, isClientNeptunEnabled } from "@/lib/runtimeConfig.client";
 import { readResponseBodyText } from "@/lib/fetchJsonStream";
+import { readNeptunCache, prefetchNeptun } from "@/lib/neptunPrefetch";
 import { NEPTUN_PUBLISH_THROTTLE_MS } from "@/lib/globePerformance";
 import {
   isNeptunThreatVisible,
@@ -14,8 +15,14 @@ import {
   type NeptunThreat,
   NEPTUN_WS_URL,
 } from "@/lib/neptun";
+import {
+  createNeptunImpactFlash,
+  pruneNeptunImpactFlashes,
+  type NeptunImpactFlash,
+} from "@/lib/neptunImpactFlash";
 
 export type { NeptunLiveThreat, NeptunArchivedThreat } from "@/lib/neptun";
+export type { NeptunImpactFlash } from "@/lib/neptunImpactFlash";
 
 export type NeptunStreamStatus = "idle" | "loading" | "ok" | "error" | "stub";
 
@@ -34,6 +41,14 @@ const MAX_ARCHIVED_TRAILS = 96;
 
 function neptunEnabled(): boolean {
   return isClientNeptunEnabled();
+}
+
+function neptunClientLoadEnabled(): boolean {
+  return neptunEnabled() || isClientApiStubMode();
+}
+
+function neptunWsEnabled(): boolean {
+  return neptunEnabled() && !isClientApiStubMode();
 }
 
 function withPrediction(threats: NeptunThreat[], nowMs: number): NeptunLiveThreat[] {
@@ -73,14 +88,21 @@ function archiveThreat(
 
 function publishArchived(
   archivedRef: Map<string, NeptunArchivedThreat>,
-  setArchivedThreats: (threats: NeptunArchivedThreat[]) => void,
+  publish: (threats: NeptunArchivedThreat[]) => void,
 ) {
-  setArchivedThreats(
+  publish(
     [...archivedRef.values()].sort((a, b) => b.archivedAt.localeCompare(a.archivedAt)),
   );
 }
 
-export function useNeptunStream(enabled: boolean) {
+type NeptunStreamOptions = {
+  /** 카메라 드래그·fly-to 중 React state publish 보류 */
+  pausePublish?: boolean;
+};
+
+export function useNeptunStream(enabled: boolean, options: NeptunStreamOptions = {}) {
+  const pausePublish = options.pausePublish ?? false;
+  const [impactFlashes, setImpactFlashes] = useState<NeptunImpactFlash[]>([]);
   const [threats, setThreats] = useState<NeptunLiveThreat[]>([]);
   const [archivedThreats, setArchivedThreats] = useState<NeptunArchivedThreat[]>([]);
   const [alerts, setAlerts] = useState<NeptunAlerts>(EMPTY_ALERTS);
@@ -97,18 +119,91 @@ export function useNeptunStream(enabled: boolean) {
   const reconnectAttemptRef = useRef(0);
   const pollTimerRef = useRef<number | null>(null);
   const lastPublishRef = useRef(0);
+  const pausePublishRef = useRef(pausePublish);
+  const pendingRef = useRef({ live: false, archived: false, alerts: false, impacts: false });
+  const impactsRef = useRef<NeptunImpactFlash[]>([]);
+  const sessionReadyRef = useRef(false);
   const PUBLISH_MS = NEPTUN_PUBLISH_THROTTLE_MS;
 
-  const applyThreatMap = useCallback((nowMs: number) => {
-    setThreats(withPrediction(Array.from(threatsRef.current.values()), nowMs));
+  pausePublishRef.current = pausePublish;
+
+  const publishImpactsNow = useCallback((nowMs = Date.now()) => {
+    const pruned = pruneNeptunImpactFlashes(impactsRef.current, nowMs);
+    impactsRef.current = pruned;
+    setImpactFlashes(pruned);
+    pendingRef.current.impacts = false;
   }, []);
+
+  const pushImpactFlash = useCallback(
+    (threat: NeptunThreat, archivedAt: string) => {
+      const flash = createNeptunImpactFlash(threat, Date.parse(archivedAt) || Date.now());
+      if (!flash) return;
+      impactsRef.current = [...impactsRef.current, flash].slice(-24);
+      if (pausePublishRef.current) {
+        pendingRef.current.impacts = true;
+        return;
+      }
+      publishImpactsNow();
+    },
+    [publishImpactsNow],
+  );
+
+  const archiveThreatWithImpact = useCallback(
+    (threat: NeptunThreat, archivedAt: string, emitFlash: boolean) => {
+      archiveThreat(archivedRef.current, threat, archivedAt);
+      if (emitFlash) pushImpactFlash(threat, archivedAt);
+    },
+    [pushImpactFlash],
+  );
+
+  const publishLiveNow = useCallback((nowMs: number) => {
+    setThreats(withPrediction(Array.from(threatsRef.current.values()), nowMs));
+    pendingRef.current.live = false;
+  }, []);
+
+  const publishArchivedNow = useCallback(() => {
+    publishArchived(archivedRef.current, setArchivedThreats);
+    pendingRef.current.archived = false;
+  }, []);
+
+  const applyThreatMap = useCallback(
+    (nowMs: number) => {
+      if (pausePublishRef.current) {
+        pendingRef.current.live = true;
+        return;
+      }
+      publishLiveNow(nowMs);
+    },
+    [publishLiveNow],
+  );
+
+  const flushPending = useCallback(() => {
+    if (pausePublishRef.current) return;
+    if (pendingRef.current.live) {
+      publishLiveNow(Date.now());
+    }
+    if (pendingRef.current.archived) {
+      publishArchivedNow();
+    }
+    if (pendingRef.current.impacts) {
+      publishImpactsNow();
+    }
+  }, [publishArchivedNow, publishImpactsNow, publishLiveNow]);
+
+  useEffect(() => {
+    if (!pausePublish) flushPending();
+  }, [flushPending, pausePublish]);
 
   const ingestPayload = useCallback(
     (payload: NeptunPayload) => {
       const nextIds = new Set(payload.threats.map((threat) => threat.id));
       for (const [id, threat] of threatsRef.current) {
         if (!nextIds.has(id)) {
-          archiveThreat(archivedRef.current, threat, payload.serverTime || payload.fetchedAt);
+          archiveThreatWithImpact(
+            threat,
+            payload.serverTime || payload.fetchedAt,
+            sessionReadyRef.current,
+          );
         }
       }
       threatsRef.current = new Map(payload.threats.map((t) => [t.id, t]));
@@ -119,32 +214,49 @@ export function useNeptunStream(enabled: boolean) {
           }
         }
       }
-      publishArchived(archivedRef.current, setArchivedThreats);
+      if (pausePublishRef.current) {
+        pendingRef.current.archived = true;
+      } else {
+        publishArchivedNow();
+      }
       setAlerts(payload.alerts ?? EMPTY_ALERTS);
       setServerTime(payload.serverTime || payload.fetchedAt);
       setLive(Boolean(payload.live));
       setError(payload.error ?? null);
       setStatus(payload.stub ? "stub" : "ok");
       applyThreatMap(Date.now());
+      sessionReadyRef.current = true;
     },
-    [applyThreatMap],
+    [applyThreatMap, archiveThreatWithImpact, publishArchivedNow],
   );
 
   const refreshRest = useCallback(async () => {
-    if (!enabled || !neptunEnabled()) return;
+    if (!enabled || !neptunClientLoadEnabled()) return;
     setStatus((prev) => (prev === "idle" ? "loading" : prev));
     try {
+      const cached = readNeptunCache();
+      if (cached) {
+        ingestPayload(cached);
+        return;
+      }
+
+      const payload = await prefetchNeptun();
+      if (payload) {
+        ingestPayload(payload);
+        return;
+      }
+
       const res = await fetch("/api/neptun", { cache: "no-store" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const isStubStream = res.headers.get("X-Neptun-Stub") === "true";
-      let payload: NeptunPayload;
+      let next: NeptunPayload;
       if (isStubStream) {
         const text = await readResponseBodyText(res);
-        payload = { ...(JSON.parse(text) as NeptunPayload), live: false, stub: true };
+        next = { ...(JSON.parse(text) as NeptunPayload), live: false, stub: true };
       } else {
-        payload = (await res.json()) as NeptunPayload;
+        next = (await res.json()) as NeptunPayload;
       }
-      ingestPayload(payload);
+      ingestPayload(next);
     } catch (err) {
       setStatus("error");
       setError(err instanceof Error ? err.message : "fetch failed");
@@ -158,10 +270,17 @@ export function useNeptunStream(enabled: boolean) {
         applyThreatMap(nowMs);
         lastPublishRef.current = nowMs;
       }
+      if (impactsRef.current.length > 0) {
+        const pruned = pruneNeptunImpactFlashes(impactsRef.current, nowMs);
+        if (pruned.length !== impactsRef.current.length) {
+          impactsRef.current = pruned;
+          setImpactFlashes(pruned);
+        }
+      }
       rafRef.current = window.requestAnimationFrame(tick);
     };
     rafRef.current = window.requestAnimationFrame(tick);
-  }, [applyThreatMap]);
+  }, [applyThreatMap, PUBLISH_MS]);
 
   const stopAnimationLoop = useCallback(() => {
     if (rafRef.current != null) {
@@ -196,7 +315,7 @@ export function useNeptunStream(enabled: boolean) {
   );
 
   const connectWebSocket = useCallback(() => {
-    if (!enabled || !neptunEnabled() || isClientApiStubMode()) return;
+    if (!enabled || !neptunWsEnabled()) return;
 
     cleanupWs();
     setStatus((prev) => (prev === "idle" ? "loading" : prev));
@@ -224,12 +343,17 @@ export function useNeptunStream(enabled: boolean) {
             const nextIds = new Set(list.map((threat) => threat.id));
             for (const [id, threat] of threatsRef.current) {
               if (!nextIds.has(id)) {
-                archiveThreat(archivedRef.current, threat, archivedAt);
+                archiveThreatWithImpact(threat, archivedAt, sessionReadyRef.current);
               }
             }
             threatsRef.current = new Map(list.map((t) => [t.id, t]));
-            publishArchived(archivedRef.current, setArchivedThreats);
+            if (pausePublishRef.current) {
+              pendingRef.current.archived = true;
+            } else {
+              publishArchivedNow();
+            }
             applyThreatMap(Date.now());
+            sessionReadyRef.current = true;
             break;
           }
           case "upsert":
@@ -239,11 +363,16 @@ export function useNeptunStream(enabled: boolean) {
           case "remove": {
             const threat = threatsRef.current.get(env.data.id);
             if (threat) {
-              archiveThreat(archivedRef.current, threat, archivedAt);
-              publishArchived(archivedRef.current, setArchivedThreats);
+              archiveThreatWithImpact(threat, archivedAt, true);
+              if (pausePublishRef.current) {
+                pendingRef.current.archived = true;
+              } else {
+                publishArchivedNow();
+              }
             }
             threatsRef.current.delete(env.data.id);
             applyThreatMap(Date.now());
+            sessionReadyRef.current = true;
             break;
           }
           case "alerts":
@@ -266,18 +395,21 @@ export function useNeptunStream(enabled: boolean) {
     ws.onclose = () => {
       wsRef.current = null;
       stopAnimationLoop();
-      if (!enabled || !neptunEnabled()) return;
+      if (!enabled || !neptunWsEnabled()) return;
       setLive(false);
       scheduleReconnect(connectWebSocket);
     };
-  }, [applyThreatMap, cleanupWs, enabled, scheduleReconnect, startAnimationLoop, stopAnimationLoop]);
+  }, [applyThreatMap, archiveThreatWithImpact, cleanupWs, enabled, publishArchivedNow, scheduleReconnect, startAnimationLoop, stopAnimationLoop]);
 
   useEffect(() => {
-    if (!enabled || !neptunEnabled()) {
+    if (!enabled || !neptunClientLoadEnabled()) {
       threatsRef.current.clear();
       archivedRef.current.clear();
+      impactsRef.current = [];
+      sessionReadyRef.current = false;
       setThreats([]);
       setArchivedThreats([]);
+      setImpactFlashes([]);
       setAlerts(EMPTY_ALERTS);
       setLive(false);
       setStatus("idle");
@@ -297,8 +429,10 @@ export function useNeptunStream(enabled: boolean) {
       pollTimerRef.current = window.setInterval(() => {
         void refreshRest();
       }, STUB_POLL_MS);
-    } else {
+    } else if (neptunWsEnabled()) {
       connectWebSocket();
+      void refreshRest();
+    } else {
       void refreshRest();
     }
 
@@ -322,6 +456,7 @@ export function useNeptunStream(enabled: boolean) {
   return {
     threats,
     archivedThreats,
+    impactFlashes,
     alerts,
     live,
     status,

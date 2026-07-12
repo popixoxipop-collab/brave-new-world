@@ -1,6 +1,13 @@
 "use client";
 
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { LabelLanguage } from "@/lib/layerPrefs";
 import type { TzevaAdomAlert } from "@/lib/tzevaAdom";
+import {
+  translateOrefRegion,
+  translateOrefTitle,
+  tzevaUi,
+} from "@/lib/tzevaAdomI18n";
 
 type TzevaAdomPanelProps = {
   active: TzevaAdomAlert[];
@@ -9,20 +16,49 @@ type TzevaAdomPanelProps = {
   liveStatus: "idle" | "loading" | "ok" | "error" | "stub" | "geo-blocked";
   geoRestricted?: boolean;
   error?: string | null;
+  lang?: LabelLanguage;
 };
 
-function formatTime(iso: string) {
+function formatTime(iso: string, lang: LabelLanguage) {
   try {
-    return new Date(iso.replace(" ", "T")).toLocaleString("ko-KR", {
+    return new Date(iso.replace(" ", "T")).toLocaleString(lang === "en" ? "en-US" : "ko-KR", {
       month: "numeric",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-      second: "2-digit",
     });
   } catch {
     return iso;
   }
+}
+
+function AlertBellIcon({ urgent }: { urgent: boolean }) {
+  const stroke = urgent ? "#fecaca" : "#f87171";
+  const fill = urgent ? "rgba(220, 38, 38, 0.55)" : "rgba(127, 29, 29, 0.55)";
+  return (
+    <svg
+      viewBox="0 0 48 48"
+      className={`h-4 w-4 shrink-0 ${urgent ? "animate-pulse" : ""}`}
+      aria-hidden
+    >
+      <path
+        d="M24 4c-7.2 0-13 5.6-13 12.6V24l-4.2 7.2c-.7 1.2.2 2.8 1.6 2.8h31.2c1.4 0 2.3-1.6 1.6-2.8L37 24v-7.4C37 9.6 31.2 4 24 4z"
+        fill={fill}
+        stroke={stroke}
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M18.5 36.5c1.4 2.6 3.4 4 5.5 4s4.1-1.4 5.5-4"
+        fill="none"
+        stroke={stroke}
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path d="M24 2.5v3.5" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" />
+      <circle cx="24" cy="2.2" r="1.6" fill={stroke} />
+    </svg>
+  );
 }
 
 export function TzevaAdomPanel({
@@ -32,116 +68,147 @@ export function TzevaAdomPanel({
   liveStatus,
   geoRestricted,
   error,
+  lang = "ko",
 }: TzevaAdomPanelProps) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
   const hasActive = active.length > 0;
 
+  const headline = useMemo(() => {
+    const alert = active[0] ?? history[0] ?? null;
+    if (!alert) return null;
+    return {
+      region: translateOrefRegion(alert.region, lang),
+      title: translateOrefTitle(alert.title, lang, alert.category),
+      active: alert.active || hasActive,
+    };
+  }, [active, hasActive, history, lang]);
+
+  const list = useMemo(() => {
+    const seen = new Set<string>();
+    const merged: TzevaAdomAlert[] = [];
+    for (const alert of [...active, ...history]) {
+      if (seen.has(alert.id)) continue;
+      seen.add(alert.id);
+      merged.push(alert);
+      if (merged.length >= 20) break;
+    }
+    return merged;
+  }, [active, history]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const statusLabel = hasActive
+    ? tzevaUi("alert", lang)
+    : liveStatus === "loading"
+      ? tzevaUi("connecting", lang)
+      : liveStatus === "geo-blocked"
+        ? tzevaUi("geoBlocked", lang)
+        : live
+          ? tzevaUi("live", lang)
+          : liveStatus === "stub"
+            ? tzevaUi("demo", lang)
+            : tzevaUi("idle", lang);
+
   return (
-    <div
-      className={`pointer-events-auto absolute left-4 top-4 z-30 flex h-[calc(100vh-32px)] w-[min(92vw,384px)] flex-col overflow-hidden rounded-lg border backdrop-blur-md ${
-        hasActive
-          ? "border-red-400/50 bg-[#1a0a0e]/90 shadow-[0_0_28px_rgba(255,23,68,0.35)]"
-          : "border-[#45f3ff]/30 bg-[#1a1a2e]/85 shadow-[0_0_20px_rgba(69,243,255,0.12)]"
-      }`}
-    >
+    <div ref={rootRef} className="pointer-events-auto relative z-[62]">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-label={tzevaUi("brand", lang)}
+        title={tzevaUi("openList", lang)}
+        onClick={() => setOpen((v) => !v)}
+        className={`flex max-w-[min(52vw,280px)] items-center gap-2 border px-3 py-2 text-xs shadow-lg backdrop-blur-md transition-all duration-200 ${
+          hasActive
+            ? "border-red-400/45 bg-[#2a0c12]/72 text-red-50"
+            : "border-red-300/20 bg-[#1a0c10]/55 text-red-100/90 hover:border-red-300/35"
+        } ${open ? "rounded-t-full rounded-b-md" : "rounded-full"}`}
+      >
+        <AlertBellIcon urgent={hasActive} />
+        <span className="min-w-0 flex-1 text-left">
+          <span className="block truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-red-200/80">
+            {tzevaUi("brand", lang)}
+          </span>
+          <span className="mt-0.5 block truncate font-medium tracking-tight">
+            {headline
+              ? `${headline.region} · ${headline.title}`
+              : statusLabel}
+          </span>
+        </span>
+        <span
+          className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+            hasActive ? "animate-pulse bg-red-400" : live ? "bg-emerald-400" : "bg-slate-500"
+          }`}
+        />
+      </button>
+
       <div
-        className={`flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3 ${
-          hasActive ? "border-red-400/30" : "border-[#45f3ff]/25"
+        className={`absolute right-0 top-full z-[70] w-[min(92vw,320px)] origin-top transition-all duration-200 ease-out ${
+          open
+            ? "pointer-events-auto scale-100 opacity-100"
+            : "pointer-events-none scale-[0.98] opacity-0"
         }`}
       >
-        <div>
-          <p
-            className={`font-mono text-[10px] uppercase tracking-[0.28em] ${
-              hasActive ? "text-red-200/90" : "text-[#45f3ff]/80"
-            }`}
-          >
-            Tzeva Adom
-          </p>
-          <p className={`mt-0.5 text-sm font-semibold ${hasActive ? "text-red-50" : "text-[#45f3ff]"}`}>
-            📡 INTEL COMMAND CENTER
+        <div className="overflow-hidden rounded-b-2xl rounded-tl-2xl border border-red-400/25 border-t-0 bg-[#1a0c10]/95 shadow-2xl backdrop-blur-md">
+          <div className="border-b border-red-400/15 px-3 py-2">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-red-200/75">
+              {tzevaUi("brand", lang)}
+            </p>
+            <p className="mt-0.5 text-[11px] text-red-100/55">{tzevaUi("subtitle", lang)}</p>
+          </div>
+
+          <div className="max-h-64 overflow-y-auto overscroll-contain p-1.5">
+            {geoRestricted || liveStatus === "geo-blocked" ? (
+              <p className="px-2 py-3 text-[11px] leading-relaxed text-amber-200/90">
+                {tzevaUi("geoHint", lang)}
+              </p>
+            ) : error ? (
+              <p className="px-2 py-3 text-[11px] text-red-200/85">{error}</p>
+            ) : list.length === 0 ? (
+              <p className="px-2 py-3 font-mono text-[11px] text-slate-500">
+                {tzevaUi("awaiting", lang)}
+              </p>
+            ) : (
+              <ul className="divide-y divide-red-400/10" role="listbox">
+                {list.map((alert) => {
+                  const region = translateOrefRegion(alert.region, lang);
+                  const title = translateOrefTitle(alert.title, lang, alert.category);
+                  const isLive = alert.active || active.some((a) => a.id === alert.id);
+                  return (
+                    <li key={alert.id} className="px-2.5 py-2">
+                      <div className="flex flex-wrap items-center gap-x-1.5 text-[9px] text-slate-500">
+                        <span className="text-slate-400">{formatTime(alert.alertDate, lang)}</span>
+                        {isLive ? (
+                          <span className="rounded border border-red-400/35 px-1 text-red-200">
+                            {tzevaUi("activeBadge", lang)}
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-0.5 text-[12px] font-semibold leading-snug text-slate-50">
+                        {region}
+                      </p>
+                      <p className="mt-0.5 text-[10px] leading-snug text-slate-400">{title}</p>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          <p className="border-t border-red-950/40 px-3 py-1.5 font-mono text-[8px] text-slate-600">
+            {tzevaUi("source", lang)}
           </p>
         </div>
-        <span
-          className={`flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-mono text-[10px] ${
-            hasActive
-              ? "border-red-300/40 bg-red-500/20 text-red-100 animate-pulse"
-              : live
-                ? "border-emerald-300/35 bg-emerald-400/15 text-emerald-100"
-                : "border-slate-500/30 bg-slate-800/40 text-slate-300"
-          }`}
-        >
-          <span
-            className={`h-2 w-2 rounded-full ${
-              hasActive ? "bg-red-400" : live ? "bg-emerald-400" : "bg-slate-500"
-            }`}
-          />
-          {hasActive
-            ? "ALERT"
-            : liveStatus === "loading"
-              ? "연결 중"
-              : liveStatus === "geo-blocked"
-                ? "지역 제한"
-                : live
-                  ? "LIVE"
-                  : liveStatus === "stub"
-                    ? "데모"
-                    : "대기"}
-        </span>
       </div>
-
-      {hasActive ? (
-        <div className="shrink-0 border-b border-red-400/20 bg-red-950/40 px-4 py-3">
-          <p className="font-mono text-xs uppercase tracking-widest text-red-200/80">Active alerts</p>
-          <ul className="mt-2 space-y-2">
-            {active.map((alert) => (
-              <li key={alert.id} className="rounded-md border border-red-400/25 bg-red-900/30 px-3 py-2">
-                <p className="text-sm font-bold text-red-50">{alert.region}</p>
-                <p className="mt-0.5 text-xs text-red-200/85">{alert.title}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-        {geoRestricted || liveStatus === "geo-blocked" ? (
-          <p className="text-xs leading-5 text-amber-200/90">
-            Pikud HaOref API는 <strong>이스라엘 IP</strong>에서만 접근 가능합니다. 해외에서는{" "}
-            <code className="rounded bg-slate-800 px-1">OREF_HISTORY_URL</code> 프록시를 설정하거나{" "}
-            <code className="rounded bg-slate-800 px-1">npm run tzeva-adom:poll</code>을 이스라엘/VPN
-            환경에서 실행하세요.
-          </p>
-        ) : error ? (
-          <p className="text-xs text-red-200/80">{error}</p>
-        ) : history.length === 0 ? (
-          <p className="font-mono text-xs text-slate-400">Awaiting stream connection…</p>
-        ) : (
-          <ul className="space-y-2">
-            {history.slice(0, 40).map((alert) => (
-              <li
-                key={alert.id}
-                className={`rounded-md border px-3 py-2 ${
-                  alert.active
-                    ? "border-red-400/30 bg-red-950/25"
-                    : "border-slate-700/50 bg-black/20"
-                }`}
-              >
-                <div className="flex flex-wrap items-center gap-x-2 text-[10px] text-slate-500">
-                  <span className="text-slate-300">{formatTime(alert.alertDate)}</span>
-                  {alert.active ? (
-                    <span className="rounded border border-red-400/30 px-1 text-red-200">ACTIVE</span>
-                  ) : null}
-                </div>
-                <p className="mt-1 text-sm text-slate-100">{alert.region}</p>
-                <p className="mt-0.5 text-[11px] text-slate-400">{alert.title}</p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <p className="shrink-0 border-t border-slate-700/40 px-4 py-2 font-mono text-[10px] text-slate-500">
-        Source: Pikud HaOref (unofficial JSON) · DavidTheExplorer/Tzeva-Adom-API compatible
-      </p>
     </div>
   );
 }

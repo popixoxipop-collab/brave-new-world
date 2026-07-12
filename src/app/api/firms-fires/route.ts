@@ -31,7 +31,7 @@ export async function GET(request: Request) {
       fires: [],
       count: 0,
       stub: true,
-      error: "FIRMS_MAP_KEY가 서버 환경변수에 없습니다.",
+      error: "FIRMS_MAP_KEY 또는 NASA_FIRMS_API_KEY가 서버 환경변수에 없습니다.",
     });
   }
 
@@ -51,10 +51,21 @@ export async function GET(request: Request) {
         cache: "no-store",
         headers: { Accept: "text/csv" },
       });
-      if (!response.ok) {
-        throw new Error(`FIRMS HTTP ${response.status}`);
-      }
       const csv = await response.text();
+      if (!response.ok) {
+        throw new Error(`FIRMS HTTP ${response.status}: ${csv.slice(0, 160)}`);
+      }
+      // NASA는 잘못된 키에도 200 + 에러 문구를 주는 경우가 있음
+      const head = csv.trim().slice(0, 120).toLowerCase();
+      if (
+        head.startsWith("<!DOCTYPE") ||
+        head.includes("invalid") ||
+        head.includes("error") ||
+        head.includes("unauthorized") ||
+        !head.includes("latitude")
+      ) {
+        throw new Error(`FIRMS unexpected response: ${csv.trim().slice(0, 160)}`);
+      }
       return parseFirmsCsv(csv, max);
     });
 

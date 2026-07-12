@@ -33,6 +33,8 @@ export interface MapGlobeViewProps {
   onGlobeReady?: () => void;
   /** 빈 바다·지도 위 커서 좌표 (해역명 툴팁 등) */
   onGlobeMouseMove?: (coords: { lat: number; lng: number } | null) => void;
+  /** MapLibre feature picking 대상 — VIINA 근접 줌에서 폴리곤 제외 등 */
+  interactiveLayerIds?: readonly string[];
   [key: string]: unknown;
 }
 
@@ -101,6 +103,14 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
     [props.heatmapsData],
   );
 
+  const interactiveLayerIds = useMemo(() => {
+    const fromProps = props.interactiveLayerIds;
+    if (Array.isArray(fromProps) && fromProps.length > 0) {
+      return [...fromProps];
+    }
+    return [...INTERACTIVE_LAYERS];
+  }, [props.interactiveLayerIds]);
+
   const pointLat = asFn<unknown, number>(props.pointLat, () => 0);
   const pointLng = asFn<unknown, number>(props.pointLng, () => 0);
   const pointColor = asFn<unknown, string>(props.pointColor, () => "rgba(148,163,184,0.8)");
@@ -121,6 +131,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
   );
   const polygonCapColor = asFn<unknown, string>(props.polygonCapColor, () => "rgba(0,0,0,0)");
   const polygonStrokeColor = asFn<unknown, string>(props.polygonStrokeColor, () => "rgba(0,0,0,0)");
+  const polygonFillOpacity = asFn<unknown, number>(props.polygonFillOpacity, () => 0.72);
 
   const ringLat = asFn<unknown, number>(props.ringLat, () => 0);
   const ringLng = asFn<unknown, number>(props.ringLng, () => 0);
@@ -176,8 +187,9 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
         geometry: polygonGeoJsonGeometry,
         fillColor: polygonCapColor,
         strokeColor: polygonStrokeColor,
+        fillOpacity: polygonFillOpacity,
       }),
-    [polygonCapColor, polygonGeoJsonGeometry, polygonStrokeColor, polygonsData],
+    [polygonCapColor, polygonFillOpacity, polygonGeoJsonGeometry, polygonStrokeColor, polygonsData],
   );
 
   const ringsGeoJson = useMemo(
@@ -352,7 +364,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
         style={{ width: "100%", height: "100%" }}
         attributionControl={false}
         renderWorldCopies={false}
-        interactiveLayerIds={[...INTERACTIVE_LAYERS]}
+        interactiveLayerIds={interactiveLayerIds}
         onLoad={handleLoad}
         onMove={handleMove}
         onClick={handleMapClick}
@@ -367,7 +379,7 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
               type="fill"
               paint={{
                 "fill-color": ["get", "fill"],
-                "fill-opacity": 0.72,
+                "fill-opacity": ["get", "fillOpacity"],
               }}
             />
             <Layer

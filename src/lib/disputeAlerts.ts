@@ -1,4 +1,5 @@
 import type { DisputeArea } from "@/data/geoTypes";
+import { resolveDisputeCenter } from "@/lib/disputeCenter";
 import { findMenuRegionForEvent, type MenuRegionMatch } from "@/lib/regionFilter";
 
 export type DisputeAlert = DisputeArea & {
@@ -24,10 +25,11 @@ export function pickDisputeAlerts(
 
   return (disputes ?? [])
     .map((dispute) => {
+      const center = resolveDisputeCenter(dispute);
       const menuRegion =
         findMenuRegionForEvent({
-          lat: dispute.center.lat,
-          lng: dispute.center.lng,
+          lat: center.lat,
+          lng: center.lng,
           actor1Country: dispute.sovereignty,
           actor2Country: dispute.admin,
         }) || {

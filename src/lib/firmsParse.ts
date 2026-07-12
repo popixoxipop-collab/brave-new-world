@@ -3,7 +3,10 @@ import type { FirmsFire } from "@/data/geoTypes";
 const DEFAULT_SOURCE = "VIIRS_SNPP_NRT";
 
 export function getFirmsMapKey(): string | null {
-  const key = process.env.FIRMS_MAP_KEY?.trim();
+  const key =
+    process.env.FIRMS_MAP_KEY?.trim() ||
+    process.env.NASA_FIRMS_API_KEY?.trim() ||
+    "";
   return key || null;
 }
 

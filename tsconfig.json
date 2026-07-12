@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
     "lib": [
       "dom",
       "dom.iterable",
@@ -10,7 +9,6 @@
     "skipLibCheck": true,
     "strict": true,
     "target": "ES2018",
-    "downlevelIteration": true,
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",

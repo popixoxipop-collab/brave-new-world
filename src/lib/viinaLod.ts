@@ -1,6 +1,7 @@
 import type { GeoJsonGeometry, UkraineControlZone } from "@/data/geoTypes";
 import { EXTREME_ZOOM_ALTITUDE } from "@/lib/globeCamera";
-import { getGlobeLod, type GlobeLod } from "@/lib/globeLod";
+import { getGlobeLod, type GlobeLod, type GlobeLodTier } from "@/lib/globeLod";
+import { haversineDistanceKm } from "@/lib/viewportCull";
 
 export type ViinaLod = GlobeLod & {
   mode: "hidden" | "overview" | "detail";
@@ -28,24 +29,73 @@ const UA_BOUNDS = {
 };
 
 const MAX_FEATURES: Record<ViinaLod["tier"], number> = {
-  global: 0,
+  global: 900,
   continent: 1200,
   regional: 2800,
   near: 2200,
   village: 2800,
 };
 
+/** 극근접 줌 — 폴리곤 feature 상한 (WebGL 정점 부하) */
+const EXTREME_ZOOM_MAX_FEATURES: Partial<Record<ViinaLod["tier"], number>> = {
+  near: 620,
+  village: 720,
+};
+
+/** Near/Village 줌 정착지 HTML 라벨 — 화면 내 tier·거리 기준 budget */
+export const VIINA_SETTLEMENT_LABEL_BUDGET: Record<"near" | "village", number> = {
+  near: 16,
+  village: 22,
+};
+
+export const VIINA_SETTLEMENT_LABEL_RADIUS_KM: Record<"near" | "village", number> = {
+  near: 36,
+  village: 28,
+};
+
+export type ViinaSettlementLabelCandidate = {
+  lat: number;
+  lng: number;
+  tierRank: number;
+};
+
+export function filterViinaSettlementLabelsByViewport<T extends ViinaSettlementLabelCandidate>(
+  labels: T[],
+  tier: GlobeLodTier,
+  centerLat: number,
+  centerLng: number,
+): T[] {
+  if (tier !== "near" && tier !== "village") return labels;
+
+  const budget = VIINA_SETTLEMENT_LABEL_BUDGET[tier];
+  const radiusKm = VIINA_SETTLEMENT_LABEL_RADIUS_KM[tier];
+
+  return labels
+    .filter(
+      (label) =>
+        haversineDistanceKm(centerLat, centerLng, label.lat, label.lng) <= radiusKm,
+    )
+    .sort((a, b) => {
+      if (b.tierRank !== a.tierRank) return b.tierRank - a.tierRank;
+      return (
+        haversineDistanceKm(centerLat, centerLng, a.lat, a.lng) -
+        haversineDistanceKm(centerLat, centerLng, b.lat, b.lng)
+      );
+    })
+    .slice(0, budget);
+}
+
 const LAYER_SHARE = {
-  ru: 0.2,
-  contested: 0.14,
-  ua: 0.38,
+  ru: 0.32,
+  contested: 0.18,
+  ua: 0.28,
 } as const;
 
-/** RU 점령 면 채움 상한 — WebGL 폴리곤 부하 완화 */
+/** RU 점령 영토 — 물감 채움 (전체 면) */
 const RU_FILL_MAX: Record<ViinaLod["mode"], number> = {
   hidden: 0,
-  overview: 160,
-  detail: 140,
+  overview: 520,
+  detail: 1400,
 };
 
 function longitudeDistance(a: number, b: number) {
@@ -172,13 +222,14 @@ function simplifyGeometry(geometry: GeoJsonGeometry, maxPoints = 6): GeoJsonGeom
 export function getViinaLod(altitude: number): ViinaLod {
   const base = getGlobeLod(altitude);
   let mode: ViinaLod["mode"];
-  if (base.tier === "global") mode = "hidden";
+  if (base.tier === "global") mode = "overview";
   else if (base.tier === "continent") mode = "overview";
   else mode = "detail";
 
   let maxFeatures = MAX_FEATURES[base.tier];
   if (altitude < EXTREME_ZOOM_ALTITUDE && maxFeatures > 0) {
-    maxFeatures = Math.min(maxFeatures, 900);
+    const extremeCap = EXTREME_ZOOM_MAX_FEATURES[base.tier];
+    maxFeatures = Math.min(maxFeatures, extremeCap ?? 900);
   }
 
   return {
@@ -288,7 +339,7 @@ export function selectViinaPolygons(
   const contestedZones = filterLayer(contestedSource, view, lod, LAYER_SHARE.contested);
   const uaZones = filterLayer(uaSource, view, lod, LAYER_SHARE.ua);
 
-  const ruFillSource = lod.mode === "detail" ? ruOverview : ruOverview;
+  const ruFillSource = lod.mode === "detail" ? detailSplit.ruZones : ruOverview;
   const ruFillZones = filterViinaZones(
     ruFillSource,
     view,

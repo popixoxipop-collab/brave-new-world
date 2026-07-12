@@ -68,13 +68,31 @@ function trailDistanceKm(points: LatLng[]): number {
   return total;
 }
 
+function simplifyGroundPath(points: LatLng[], maxVertices: number): LatLng[] {
+  if (maxVertices <= 0 || points.length <= maxVertices) return points;
+  if (maxVertices === 1) return [points[0]];
+  const out: LatLng[] = [];
+  for (let i = 0; i < maxVertices; i += 1) {
+    const index = Math.round((i * (points.length - 1)) / (maxVertices - 1));
+    out.push(points[index]);
+  }
+  return dedupeTrailPoints(out);
+}
+
 /** API 궤적만 사용 — 예측 위치로 매 프레임 재빌드하지 않음 */
-function buildStaticTrail(threat: NeptunLiveThreat | NeptunArchivedThreat): LatLng[] {
+function buildStaticTrail(
+  threat: NeptunLiveThreat | NeptunArchivedThreat,
+  maxGroundVertices?: number,
+): LatLng[] {
   const fromApi = (threat.trail ?? []).map((point) => ({ lat: point.lat, lng: point.lon }));
-  const points = dedupeTrailPoints(fromApi);
+  let points = dedupeTrailPoints(fromApi);
 
   if (points.length === 0 && Number.isFinite(threat.lat) && Number.isFinite(threat.lon)) {
     points.push({ lat: threat.lat, lng: threat.lon });
+  }
+
+  if (maxGroundVertices != null && maxGroundVertices > 0) {
+    points = simplifyGroundPath(points, maxGroundVertices);
   }
 
   return points;
@@ -139,12 +157,13 @@ export function buildNeptunTrailPaths(
   threats: NeptunLiveThreat[],
   mode: NeptunPathElevationMode,
   pointBudget?: number,
+  maxGroundVertices?: number,
 ): TransportPath[] {
   const paths: TransportPath[] = [];
 
   for (const threat of threats) {
     const meta = getNeptunTypeMeta(threat.type);
-    const trailPoints = buildStaticTrail(threat);
+    const trailPoints = buildStaticTrail(threat, maxGroundVertices);
     const trail = toTransportPath(
       `neptun-trail:${threat.id}`,
       "neptun-trail",
@@ -190,12 +209,13 @@ export function buildArchivedNeptunTrackPaths(
   threats: NeptunArchivedThreat[],
   mode: NeptunPathElevationMode,
   pointBudget?: number,
+  maxGroundVertices?: number,
 ): TransportPath[] {
   const paths: TransportPath[] = [];
 
   for (const threat of threats) {
     const meta = getNeptunTypeMeta(threat.type);
-    const trailPoints = buildStaticTrail(threat);
+    const trailPoints = buildStaticTrail(threat, maxGroundVertices);
     const trail = toTransportPath(
       `neptun-trail-archived:${threat.id}`,
       "neptun-trail-archived",

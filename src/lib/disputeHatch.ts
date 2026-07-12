@@ -109,7 +109,7 @@ export function disputeGeometryBbox(geometry: GeoJsonGeometry) {
 export function isCombatHazard(dispute: Pick<DisputeArea, "hazardClass" | "type" | "note" | "name" | "nameLong" | "id">): boolean {
   if (dispute.hazardClass === "combat" || dispute.hazardClass === "bombardment") return true;
   const blob = `${dispute.id || ""} ${dispute.type || ""} ${dispute.note || ""} ${dispute.name || ""} ${dispute.nameLong || ""}`.toLowerCase();
-  return /active combat|bombardment|폭격|교전|지상전|포격|strike zone|fire exchanges|피해 가중/.test(blob);
+  return /active combat|bombardment|폭격|교전|지상전|포격|strike zone|fire exchanges|피해 가중|naval strike|타격권/.test(blob);
 }
 
 /**
@@ -127,8 +127,10 @@ export function getDisputeHatchStyle(dispute: DisputeArea): DisputeHatchStyle {
   if (isCombatHazard(dispute)) return "slash";
 
   if (
-    /missile|wmd|crisis|gray zone|회색|adiz|nll|flashpoint|chokepoint/.test(type) ||
+    /missile|wmd|crisis|gray zone|회색|adiz|nll|flashpoint|chokepoint|blockade|봉쇄|maritime/.test(type) ||
     id.includes("missile") ||
+    id.includes("hormuz") ||
+    id.includes("blockade") ||
     cats.includes("③")
   ) {
     return "cross";
@@ -302,6 +304,12 @@ function hatchLines(
   return lines;
 }
 
+function ringApproxArea(ring: number[][]) {
+  const box = ringBbox(ring);
+  if (!box) return 0;
+  return Math.max(0.001, box.maxLat - box.minLat) * Math.max(0.001, box.maxLng - box.minLng);
+}
+
 /** 분쟁·긴장 구역 geometry bbox 안 — 사각 틀 + 등급별 빗금 */
 function regionToOutlineAndHatchPaths(
   regionId: string,
@@ -310,9 +318,14 @@ function regionToOutlineAndHatchPaths(
   grade: TensionGrade,
   kinds: { outline: TransportPath["kind"]; hatch: TransportPath["kind"] },
   hatchIdPrefix: string,
+  preferDetailSegments = true,
 ): TransportPath[] {
   const out: TransportPath[] = [];
-  const rings = geometryOuterRings(geometry);
+  let rings = geometryOuterRings(geometry);
+  // 줌 아웃: 가장 큰 외곽만 · 근접 줌: MultiPolygon 세부 세그먼트 전부
+  if (!preferDetailSegments && rings.length > 1) {
+    rings = [rings.slice().sort((a, b) => ringApproxArea(b) - ringApproxArea(a))[0]];
+  }
   const style = TENSION_GRADE_STYLES[grade].pattern;
 
   for (const [index, ring] of rings.entries()) {
@@ -337,14 +350,21 @@ function regionToOutlineAndHatchPaths(
     if (border) out.push(border);
   }
 
-  const box = disputeGeometryBbox(geometry);
+  const box = preferDetailSegments
+    ? disputeGeometryBbox(geometry)
+    : rings.length > 0
+      ? ringBbox(rings[0])
+      : null;
   if (!box) return out;
   out.push(...geometryHatchPathsOnly(hatchIdPrefix, name, box, style, kinds.hatch));
   return out;
 }
 
 /** 고정 외곽 테두리 + 성격별 빗금 path */
-export function disputeToOutlineAndHatchPaths(dispute: DisputeArea): TransportPath[] {
+export function disputeToOutlineAndHatchPaths(
+  dispute: DisputeArea,
+  options?: { preferDetailSegments?: boolean },
+): TransportPath[] {
   if (!dispute.geometry) return [];
   return regionToOutlineAndHatchPaths(
     dispute.id,
@@ -353,7 +373,20 @@ export function disputeToOutlineAndHatchPaths(dispute: DisputeArea): TransportPa
     getDisputeGrade(dispute),
     { outline: "dispute-zone", hatch: "dispute-hatch" },
     `dispute-hatch-${dispute.id}`,
+    options?.preferDetailSegments ?? true,
   );
+}
+
+/** 레이어 체크박스 — 전쟁(combat) / 외교 긴장(high)만 표시 */
+export function disputeMatchesWarDiplomaticLayers(
+  dispute: DisputeArea,
+  showWarZones: boolean,
+  showDiplomaticTension: boolean,
+): boolean {
+  const grade = getDisputeGrade(dispute);
+  if (grade === "combat") return showWarZones;
+  if (grade === "high") return showDiplomaticTension;
+  return false;
 }
 
 /** GDELT 분쟁 클러스터 구역 — 사각 틀 + 긴장도별 빗금 */
