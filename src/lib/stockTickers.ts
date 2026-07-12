@@ -1,4 +1,17 @@
-import type { NewsTheater } from "@/lib/news/types";
+import {
+  theaterAssetNote,
+  theaterAssetSymbols,
+  type TheaterMarketFilter,
+} from "@/lib/theaterAssets";
+
+export type { TheaterMarketFilter } from "@/lib/theaterAssets";
+export {
+  THEATER_ASSETS,
+  theaterAssetNote,
+  theaterAssetSymbols,
+  yahooQuoteUrl,
+  tradingViewSymbolUrl,
+} from "@/lib/theaterAssets";
 
 export type StockTickerSymbol = {
   symbol: string;
@@ -72,40 +85,27 @@ export function tickerChangeTone(changePercent: number | null): "up" | "down" | 
   return changePercent > 0 ? "up" : "down";
 }
 
-export type TheaterMarketFilter = NewsTheater | "all";
-
-/** 전장별 우선 표시할 매크로·증시 심볼 (^VIX 등) */
+/** @deprecated Prefer theaterAssetSymbols — kept for existing imports */
 export const THEATER_RELATED_SYMBOLS: Record<TheaterMarketFilter, string[]> = {
-  all: ["^VIX", "CL=F", "BZ=F", "GC=F", "DX-Y.NYB", "^GSPC", "^IXIC"],
-  "middle-east": ["CL=F", "BZ=F", "GC=F", "DX-Y.NYB", "^VIX", "^GSPC", "^IXIC"],
-  "russia-ukraine": ["CL=F", "BZ=F", "GC=F", "^GSPC", "DX-Y.NYB", "^VIX", "^IXIC"],
-  "china-taiwan": ["000001.SS", "^HSI", "^IXIC", "DX-Y.NYB", "^GSPC", "^VIX"],
-  korea: ["^KS11", "^IXIC", "^HSI", "^VIX", "BZ=F", "^GSPC"],
-  japan: ["^N225", "^HSI", "^IXIC", "^GSPC", "BZ=F", "^VIX"],
-  "south-asia": ["BZ=F", "GC=F", "^HSI", "DX-Y.NYB", "^GSPC", "^VIX"],
-  global: ["^VIX", "^GSPC", "^IXIC", "BZ=F", "GC=F", "DX-Y.NYB"],
-};
-
-const THEATER_MARKET_BLURB: Record<TheaterMarketFilter, string> = {
-  all: "글로벌 리스크·에너지·주요 지수",
-  "middle-east": "유가·금·달러 — 중동 리스크 프리미엄",
-  "russia-ukraine": "유가·금·미국 지수 — 유럽 전쟁 프리미엄",
-  "china-taiwan": "중국·홍콩·미국 기술주 — 대만해협 긴장",
-  korea: "KOSPI·미국 지수 — 한반도·북핵 리스크",
-  japan: "니케이·아시아 지수·유가 — 동북아 안보",
-  "south-asia": "유가·금·인도 인접 시장",
-  global: "방산·매크로 헤지 지표",
+  all: theaterAssetSymbols("all"),
+  "middle-east": theaterAssetSymbols("middle-east"),
+  "russia-ukraine": theaterAssetSymbols("russia-ukraine"),
+  "china-taiwan": theaterAssetSymbols("china-taiwan"),
+  korea: theaterAssetSymbols("korea"),
+  japan: theaterAssetSymbols("japan"),
+  "south-asia": theaterAssetSymbols("south-asia"),
+  global: theaterAssetSymbols("global"),
 };
 
 export function pickRelatedTickers(
   all: StockTickerItem[],
   filter: TheaterMarketFilter,
 ): StockTickerItem[] {
-  const order = THEATER_RELATED_SYMBOLS[filter];
+  const order = theaterAssetSymbols(filter);
   const bySymbol = new Map(all.map((t) => [t.symbol, t]));
   return order.map((symbol) => bySymbol.get(symbol)).filter((t): t is StockTickerItem => t != null);
 }
 
 export function theaterMarketBlurb(filter: TheaterMarketFilter): string {
-  return THEATER_MARKET_BLURB[filter];
+  return theaterAssetNote(filter, "ko");
 }

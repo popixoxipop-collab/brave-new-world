@@ -22,6 +22,13 @@ import { ViinaFrontEventsPanel } from "@/components/ViinaFrontEventsPanel";
 import type { ViinaFrontEvent } from "@/lib/viinaFrontEvents";
 import type { TelegramAlert } from "@/lib/telegramAlerts";
 import type { HeroBreakingItem, NewsStreamItem, NewsStreamPayload, NewsTheater } from "@/lib/news/types";
+import {
+  ECONOMY_GENRE_ORDER,
+  economyGenreHint,
+  economyGenreLabel,
+  matchesEconomyGenreFilter,
+  type EconomyGenreFilter,
+} from "@/lib/news/economyGenres";
 import { isEconomyNewsMode } from "@/lib/news/feedCatalog";
 import type { ViewPackageId, ViewerMode } from "@/lib/viewPackages";
 import type { LabelLanguage } from "@/lib/layerPrefs";
@@ -35,6 +42,14 @@ import {
   resolveIntelStackMode,
   TICKER_SPIKE_THRESHOLD_PERCENT,
 } from "@/lib/news/intelStackMode";
+import {
+  buildTodayBriefing,
+  dismissTodayBriefing,
+  isTodayBriefingDismissed,
+  type TodayBriefing,
+} from "@/lib/news/todayBriefing";
+import type { NewsDigestItem } from "@/lib/news/digestTypes";
+import { theaterAssetNote, theaterAssetSymbols } from "@/lib/theaterAssets";
 import {
   flyTargetForTheater,
   matchesTheaterFilter,
@@ -108,6 +123,7 @@ function emptyPayload(): NewsStreamPayload {
       tier3: 0,
       economy: 0,
       theaters: {} as Record<NewsStreamItem["theater"], number>,
+      genres: {},
     },
   };
 }
@@ -251,7 +267,72 @@ type IntelCompactBarProps = {
   /** 카메라 tween/드래그 중 티커 폴링·스크롤 일시정지 */
   pauseUpdates?: boolean;
   onOpenSheet: (theater?: IntelTheaterFilter) => void;
+  /** 오늘 핫한 곳 → 맵 fly-to */
+  onFlyToTheater?: (theater: NewsTheater) => void;
 };
+
+function TodayHotspotChip({
+  briefing,
+  economy,
+  onOpen,
+  onDismiss,
+}: {
+  briefing: TodayBriefing;
+  economy?: boolean;
+  onOpen: () => void;
+  onDismiss: () => void;
+}) {
+  const { t } = useLocale();
+  return (
+    <div
+      className={`pointer-events-auto overflow-hidden rounded-2xl border shadow-xl backdrop-blur-md ${
+        economy
+          ? "border-emerald-400/25 bg-[#071018]/92"
+          : "border-amber-400/30 bg-[#120e08]/92"
+      }`}
+      role="status"
+    >
+      <div className="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-1.5">
+        <span
+          className={`text-[10px] font-bold uppercase tracking-[0.18em] ${
+            economy ? "text-emerald-200/90" : "text-amber-200/90"
+          }`}
+        >
+          {t("todayHotLabel")}
+        </span>
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="text-[10px] text-slate-500 transition hover:text-slate-300"
+        >
+          {t("todayHotDismiss")}
+        </button>
+      </div>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex w-full flex-col gap-1 px-3 py-2.5 text-left transition hover:brightness-110"
+      >
+        <p className="text-xs font-semibold leading-snug text-slate-50">{briefing.headline}</p>
+        <ol className="space-y-0.5 text-[11px] leading-5 text-slate-400">
+          {briefing.lines.map((line, i) => (
+            <li key={i} className="line-clamp-2">
+              <span className="mr-1 text-slate-600">{i + 1}.</span>
+              {line}
+            </li>
+          ))}
+        </ol>
+        <span
+          className={`mt-1 text-[10px] font-semibold uppercase tracking-wider ${
+            economy ? "text-emerald-300/90" : "text-amber-300/90"
+          }`}
+        >
+          {t("todayHotOpen")} →
+        </span>
+      </button>
+    </div>
+  );
+}
 
 function HeroHeadlineBanner({
   hero,
@@ -339,6 +420,7 @@ export function DynamicIntelStack({
   viewerMode = "conflict",
   pauseUpdates = false,
   onOpenSheet,
+  onFlyToTheater,
 }: IntelCompactBarProps) {
   const { lang, t } = useLocale();
   const { payload, preferEconomyNews } = useNewsStreamContext();
@@ -347,20 +429,45 @@ export function DynamicIntelStack({
   const mode = resolveIntelStackMode(hero);
   const isAlert = mode === "alert";
   const highlightSymbols = isAlert && hero ? heroHighlightSymbols(hero) : [];
+  const [todayHidden, setTodayHidden] = useState(false);
 
   useEffect(() => {
-    const clearance = resolveIntelStackClearance(mode, viewerMode);
-    document.documentElement.style.setProperty("--bottom-intel-stack-clearance", clearance);
+    setTodayHidden(isTodayBriefingDismissed());
+  }, []);
+
+  const todayBriefing = useMemo(() => {
+    if (isAlert || todayHidden) return null;
+    return buildTodayBriefing(payload, lang);
+  }, [isAlert, todayHidden, payload, lang]);
+
+  useEffect(() => {
+    const base = resolveIntelStackClearance(mode, viewerMode);
+    const withToday =
+      todayBriefing && !isAlert
+        ? `calc(${base} + 7.5rem)`
+        : base;
+    document.documentElement.style.setProperty("--bottom-intel-stack-clearance", withToday);
     return () => {
       document.documentElement.style.setProperty(
         "--bottom-intel-stack-clearance",
         resolveIntelStackClearance("calm", viewerMode),
       );
     };
-  }, [mode, viewerMode]);
+  }, [mode, viewerMode, todayBriefing, isAlert]);
 
   const showLegend = viewerMode === "conflict";
   const showCompactTicker = viewerMode === "economy" || showTicker;
+
+  const handleTodayOpen = useCallback(() => {
+    if (!todayBriefing) return;
+    onFlyToTheater?.(todayBriefing.theater);
+    onOpenSheet(todayBriefing.theater);
+  }, [todayBriefing, onFlyToTheater, onOpenSheet]);
+
+  const handleTodayDismiss = useCallback(() => {
+    dismissTodayBriefing();
+    setTodayHidden(true);
+  }, []);
 
   return (
     <div
@@ -368,6 +475,15 @@ export function DynamicIntelStack({
         isAlert ? "intel-stack--alert w-[min(96vw,860px)]" : "intel-stack--calm"
       }`}
     >
+      {todayBriefing ? (
+        <TodayHotspotChip
+          briefing={todayBriefing}
+          economy={isEconomy}
+          onOpen={handleTodayOpen}
+          onDismiss={handleTodayDismiss}
+        />
+      ) : null}
+
       <div
         className={`intel-stack-panel pointer-events-auto flex flex-col overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-md ${
           isAlert
@@ -496,6 +612,67 @@ function TheaterChipBar({
                     ? "border-sky-300/50 bg-sky-400/20 text-sky-50"
                     : hasItems
                       ? "border-sky-300/15 bg-white/5 text-sky-100/75 hover:border-sky-300/30"
+                      : "border-slate-700/50 bg-transparent text-slate-500"
+                }`}
+              >
+                {chip.label}
+                {chip.count != null && chip.count > 0 ? (
+                  <span className="ml-1 text-[10px] opacity-70">{chip.count}</span>
+                ) : null}
+              </button>
+            </HoverHint>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function EconomyGenreChipBar({
+  filter,
+  onChange,
+  payload,
+}: {
+  filter: EconomyGenreFilter;
+  onChange: (v: EconomyGenreFilter) => void;
+  payload: NewsStreamPayload | null;
+}) {
+  const { lang, t } = useLocale();
+  const economyCount = payload?.stats.economy ?? 0;
+  const chips: Array<{ id: EconomyGenreFilter; label: string; count?: number; hint: string }> = [
+    {
+      id: "all",
+      label: t("econGenreAll"),
+      count: economyCount,
+      hint: t("econGenreAllHint"),
+    },
+    ...ECONOMY_GENRE_ORDER.map((id) => ({
+      id,
+      label: economyGenreLabel(id, lang),
+      count: payload?.stats.genres?.[id],
+      hint: economyGenreHint(id, lang),
+    })),
+  ];
+
+  return (
+    <div className="shrink-0 border-b border-emerald-400/15 px-4 py-2">
+      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300/70">
+        {t("econGenreBar")}
+      </p>
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+        {chips.map((chip) => {
+          const active = filter === chip.id;
+          const hasItems = chip.id === "all" || (chip.count ?? 0) > 0;
+          return (
+            <HoverHint key={chip.id} placement="bottom" title={chip.label} detail={chip.hint}>
+              <button
+                type="button"
+                onClick={() => onChange(chip.id)}
+                className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition ${
+                  active
+                    ? "border-emerald-300/50 bg-emerald-400/20 text-emerald-50"
+                    : hasItems
+                      ? "border-emerald-300/20 bg-white/5 text-emerald-100/80 hover:border-emerald-300/35"
                       : "border-slate-700/50 bg-transparent text-slate-500"
                 }`}
               >
@@ -713,6 +890,7 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
     const { lang, t } = useLocale();
     const [sheetTab, setSheetTab] = useState<IntelSheetTab>(initialIntelTab);
     const [economyTab, setEconomyTab] = useState<EconomyIntelTab>("news");
+    const [economyGenre, setEconomyGenre] = useState<EconomyGenreFilter>("all");
     const [newsSearchQuery, setNewsSearchQuery] = useState("");
     const [marketsSearchQuery, setMarketsSearchQuery] = useState("");
     const autoOpenedRef = useRef(false);
@@ -749,25 +927,30 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
     useEffect(() => {
       if (!preferEconomyNews) return;
       setEconomyTab("news");
+      setEconomyGenre("all");
       setNewsSearchQuery("");
       setMarketsSearchQuery("");
     }, [preferEconomyNews]);
 
     const hero = payload?.hero ?? null;
+    const matchesEconomyItem = useCallback(
+      (item: NewsStreamItem) => {
+        if (!matchesTheaterFilter(item.theater, theaterFilter)) return false;
+        if (!preferEconomyNews) return true;
+        return matchesEconomyGenreFilter(item.econGenre, economyGenre);
+      },
+      [theaterFilter, preferEconomyNews, economyGenre],
+    );
     const tier1Items = sortNewsItems(
-      payload?.verified.filter(
-        (i) => i.trustTier === 1 && matchesTheaterFilter(i.theater, theaterFilter),
-      ) ?? [],
+      payload?.verified.filter((i) => i.trustTier === 1 && matchesEconomyItem(i)) ?? [],
       preferEconomyNews,
     );
     const tier2Items = sortNewsItems(
-      payload?.verified.filter(
-        (i) => i.trustTier === 2 && matchesTheaterFilter(i.theater, theaterFilter),
-      ) ?? [],
+      payload?.verified.filter((i) => i.trustTier === 2 && matchesEconomyItem(i)) ?? [],
       preferEconomyNews,
     );
     const tier3Items = sortNewsItems(
-      payload?.stateMedia.filter((i) => matchesTheaterFilter(i.theater, theaterFilter)) ?? [],
+      payload?.stateMedia.filter((i) => matchesEconomyItem(i)) ?? [],
       preferEconomyNews,
     );
     const displayTier1 = filterNewsByQuery(tier1Items, newsSearchQuery);
@@ -919,6 +1102,10 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
           <TheaterChipBar filter={theaterFilter} onChange={setTheaterFilter} payload={payload} />
         ) : null}
 
+        {preferEconomyNews && economyTab === "news" ? (
+          <EconomyGenreChipBar filter={economyGenre} onChange={setEconomyGenre} payload={payload} />
+        ) : null}
+
         {preferEconomyNews && economyTab === "markets" ? (
           <IntelRelatedMarketsPanel
             theaterFilter={theaterFilter}
@@ -995,13 +1182,17 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
                     <p className="py-8 text-center text-sm text-slate-500">
                       {newsSearchQuery.trim()
                         ? `"${newsSearchQuery.trim()}" 검색 결과가 없습니다.`
-                        : theaterFilter === "all"
+                        : preferEconomyNews && economyGenre !== "all"
                           ? lang === "en"
-                            ? "No news to display."
-                            : "표시할 뉴스가 없습니다."
-                          : lang === "en"
-                            ? `No news for ${theaterLabel(theaterFilter, lang)}.`
-                            : `${theaterLabel(theaterFilter, lang)} 전장 뉴스가 없습니다.`}
+                            ? `No news in ${economyGenreLabel(economyGenre, lang)}.`
+                            : `${economyGenreLabel(economyGenre, lang)} 카테고리 뉴스가 없습니다.`
+                          : theaterFilter === "all"
+                            ? lang === "en"
+                              ? "No news to display."
+                              : "표시할 뉴스가 없습니다."
+                            : lang === "en"
+                              ? `No news for ${theaterLabel(theaterFilter, lang)}.`
+                              : `${theaterLabel(theaterFilter, lang)} 전장 뉴스가 없습니다.`}
                     </p>
                   ) : null}
                 </div>
@@ -1109,6 +1300,7 @@ function TierSection({
             item={item}
             marker={marker}
             tier3={tier3}
+            economyMode={economyMode}
             onFlyToTheater={onFlyToTheater}
           />
         ))}
@@ -1126,7 +1318,43 @@ function AnalysisPanel({
   payload: NewsStreamPayload | null;
   open: boolean;
 }) {
-  const theaterLabel = hero?.theater ? THEATER_LABELS[hero.theater] : null;
+  const { lang, t } = useLocale();
+  const theaterLabelText = hero?.theater ? theaterLabel(hero.theater, lang) : null;
+  const [digest, setDigest] = useState<NewsDigestItem | null>(null);
+  const [digestChecked, setDigestChecked] = useState(false);
+
+  useEffect(() => {
+    if (!open || !hero?.id) {
+      setDigest(null);
+      setDigestChecked(false);
+      return;
+    }
+    let cancelled = false;
+    setDigestChecked(false);
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/news-digest?articleId=${encodeURIComponent(hero.id)}`,
+          { cache: "no-store" },
+        );
+        const data = (await res.json()) as { item?: NewsDigestItem | null };
+        if (!cancelled) {
+          setDigest(data.item && data.item.summaryLines ? data.item : null);
+        }
+      } catch {
+        if (!cancelled) setDigest(null);
+      } finally {
+        if (!cancelled) setDigestChecked(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, hero?.id]);
+
+  const relatedSymbols = hero
+    ? theaterAssetSymbols(hero.theater).slice(0, 4).join(" · ")
+    : "";
 
   return (
     <section
@@ -1136,30 +1364,94 @@ function AnalysisPanel({
       style={{ animationDelay: "280ms" }}
     >
       <div className="border-b border-violet-400/15 px-4 py-2.5">
-        <p className="text-xs font-semibold text-violet-100">분석 · AI 상관관계</p>
-        <p className="mt-0.5 text-[11px] text-violet-200/55">
-          RSS·GDELT 뉴스 · 지도 레이어 · 증시 교차 분석 (Telegram OSINT 제외)
-        </p>
+        <p className="text-xs font-semibold text-violet-100">{t("aiDigestLabel")}</p>
+        <p className="mt-0.5 text-[11px] text-violet-200/55">{t("aiDigestPolicy")}</p>
       </div>
       <div className="space-y-2 px-4 py-3 text-sm leading-6 text-slate-300">
-        {hero && theaterLabel ? (
-          <p>
-            <span className="font-medium text-violet-200">
-              [{HERO_STATUS_LABELS[hero.heroStatus]}]
-            </span>{" "}
-            {theaterLabel} 전장 속보 신호. Tier 1 {payload?.stats.tier1 ?? 0}건 · Tier 2{" "}
-            {payload?.stats.tier2 ?? 0}건 병치.
-            {hero.heroStatus === "unverified"
-              ? " 사실 단정 전 — 지도 핀·항로·분쟁 레이어 교차 확인 필요."
-              : " GDELT·분쟁 구역 레이어와 대조 권장."}
-          </p>
+        {digest?.summaryLines ? (
+          <>
+            <ol className="list-decimal space-y-1 pl-4 text-sm text-violet-50/90">
+              {digest.summaryLines.map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ol>
+            <p className="text-[10px] uppercase tracking-wider text-violet-300/60">
+              {digest.confidence} · {digest.model}
+            </p>
+            {digest.link ? (
+              <a
+                href={digest.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block text-xs font-medium text-violet-200 underline-offset-2 hover:underline"
+              >
+                {t("openOriginal")}
+              </a>
+            ) : null}
+          </>
         ) : (
-          <p className="text-slate-500">
-            속보 선정 시 전장·지도 인프라·증시 반응을 한 흐름으로 분석합니다.
-          </p>
+          <>
+            {digestChecked ? (
+              <p className="text-[11px] text-violet-200/50">{t("aiDigestFail")}</p>
+            ) : null}
+            {hero && theaterLabelText ? (
+              <p>
+                <span className="font-medium text-violet-200">
+                  [{HERO_STATUS_LABELS[hero.heroStatus]}]
+                </span>{" "}
+                {theaterLabelText}
+                {lang === "en" ? " theater signal. " : " 전장 속보 신호. "}
+                Tier 1 {payload?.stats.tier1 ?? 0}
+                {lang === "en" ? " · Tier 2 " : "건 · Tier 2 "}
+                {payload?.stats.tier2 ?? 0}
+                {lang === "en" ? " items." : "건 병치."}
+                {hero.heroStatus === "unverified"
+                  ? lang === "en"
+                    ? " Cross-check map pins before treating as fact."
+                    : " 사실 단정 전 — 지도 핀·항로·분쟁 레이어 교차 확인 필요."
+                  : lang === "en"
+                    ? " Contrast with GDELT and conflict layers."
+                    : " GDELT·분쟁 구역 레이어와 대조 권장."}
+              </p>
+            ) : (
+              <p className="text-slate-500">
+                {lang === "en"
+                  ? "When a headline is selected, theater · map · market notes appear here."
+                  : "속보 선정 시 전장·지도 인프라·증시 반응을 한 흐름으로 정리합니다."}
+              </p>
+            )}
+            {hero?.link ? (
+              <a
+                href={hero.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block text-xs font-medium text-violet-200 underline-offset-2 hover:underline"
+              >
+                {t("openOriginal")} · {hero.source}
+              </a>
+            ) : null}
+            {relatedSymbols ? (
+              <p className="text-xs text-slate-500">
+                {lang === "en" ? "Related symbols: " : "관련 심볼: "}
+                {relatedSymbols}
+                {" · "}
+                {hero ? theaterAssetNote(hero.theater, lang) : ""}
+              </p>
+            ) : null}
+          </>
         )}
         <p className="text-xs text-slate-500">
-          상단 <span className="text-violet-300/90">증시</span> 탭에서 전장별 매크로·지수 반응을 봅니다.
+          {lang === "en" ? (
+            <>
+              Open the <span className="text-violet-300/90">Markets</span> tab for theater-linked
+              macros. Not investment advice.
+            </>
+          ) : (
+            <>
+              상단 <span className="text-violet-300/90">증시</span> 탭에서 전장별 매크로·지수를
+              봅니다. 투자 권유 아님.
+            </>
+          )}
         </p>
       </div>
     </section>
@@ -1170,15 +1462,22 @@ function NewsRow({
   item,
   marker,
   tier3,
+  economyMode,
   onFlyToTheater,
 }: {
   item: NewsStreamItem;
   marker?: string;
   tier3?: boolean;
+  economyMode?: boolean;
   onFlyToTheater?: (theater: NewsTheater) => void;
 }) {
+  const { lang } = useLocale();
   const tierLabel =
     item.trustTier === 1 ? "확인" : item.trustTier === 2 ? "보완" : "속보";
+  const genre =
+    economyMode && item.econGenre
+      ? economyGenreLabel(item.econGenre, lang)
+      : null;
 
   return (
     <li className="relative">
@@ -1207,7 +1506,7 @@ function NewsRow({
           </span>
         )}
         <span className="min-w-0 flex-1">
-          <span className="mb-1 inline-flex items-center gap-2">
+          <span className="mb-1 inline-flex flex-wrap items-center gap-2">
             <span
               className={`rounded px-1.5 py-0.5 text-[9px] font-bold ${
                 item.trustTier === 1
@@ -1219,6 +1518,11 @@ function NewsRow({
             >
               {tierLabel}
             </span>
+            {genre ? (
+              <span className="rounded px-1.5 py-0.5 text-[9px] font-semibold bg-teal-500/15 text-teal-100">
+                {genre}
+              </span>
+            ) : null}
             <span className="text-[11px] text-slate-500">{item.source}</span>
           </span>
           <span className="line-clamp-2 text-sm font-medium leading-5 text-slate-100">

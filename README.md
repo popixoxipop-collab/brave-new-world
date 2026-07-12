@@ -268,6 +268,7 @@ public/data/neptun-seed.json
 
 - **API:** `GET /api/gdelt` (전투·외교·사이버·선거 테마)
 - **스트림:** `GET /api/news-stream` (RSS·번역 · 지정학/경제 토픽)
+- **경제 모드:** 거시·인프라·에너지·물류·반도체·시장 **장르 칩** (`economyGenres`) · 피드 확장 (`feedCatalog` SHARED_ECONOMY)
 - **UI:** `GdeltAlertPanel`, `RegionNewsPanel`, `BottomIntelStack` / Intel 시트
 
 ### 기타 실시간 레이어
@@ -395,6 +396,10 @@ scripts/
   compress-data-gzip.js
   telegram-osint/
 docs/
+  copyright-checklist.md
+  us-carrier-deck-icon.md
+  llm-news-digest.md           # 추후: 화이트리스트 LLM 3줄 요약 (Telegram 제외)
+  retention-markets-roadmap.md # 추후: 재방문·전장→심볼 해석 (매매 앱 아님)
 IRONSIGHT/
 ```
 

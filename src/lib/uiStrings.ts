@@ -335,6 +335,36 @@ const UI = {
   intelSheetViina: { ko: "VIINA · 우크라이나 전선", en: "VIINA · Ukraine front" },
   intelSheetEconomyNews: { ko: "경제 · RSS · 속보", en: "Economy · RSS · breaking" },
   intelSheetMarkets: { ko: "증시 · 매크로 · 지수", en: "Markets · macro · indices" },
+  aiDigestLabel: { ko: "AI 요약 (참고용)", en: "AI digest (for reference)" },
+  aiDigestFail: {
+    ko: "캐시된 요약이 없습니다. 원문·규칙 기반 메모만 표시합니다.",
+    en: "No cached digest — showing source title and rule-based notes only.",
+  },
+  aiDigestPolicy: {
+    ko: "검증 매체만 · Telegram 제외 · 사실 단정 금지",
+    en: "Whitelist media only · Telegram excluded · no factual claims",
+  },
+  todayHotLabel: { ko: "오늘 핫한 곳", en: "Today's hotspot" },
+  todayHotOpen: { ko: "지도 · 시트 열기", en: "Open map · sheet" },
+  todayHotDismiss: { ko: "오늘은 숨기기", en: "Hide for today" },
+  watchlistLabel: { ko: "관심종목", en: "Watchlist" },
+  watchlistEmpty: {
+    ko: "별표를 눌러 관심종목을 저장하세요 (이 기기에만).",
+    en: "Star symbols to save a watchlist (this device only).",
+  },
+  marketsNotAdvice: {
+    ko: "투자 권유 아님 · 해석용 시세 · 외부에서 보기",
+    en: "Not investment advice · interpretive quotes · view externally",
+  },
+  openYahoo: { ko: "Yahoo에서 보기", en: "View on Yahoo" },
+  addWatch: { ko: "관심 추가", en: "Add to watchlist" },
+  removeWatch: { ko: "관심 해제", en: "Remove from watchlist" },
+  econGenreBar: { ko: "뉴스 카테고리", en: "News categories" },
+  econGenreAll: { ko: "전체", en: "All" },
+  econGenreAllHint: {
+    ko: "거시 · 인프라 · 에너지 · 물류 · 반도체 · 시장",
+    en: "Macro · infra · energy · shipping · chips · markets",
+  },
 } as const;
 
 export type UiStringKey = keyof typeof UI;

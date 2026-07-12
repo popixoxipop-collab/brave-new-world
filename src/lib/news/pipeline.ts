@@ -19,6 +19,7 @@ import type {
   NewsStreamPayload,
   NewsTheater,
 } from "@/lib/news/types";
+import type { EconomyNewsGenre } from "@/lib/news/economyGenres";
 import type { ViewPackageId } from "@/lib/viewPackages";
 
 const URGENCY =
@@ -231,8 +232,21 @@ export async function buildNewsStream(
       tier3: deduped.filter((i) => i.trustTier === 3).length,
       economy: deduped.filter((i) => i.feedTopic === "economy").length,
       theaters,
+      genres: countEconomyGenres(deduped),
     },
   };
+}
+
+function countEconomyGenres(
+  items: NewsStreamItem[],
+): Partial<Record<EconomyNewsGenre, number>> {
+  const out: Partial<Record<EconomyNewsGenre, number>> = {};
+  for (const item of items) {
+    if (item.feedTopic !== "economy") continue;
+    const g = item.econGenre ?? "markets";
+    out[g] = (out[g] ?? 0) + 1;
+  }
+  return out;
 }
 
 export function tierBadgeLabel(tier: MediaTrustTier): string {
@@ -263,6 +277,7 @@ async function fetchFeedItems(feed: NewsFeedDef): Promise<NewsStreamItem[]> {
         theater: feed.theater,
         trustTier,
         feedTopic,
+        econGenre: feedTopic === "economy" ? feed.econGenre ?? "markets" : undefined,
         category: item.category,
         imageUrl: item.imageUrl,
         summary: item.summary,

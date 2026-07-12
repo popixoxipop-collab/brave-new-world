@@ -338,6 +338,7 @@ import {
   type TheaterSidebarTab,
 } from "@/lib/theaterFocus";
 import {
+  flyTargetForTheater,
   newsTheaterFromCoords,
   THEATER_FLY_TO,
   type IntelTheaterFilter,
@@ -6236,6 +6237,10 @@ export function GlobeDashboard({
             viewerMode={viewerMode}
             pauseUpdates={isCameraMoving}
             onOpenSheet={(theater) => openIntelSheet({ theater: theater ?? "all" })}
+            onFlyToTheater={(theater) => {
+              const target = flyTargetForTheater(theater);
+              if (target) handleIntelFlyTo(target);
+            }}
           />
         </div>
       </section>

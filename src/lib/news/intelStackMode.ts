@@ -1,4 +1,4 @@
-import { THEATER_RELATED_SYMBOLS } from "@/lib/stockTickers";
+import { theaterAssetSymbols } from "@/lib/theaterAssets";
 import type { HeroBreakingItem } from "@/lib/news/types";
 
 /** A급 속보 — 이 점수 이상일 때 alert 모드(히어로 슬라이드업) */
@@ -34,6 +34,5 @@ export function resolveIntelStackClearance(
 /** alert 모드 티커 하이라이트 — 전장 연관 심볼 상위 4개 */
 export function heroHighlightSymbols(hero: HeroBreakingItem | null, limit = 4): string[] {
   if (!hero) return [];
-  const related = THEATER_RELATED_SYMBOLS[hero.theater] ?? THEATER_RELATED_SYMBOLS.all;
-  return related.slice(0, limit);
+  return theaterAssetSymbols(hero.theater).slice(0, limit);
 }

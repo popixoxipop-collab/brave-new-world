@@ -1,3 +1,5 @@
+import type { EconomyNewsGenre } from "@/lib/news/economyGenres";
+
 export type NewsTheater =
   | "middle-east"
   | "russia-ukraine"
@@ -13,6 +15,8 @@ export type HeroStatus = "confirmed" | "breaking" | "unverified";
 
 export type NewsFeedTopic = "defense" | "economy";
 
+export type { EconomyNewsGenre, EconomyGenreFilter } from "@/lib/news/economyGenres";
+
 export type NewsStreamItem = {
   id: string;
   title: string;
@@ -26,6 +30,8 @@ export type NewsStreamItem = {
   category?: string;
   /** feedCatalog defense | economy */
   feedTopic?: NewsFeedTopic;
+  /** 경제 뉴스 장르 (geo-trader) */
+  econGenre?: EconomyNewsGenre;
   imageUrl?: string;
   summary?: string;
 };
@@ -49,6 +55,7 @@ export type NewsStreamPayload = {
     tier3: number;
     economy?: number;
     theaters: Record<NewsTheater, number>;
+    genres?: Partial<Record<EconomyNewsGenre, number>>;
   };
   error?: string;
 };

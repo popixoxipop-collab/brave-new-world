@@ -9,11 +9,15 @@ import {
   STOCK_TICKER_SYMBOLS,
   theaterMarketBlurb,
   tickerChangeTone,
+  yahooQuoteUrl,
   type StockTickerItem,
   type TheaterMarketFilter,
 } from "@/lib/stockTickers";
+import { theaterAssetNote } from "@/lib/theaterAssets";
 import { THEATER_CHIP_LABELS, type IntelTheaterFilter } from "@/lib/news/theaterMap";
 import { liveTickerPollMs } from "@/lib/liveRenderGuard";
+import { loadWatchSymbols, toggleWatchSymbol } from "@/lib/watchlistPrefs";
+import { useLocale } from "@/contexts/LocaleContext";
 
 type StockTickersResponse = {
   tickers?: StockTickerItem[];
@@ -80,7 +84,23 @@ function TickerSparkline({
   );
 }
 
-function MarketCard({ item, highlight }: { item: StockTickerItem; highlight?: boolean }) {
+function MarketCard({
+  item,
+  highlight,
+  watched,
+  onToggleWatch,
+  watchLabel,
+  unwatchLabel,
+  yahooLabel,
+}: {
+  item: StockTickerItem;
+  highlight?: boolean;
+  watched?: boolean;
+  onToggleWatch?: (symbol: string) => void;
+  watchLabel: string;
+  unwatchLabel: string;
+  yahooLabel: string;
+}) {
   const tone = tickerChangeTone(item.changePercent);
 
   return (
@@ -93,16 +113,40 @@ function MarketCard({ item, highlight }: { item: StockTickerItem; highlight?: bo
     >
       <div className="flex items-center justify-between gap-2">
         <span className="truncate text-sm font-semibold text-emerald-50/95">{item.label}</span>
-        <span className={`shrink-0 text-xs font-mono font-semibold ${TONE_CLASS[tone]}`}>
-          {formatTickerChangePercent(item.changePercent)}
-        </span>
+        <div className="flex shrink-0 items-center gap-1">
+          {onToggleWatch ? (
+            <button
+              type="button"
+              onClick={() => onToggleWatch(item.symbol)}
+              aria-label={watched ? unwatchLabel : watchLabel}
+              className={`rounded px-1.5 py-0.5 text-xs transition ${
+                watched
+                  ? "bg-amber-400/20 text-amber-200"
+                  : "text-slate-500 hover:bg-white/10 hover:text-amber-200"
+              }`}
+            >
+              {watched ? "★" : "☆"}
+            </button>
+          ) : null}
+          <span className={`text-xs font-mono font-semibold ${TONE_CLASS[tone]}`}>
+            {formatTickerChangePercent(item.changePercent)}
+          </span>
+        </div>
       </div>
       <TickerSparkline data={item.sparkline} tone={tone} large />
       <div className="flex items-end justify-between gap-2">
         <span className="font-mono text-base font-medium text-slate-50">
           {formatTickerPrice(item.price)}
         </span>
-        <span className="truncate text-[10px] text-slate-500">{item.symbol}</span>
+        <a
+          href={yahooQuoteUrl(item.symbol)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="truncate text-[10px] text-emerald-300/80 underline-offset-2 hover:text-emerald-200 hover:underline"
+          title={yahooLabel}
+        >
+          {item.symbol} ↗
+        </a>
       </div>
     </div>
   );
@@ -139,8 +183,18 @@ export function IntelRelatedMarketsPanel({
   embedInNews = false,
   searchQuery = "",
 }: IntelRelatedMarketsPanelProps) {
+  const { lang, t } = useLocale();
   const [tickers, setTickers] = useState<StockTickerItem[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [watchSymbols, setWatchSymbols] = useState<string[]>([]);
+
+  useEffect(() => {
+    setWatchSymbols(loadWatchSymbols());
+  }, []);
+
+  const handleToggleWatch = useCallback((symbol: string) => {
+    setWatchSymbols(toggleWatchSymbol(symbol));
+  }, []);
 
   const refresh = useCallback(async () => {
     try {
@@ -182,10 +236,24 @@ export function IntelRelatedMarketsPanel({
     () => related.filter((item) => matchesTickerSearch(item, searchQuery)),
     [related, searchQuery],
   );
+  const watchItems = useMemo(
+    () =>
+      watchSymbols
+        .map((symbol) => bySymbol.get(symbol))
+        .filter((t): t is StockTickerItem => t != null),
+    [watchSymbols, bySymbol],
+  );
   const hasSearch = searchQuery.trim().length > 0;
 
   const titleSuffix =
     theaterFilter === "all" ? "" : ` · ${THEATER_CHIP_LABELS[theaterFilter]}`;
+
+  const cardProps = {
+    onToggleWatch: handleToggleWatch,
+    watchLabel: t("addWatch"),
+    unwatchLabel: t("removeWatch"),
+    yahooLabel: t("openYahoo"),
+  };
 
   const marketBody = (
     <>
@@ -198,12 +266,36 @@ export function IntelRelatedMarketsPanel({
           {embedInNews ? "증시 · 매크로" : `지정학 연관 증시${titleSuffix}`}
         </p>
         <p className="mt-1 text-xs leading-5 text-emerald-200/60">
-          {theaterMarketBlurb(marketFilter)}
+          {theaterAssetNote(marketFilter, lang)}
           {embedInNews ? " · 경제 RSS와 함께 표시" : " · 분쟁·긴장 이벤트와 연동되는 매크로·지수·원자재"}
         </p>
+        <p className="mt-1 text-[10px] text-slate-500">{t("marketsNotAdvice")}</p>
       </div>
 
       <div className={`space-y-5 ${embedInNews ? "px-3 py-3" : "px-4 py-4"}`}>
+        {!hasSearch ? (
+          <section>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-amber-300/90">
+              {t("watchlistLabel")}
+            </h3>
+            {watchItems.length > 0 ? (
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                {watchItems.map((item) => (
+                  <MarketCard
+                    key={`watch-${item.symbol}`}
+                    item={item}
+                    highlight
+                    watched
+                    {...cardProps}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-[11px] text-slate-500">{t("watchlistEmpty")}</p>
+            )}
+          </section>
+        ) : null}
+
         {hasSearch ? (
           <section>
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-emerald-300/90">
@@ -220,6 +312,8 @@ export function IntelRelatedMarketsPanel({
                       key={item.symbol}
                       item={item}
                       highlight={relatedSet.has(item.symbol)}
+                      watched={watchSymbols.includes(item.symbol)}
+                      {...cardProps}
                     />
                   ))}
               </div>
@@ -241,7 +335,13 @@ export function IntelRelatedMarketsPanel({
             ) : (
               <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
                 {related.map((item) => (
-                  <MarketCard key={item.symbol} item={item} highlight />
+                  <MarketCard
+                    key={item.symbol}
+                    item={item}
+                    highlight
+                    watched={watchSymbols.includes(item.symbol)}
+                    {...cardProps}
+                  />
                 ))}
               </div>
             )}
@@ -250,37 +350,39 @@ export function IntelRelatedMarketsPanel({
 
         {!hasSearch
           ? MARKET_GROUPS.map((group) => {
-          const items = group.symbols
-            .map((symbol) => bySymbol.get(symbol))
-            .filter((t): t is StockTickerItem => t != null);
-          if (items.length === 0) return null;
+              const items = group.symbols
+                .map((symbol) => bySymbol.get(symbol))
+                .filter((t): t is StockTickerItem => t != null);
+              if (items.length === 0) return null;
 
-          return (
-            <section key={group.id}>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                {group.label}
-              </h3>
-              {loading && !tickers ? (
-                <SkeletonGrid count={items.length} />
-              ) : (
-                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                  {items.map((item) => (
-                    <MarketCard
-                      key={item.symbol}
-                      item={item}
-                      highlight={theaterFilter !== "all" && relatedSet.has(item.symbol)}
-                    />
-                  ))}
-                </div>
-              )}
-            </section>
-          );
-        })
+              return (
+                <section key={group.id}>
+                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    {group.label}
+                  </h3>
+                  {loading && !tickers ? (
+                    <SkeletonGrid count={items.length} />
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                      {items.map((item) => (
+                        <MarketCard
+                          key={item.symbol}
+                          item={item}
+                          highlight={theaterFilter !== "all" && relatedSet.has(item.symbol)}
+                          watched={watchSymbols.includes(item.symbol)}
+                          {...cardProps}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </section>
+              );
+            })
           : null}
       </div>
 
       <p className={`text-[10px] text-slate-500 ${embedInNews ? "px-3 pb-3" : "px-4 pb-4"}`}>
-        Yahoo Finance · 10분 캐시
+        Yahoo Finance · 10분 캐시 · {t("marketsNotAdvice")}
       </p>
     </>
   );
@@ -311,7 +413,12 @@ export function IntelRelatedMarketsPanel({
         ) : (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {related.map((item) => (
-              <MarketCard key={item.symbol} item={item} />
+              <MarketCard
+                key={item.symbol}
+                item={item}
+                watched={watchSymbols.includes(item.symbol)}
+                {...cardProps}
+              />
             ))}
           </div>
         )}

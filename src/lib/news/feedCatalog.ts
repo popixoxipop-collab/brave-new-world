@@ -1,4 +1,5 @@
 import type { NewsFeedTopic, NewsTheater } from "@/lib/news/types";
+import type { EconomyNewsGenre } from "@/lib/news/economyGenres";
 import { DEFAULT_PACKAGE_SELECTION, type ViewPackageId } from "@/lib/viewPackages";
 
 export type NewsFeedDef = {
@@ -7,6 +8,8 @@ export type NewsFeedDef = {
   theater: NewsTheater;
   /** defense (default) | economy — geo-trader 전용 피드 */
   topic?: NewsFeedTopic;
+  /** 경제 장르 — topic=economy 일 때 Intel 시트 카테고리 */
+  econGenre?: EconomyNewsGenre;
   /** Skip theater keyword filter */
   unfiltered?: boolean;
 };
@@ -176,11 +179,13 @@ const SOUTH_ASIA: NewsFeedDef[] = [
 ];
 
 const SHARED_ECONOMY: NewsFeedDef[] = [
+  // —— 시장·와이어 ——
   {
     url: "https://feeds.reuters.com/reuters/businessNews",
     name: "Reuters Business",
     theater: "global",
     topic: "economy",
+    econGenre: "markets",
     unfiltered: true,
   },
   {
@@ -188,6 +193,7 @@ const SHARED_ECONOMY: NewsFeedDef[] = [
     name: "WSJ Markets",
     theater: "global",
     topic: "economy",
+    econGenre: "markets",
     unfiltered: true,
   },
   {
@@ -195,6 +201,7 @@ const SHARED_ECONOMY: NewsFeedDef[] = [
     name: "CNBC",
     theater: "global",
     topic: "economy",
+    econGenre: "markets",
     unfiltered: true,
   },
   {
@@ -202,27 +209,117 @@ const SHARED_ECONOMY: NewsFeedDef[] = [
     name: "Financial Times",
     theater: "global",
     topic: "economy",
+    econGenre: "markets",
     unfiltered: true,
   },
   {
-    url: G('"oil price" OR OPEC OR "natural gas" OR LNG OR Brent'),
-    name: "Google · Energy",
+    url: "https://feeds.bbci.co.uk/news/business/rss.xml",
+    name: "BBC Business",
     theater: "global",
     topic: "economy",
+    econGenre: "markets",
     unfiltered: true,
   },
+  {
+    url: "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml",
+    name: "NYT Business",
+    theater: "global",
+    topic: "economy",
+    econGenre: "markets",
+    unfiltered: true,
+  },
+
+  // —— 거시경제 ——
   {
     url: G('sanctions OR tariff OR "central bank" OR "interest rate" OR inflation'),
     name: "Google · Macro",
     theater: "global",
     topic: "economy",
+    econGenre: "macro",
     unfiltered: true,
   },
   {
-    url: G('"Red Sea" OR Suez OR Hormuz OR "shipping rates" OR freight'),
-    name: "Google · Shipping",
-    theater: "middle-east",
+    url: G('Fed OR ECB OR "Bank of Japan" OR "Bank of Korea" OR "Federal Reserve" (rate OR hike OR cut OR inflation)'),
+    name: "Google · Central Banks",
+    theater: "global",
     topic: "economy",
+    econGenre: "macro",
+    unfiltered: true,
+  },
+  {
+    url: G('IMF OR "World Bank" OR OECD OR "fiscal policy" OR GDP OR recession OR "sovereign debt"'),
+    name: "Google · IMF · Macro",
+    theater: "global",
+    topic: "economy",
+    econGenre: "macro",
+    unfiltered: true,
+  },
+  {
+    url: G('"trade war" OR tariff OR "export control" OR WTO OR "currency" (yuan OR dollar) geopolitics'),
+    name: "Google · Trade · FX",
+    theater: "global",
+    topic: "economy",
+    econGenre: "macro",
+    unfiltered: true,
+  },
+  {
+    url: "https://www.imf.org/en/News/RSS",
+    name: "IMF News",
+    theater: "global",
+    topic: "economy",
+    econGenre: "macro",
+    unfiltered: true,
+  },
+
+  // —— 국제 인프라 · FDI · 개발금융 ——
+  {
+    url: G('"Belt and Road" OR BRI OR AIIB OR "Asian Development Bank" OR "development bank" infrastructure'),
+    name: "Google · BRI · MDBs",
+    theater: "global",
+    topic: "economy",
+    econGenre: "infra",
+    unfiltered: true,
+  },
+  {
+    url: G('"infrastructure investment" OR "foreign direct investment" OR FDI OR "port investment" OR "rail corridor" OR "power grid"'),
+    name: "Google · Infra FDI",
+    theater: "global",
+    topic: "economy",
+    econGenre: "infra",
+    unfiltered: true,
+  },
+  {
+    url: G('"critical minerals" OR "rare earth" OR lithium OR "subsea cable" OR "undersea cable" OR "data center" investment geopolitics'),
+    name: "Google · Critical Infra",
+    theater: "global",
+    topic: "economy",
+    econGenre: "infra",
+    unfiltered: true,
+  },
+  {
+    url: G('"LNG terminal" OR "pipeline project" OR "green hydrogen" OR "renewable" investment geopolitics OR "energy corridor"'),
+    name: "Google · Energy Infra",
+    theater: "global",
+    topic: "economy",
+    econGenre: "infra",
+    unfiltered: true,
+  },
+  {
+    url: G('("CHIPS Act" OR "semiconductor fab" OR foundry OR "battery plant") (investment OR subsidy OR construction)'),
+    name: "Google · Fab · Capex",
+    theater: "china-taiwan",
+    topic: "economy",
+    econGenre: "infra",
+    unfiltered: true,
+  },
+
+  // —— 에너지 · 물류 · 반도체 ——
+  {
+    url: G('"oil price" OR OPEC OR "natural gas" OR LNG OR Brent'),
+    name: "Google · Energy",
+    theater: "global",
+    topic: "economy",
+    econGenre: "energy",
     unfiltered: true,
   },
   {
@@ -230,6 +327,15 @@ const SHARED_ECONOMY: NewsFeedDef[] = [
     name: "Google · EU Energy",
     theater: "russia-ukraine",
     topic: "economy",
+    econGenre: "energy",
+    unfiltered: true,
+  },
+  {
+    url: G('"Red Sea" OR Suez OR Hormuz OR "shipping rates" OR freight'),
+    name: "Google · Shipping",
+    theater: "middle-east",
+    topic: "economy",
+    econGenre: "shipping",
     unfiltered: true,
   },
   {
@@ -237,6 +343,7 @@ const SHARED_ECONOMY: NewsFeedDef[] = [
     name: "Google · Chips",
     theater: "china-taiwan",
     topic: "economy",
+    econGenre: "chips",
     unfiltered: true,
   },
 ];
@@ -264,12 +371,22 @@ export const GOOGLE_NEWS_QUERIES: Record<string, string> = {
   "central-asia": '(Central Asia) AND ("Great Game" OR "Geopolitics" OR "Security")',
   "economy-energy": '"oil price" OR OPEC OR "natural gas" OR LNG OR Brent',
   "economy-macro": 'sanctions OR tariff OR "central bank" OR "interest rate" OR inflation',
+  "economy-macro-cb":
+    'Fed OR ECB OR "Bank of Japan" OR "Bank of Korea" OR "Federal Reserve" (rate OR hike OR cut OR inflation)',
+  "economy-macro-imf":
+    'IMF OR "World Bank" OR OECD OR "fiscal policy" OR GDP OR recession OR "sovereign debt"',
   "economy-shipping": '"Red Sea" OR Suez OR Hormuz OR "shipping rates" OR freight',
   "economy-chips": 'Taiwan semiconductor OR "TSMC" OR "chip export"',
+  "economy-infra-bri":
+    '"Belt and Road" OR BRI OR AIIB OR "Asian Development Bank" OR "development bank" infrastructure',
+  "economy-infra-fdi":
+    '"infrastructure investment" OR "foreign direct investment" OR FDI OR "port investment" OR "rail corridor"',
+  "economy-infra-critical":
+    '"critical minerals" OR "rare earth" OR "subsea cable" OR "data center" investment geopolitics',
 };
 
 export const ECON_RELEVANCE =
-  /oil|gas|lng|opec|brent|wti|crude|sanction|tariff|trade|fed|ecb|rate|inflation|gdp|recession|supply\s?chain|shipping|freight|container|hormuz|suez|red\s?sea|semiconductor|chip|datacenter|data\s?center|cloud|market|stocks|bond|dollar|yuan|yen|euro|commodit|energy|pipeline|bank|currency|imf|wto|export|import|port\b|vix/i;
+  /oil|gas|lng|opec|brent|wti|crude|sanction|tariff|trade|fed|ecb|rate|inflation|gdp|recession|supply\s?chain|shipping|freight|container|hormuz|suez|red\s?sea|semiconductor|chip|datacenter|data\s?center|cloud|market|stocks|bond|dollar|yuan|yen|euro|commodit|energy|pipeline|bank|currency|imf|wto|export|import|port\b|vix|infrastructure|bri\b|belt\s?and\s?road|aiib|world\s?bank|adb\b|development\s?bank|fdi|foreign\s?direct|critical\s?mineral|rare\s?earth|subsea|undersea\s?cable|rail\s?corridor|power\s?grid|lng\s?terminal|chips?\s?act|foundry|sovereign\s?debt|fiscal|oecd/i;
 
 export const THEATER_RELEVANCE: Record<NewsTheater, RegExp> = {
   "middle-east":
