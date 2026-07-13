@@ -30,6 +30,15 @@ export function getSyncPollMs(): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 5 * 60 * 1000;
 }
 
+export function getDataCdnBase(): string | null {
+  const raw =
+    process.env.NEXT_PUBLIC_DATA_CDN?.trim() ||
+    process.env.DATA_CDN_BASE?.trim() ||
+    "";
+  if (!raw) return null;
+  return raw.replace(/\/$/, "");
+}
+
 export function getRuntimeConfig(): RuntimeConfig {
   return {
     dataProfile: getServerDataProfile(),
@@ -38,5 +47,6 @@ export function getRuntimeConfig(): RuntimeConfig {
     tzevaAdomEnabled: isTzevaAdomEnabled(),
     telegramOsintEnabled: isTelegramOsintEnabled(),
     syncPollMs: getSyncPollMs(),
+    dataCdnBase: getDataCdnBase(),
   };
 }

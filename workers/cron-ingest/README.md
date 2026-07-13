@@ -44,6 +44,8 @@ npm run cf:ingest:dev
 - 표현식: `*/10 * * * *` (10분마다)
 - 실행 시 FIRMS(전장 5개 bbox) + GDELT(쿼리 4개) → D1 upsert → 48h 이전 행 prune
 
-## Next 앱 연동 (다음 단계)
+## Next 앱 연동
 
-Next API에서 D1을 직접 쓰지 않고, Worker `GET /latest` 또는 별도 read API / R2 스냅샷을 읽도록 붙이면 됩니다.
+- Next API는 D1 우선 조회 (`readFirmsFromD1` / `readGdeltPointsFromD1`), 실패·`?live=1` 시 외부 fetch.
+- 헬스: Worker `GET /latest` — https://conflict-view-ingest.kangps7675.workers.dev/latest
+- 정적 JSON(`public/data`)은 R2 업로드: `npm run cf:r2:upload` (대시보드에서 R2 1회 활성화 필요). 자세한 내용은 [`docs/cloudflare-deploy.md`](../../docs/cloudflare-deploy.md).

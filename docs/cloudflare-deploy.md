@@ -46,3 +46,40 @@ npm run cf:ingest:deploy
 ```
 
 자세한 내용은 [`workers/cron-ingest/README.md`](workers/cron-ingest/README.md)를 참고하세요.
+
+## R2 정적 데이터 (public/data)
+
+대용량 `public/data/{lite,full}` 은 Workers 번들이 아니라 **R2**에 올리는 것을 권장합니다.
+
+### 1회 활성화 (대시보드)
+
+Cloudflare Dashboard → **R2** → **Enable R2**  
+(미활성 시 `wrangler r2` 가 code 10042 로 실패합니다.)
+
+### 업로드
+
+```bash
+npm run cf:r2:create          # 버킷 conflict-view-data
+npm run cf:r2:upload:dry      # 목록만
+npm run cf:r2:upload          # lite+full JSON(+gz) put
+# npm run cf:r2:upload -- --with-textures
+```
+
+버킷 public 도메인(또는 Worker 프록시)을 붙인 뒤:
+
+```bash
+# .env / Workers vars
+NEXT_PUBLIC_DATA_CDN=https://<your-r2-public-host>
+```
+
+`dataPath()` 가 CDN을 prefix 합니다. 비우면 기존 `/data/...` (로컬·ASSETS).
+
+### wrangler.jsonc 바인딩 (앱에서 R2 직접 읽을 때)
+
+```jsonc
+"r2_buckets": [
+  { "binding": "DATA_BUCKET", "bucket_name": "conflict-view-data" }
+]
+```
+
+버킷 생성 후에만 추가하세요.

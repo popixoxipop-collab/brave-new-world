@@ -58,6 +58,9 @@
     "cf:app:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "cf:app:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "cf:app:upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
+    "cf:r2:create": "wrangler r2 bucket create conflict-view-data",
+    "cf:r2:upload": "node scripts/r2-upload-data.js",
+    "cf:r2:upload:dry": "node scripts/r2-upload-data.js --dry-run",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
   "dependencies": {

@@ -8,11 +8,14 @@ export function getDataProfile(): DataProfile {
   return getRuntimeConfig().dataProfile;
 }
 
-/** 프로필별 JSON 경로 — public/data/{profile}/file.json */
+/** 프로필별 JSON 경로 — CDN 있으면 CDN, 없으면 /data/{profile}/… */
 export function dataPath(relativePath: string): string {
   const profile = getDataProfile();
   const normalized = relativePath.replace(/^\//, "");
-  return `/data/${profile}/${normalized}`;
+  const local = `/data/${profile}/${normalized}`;
+  const cdn = getRuntimeConfig().dataCdnBase?.replace(/\/$/, "");
+  if (!cdn) return local;
+  return `${cdn}/data/${profile}/${normalized}`;
 }
 
 export function isFullDataProfile(): boolean {
