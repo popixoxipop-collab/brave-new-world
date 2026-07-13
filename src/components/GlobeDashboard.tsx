@@ -1242,7 +1242,7 @@ export function GlobeDashboard({
     lat: ENTRY_GATE.bootLookAt.lat,
     lng: ENTRY_GATE.bootLookAt.lng,
   });
-  const layerAltitudeRef = useRef<number>(ENTRY_GATE.bootAltitude);
+  const layerAltitudeRef: { current: number } = useRef(ENTRY_GATE.bootAltitude);
   const layerLodTierRef = useRef<GlobeLodTier>("global");
   const moveIdleTimerRef = useRef<number | null>(null);
   const renderStabilizeIdleRef = useRef<number | null>(null);

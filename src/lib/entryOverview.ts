@@ -17,16 +17,23 @@ import type { ViewerMode } from "@/lib/viewPackages";
  * 4. 전체 지구본 확 줌아웃
  * 5. 세부설정(ModePicker)
  */
-export const ENTRY_GATE = {
+/** 고도는 런타임에 LOD 앵커로 바뀌므로 literal이 되면 안 됨 (`as const` 금지). */
+export const ENTRY_GATE: {
+  bootAltitude: number;
+  bootLookAt: { readonly lat: number; readonly lng: number };
+  zoomOutAltitude: number;
+  zoomOutFlyMs: number;
+  afterZoomOutHoldMs: number;
+} = {
   /** 로딩·환영·도메인 동안 뒷배경 카메라 (이미 줌아웃된 궤도) */
-  bootAltitude: 2.85 as number,
-  bootLookAt: { lat: 18, lng: 35 } as const,
+  bootAltitude: 2.85,
+  bootLookAt: { lat: 18, lng: 35 },
   /** 도메인 선택 직후 — 전체 지구본이 확 빠지는 고도 */
-  zoomOutAltitude: 3.4 as number,
+  zoomOutAltitude: 3.4,
   zoomOutFlyMs: 1600,
   /** 줌아웃 연출 후 세부설정 창까지 여유 */
   afterZoomOutHoldMs: 450,
-} as const;
+};
 
 /** @deprecated ENTRY_GATE.bootAltitude / zoomOutAltitude 사용 */
 export const DOMAIN_OVERVIEW_ALTITUDE = ENTRY_GATE.zoomOutAltitude;
