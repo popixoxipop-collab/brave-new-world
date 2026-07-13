@@ -1242,7 +1242,7 @@ export function GlobeDashboard({
     lat: ENTRY_GATE.bootLookAt.lat,
     lng: ENTRY_GATE.bootLookAt.lng,
   });
-  const layerAltitudeRef = useRef(ENTRY_GATE.bootAltitude);
+  const layerAltitudeRef = useRef<number>(ENTRY_GATE.bootAltitude);
   const layerLodTierRef = useRef<GlobeLodTier>("global");
   const moveIdleTimerRef = useRef<number | null>(null);
   const renderStabilizeIdleRef = useRef<number | null>(null);
@@ -1721,7 +1721,7 @@ export function GlobeDashboard({
     lat: ENTRY_GATE.bootLookAt.lat,
     lng: ENTRY_GATE.bootLookAt.lng,
   });
-  const [layerAltitude, setLayerAltitude] = useState(ENTRY_GATE.bootAltitude);
+  const [layerAltitude, setLayerAltitude] = useState<number>(ENTRY_GATE.bootAltitude);
   const [isCameraMoving, setIsCameraMoving] = useState(false);
 
   const { layerViewState, mapZoom } = useCameraViewport(filterCenter, layerAltitude);
