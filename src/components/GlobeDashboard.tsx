@@ -248,6 +248,7 @@ import {
   episodeLat,
   episodeLng,
   frictionEpisodeById,
+  frictionEpisodeWarGeometry,
   hubColorForLens,
   type FrictionEpisode,
 } from "@/data/frictionEpisodes";
@@ -313,6 +314,7 @@ import { resolveDisputeCenter } from "@/lib/disputeCenter";
 import {
   conflictZoneToOutlineAndHatchPaths,
   disputeMatchesWarDiplomaticLayers,
+  geometryToAccentOutlineAndHatch,
   getConflictZoneHatchColor,
   getConflictZoneOutlineColor,
   getDisputeHatchColor,
@@ -394,7 +396,7 @@ import {
   TIER_LABELS,
   type ScoredEvent,
 } from "@/data/eventTiers";
-import { createEventPinElement } from "@/lib/locationPinMarker";
+import { createEventPinElement, createFrictionPinElement } from "@/lib/locationPinMarker";
 import {
   NewsStreamProvider,
   IntelCompactBar,
@@ -576,6 +578,16 @@ type UkraineSettlementHtmlMarker = UkraineSettlement & {
   tier: ReturnType<typeof getUkraineSettlementTier>;
 };
 
+type FrictionPinHtmlMarker = {
+  markerId: string;
+  displayKind: "friction-pin";
+  id: string;
+  lat: number;
+  lng: number;
+  label: string;
+  color: string;
+};
+
 type HtmlOverlayMarker =
   | StaticGlobePoint
   | GlobePoint
@@ -585,7 +597,8 @@ type HtmlOverlayMarker =
   | SituationCalloutMarker
   | UkraineSettlementHtmlMarker
   | NeptunHtmlMarker
-  | NeptunImpactHtmlMarker;
+  | NeptunImpactHtmlMarker
+  | FrictionPinHtmlMarker;
 
 type HoverCard =
   | {
@@ -2694,10 +2707,52 @@ export function GlobeDashboard({
     ];
   }, [frictionEpisodeBrief, hubFocusMode, regimeSelectedEpisodeId]);
 
+  /** 분쟁 외교사 선택 시 — 체크박스 없이 해당 좌표만 전쟁구역 빗금 */
+  const activeFrictionEpisode = useMemo<FrictionEpisode | null>(() => {
+    if (hubFocusMode !== "regime") return null;
+    if (frictionEpisodeBrief) return frictionEpisodeBrief;
+    if (regimeSelectedEpisodeId) return frictionEpisodeById(regimeSelectedEpisodeId) ?? null;
+    return null;
+  }, [frictionEpisodeBrief, hubFocusMode, regimeSelectedEpisodeId]);
+
+  const frictionWarZonePaths = useMemo<TransportPath[]>(() => {
+    if (!activeFrictionEpisode) return [];
+    const style = TENSION_GRADE_STYLES.combat;
+    return geometryToAccentOutlineAndHatch(
+      `friction-war-${activeFrictionEpisode.id}`,
+      activeFrictionEpisode.locationName,
+      frictionEpisodeWarGeometry(activeFrictionEpisode),
+      {
+        outlineKind: "dispute-zone",
+        hatchKind: "conflict-hatch",
+        outlineColor: style.outline,
+        hatchColor: style.hatch,
+        pattern: style.pattern,
+        preferDetailSegments: false,
+      },
+    );
+  }, [activeFrictionEpisode]);
+
+  const frictionPinMarkers = useMemo<FrictionPinHtmlMarker[]>(() => {
+    if (!activeFrictionEpisode) return [];
+    return [
+      {
+        markerId: `friction-pin-${activeFrictionEpisode.id}`,
+        displayKind: "friction-pin",
+        id: activeFrictionEpisode.id,
+        lat: episodeLat(activeFrictionEpisode),
+        lng: episodeLng(activeFrictionEpisode),
+        label: `${activeFrictionEpisode.title} · ${activeFrictionEpisode.locationName}`,
+        color: hubColorForLens(activeFrictionEpisode.lens),
+      },
+    ];
+  }, [activeFrictionEpisode]);
+
   const rawGlobePaths = useMemo<TransportPath[]>(
     () => [
       ...visibleDisputeBoundaries,
       ...disputeZonePaths,
+      ...frictionWarZonePaths,
       ...eastAsiaAdizPaths,
       ...axisNetworkPaths,
       ...visibleShipping,
@@ -2712,6 +2767,7 @@ export function GlobeDashboard({
       axisNetworkPaths,
       disputeZonePaths,
       eastAsiaAdizPaths,
+      frictionWarZonePaths,
       railPaths,
       visibleCables,
       visibleDisputeBoundaries,
@@ -3110,8 +3166,29 @@ export function GlobeDashboard({
       globeLod.tier === "village";
     if (!nearEnough) return false;
     if (showUkraineControl) return true;
+    /** 분쟁 외교사 선택 구역 — 체크박스 없이 해당 좌표에서만 교전음 */
+    if (activeFrictionEpisode) {
+      const radiusDeg = VIEWPORT_RADIUS_BY_TIER[globeLod.tier] + 2.5;
+      if (
+        isCenterInView(
+          { lat: episodeLat(activeFrictionEpisode), lng: episodeLng(activeFrictionEpisode) },
+          layerViewState,
+          radiusDeg,
+        )
+      ) {
+        return true;
+      }
+    }
     return resolveActiveWarTheaterAt(filterCenter.lat, filterCenter.lng) != null;
-  }, [filterCenter.lat, filterCenter.lng, globeLod.tier, isEconomyViewer, showUkraineControl]);
+  }, [
+    activeFrictionEpisode,
+    filterCenter.lat,
+    filterCenter.lng,
+    globeLod.tier,
+    isEconomyViewer,
+    layerViewState,
+    showUkraineControl,
+  ]);
 
   /** 대만해협 — 시계 틱 긴장 앰비언트 */
   const soundTaiwanTensionAmbient = useMemo(() => {
@@ -3510,10 +3587,12 @@ export function GlobeDashboard({
       ...gdeltTagHtmlMarkers,
       ...neptunHtmlMarkers,
       ...neptunImpactHtmlMarkers,
+      ...frictionPinMarkers,
     ];
     return markers;
   }, [
       airportPortHtmlMarkers,
+      frictionPinMarkers,
       gdeltTagHtmlMarkers,
       globePoints,
       milHtmlMarkers,
@@ -6381,6 +6460,9 @@ export function GlobeDashboard({
       if (item.displayKind === "neptun-impact") {
         return createNeptunImpactFlashElement(item);
       }
+      if (item.displayKind === "friction-pin") {
+        return createFrictionPinElement(item.color, item.label);
+      }
       return createAirportPortBadge(item as StaticGlobePoint, handleHtmlMarkerHover, alt);
     },
     [handleCarrierSelect, handleCivAircraftSelect, handleHtmlMarkerHover, handleMilAircraftSelect, handleNeptunThreatSelect, labelLanguage, openIntelFromCoords, usCarrierLabelOffsets],
@@ -6524,7 +6606,11 @@ export function GlobeDashboard({
 
   return (
     <LocaleProvider lang={labelLanguage}>
-    <main className="relative flex h-screen w-screen flex-col overflow-hidden space-ambient text-slate-100">
+    <main
+      className="relative flex h-screen w-screen flex-col overflow-hidden space-ambient text-slate-100"
+      data-ui-lang={labelLanguage}
+      data-viewer={viewerMode}
+    >
 
       <SoundEffectsBridge
         viewerMode={viewerMode}
@@ -6862,6 +6948,12 @@ export function GlobeDashboard({
                   return;
                 }
                 if (el.classList.contains("gdelt-news-alert-marker")) {
+                  el.style.transform = isVisible
+                    ? "translate(-50%, -100%) scale(1)"
+                    : "translate(-50%, -100%) scale(0.86)";
+                  return;
+                }
+                if (el.classList.contains("friction-episode-pin")) {
                   el.style.transform = isVisible
                     ? "translate(-50%, -100%) scale(1)"
                     : "translate(-50%, -100%) scale(0.86)";
@@ -7906,6 +7998,7 @@ export function GlobeDashboard({
       {entryGate === "caution" ? (
         <EntryCautionOverlay
           lang={labelLanguage}
+          onLangChange={setLabelLanguage}
           onContinue={() => setEntryGate("welcome")}
           onSkipToDomain={() => {
             markWelcomeGateDone();
@@ -7954,6 +8047,8 @@ export function GlobeDashboard({
           }
           ctaLabel={t("hubBriefCta", labelLanguage)}
           onContinue={() => setFrictionEpisodeBrief(null)}
+          playBreakingDispatch
+          typewriter
           titleId="friction-episode-letter-title"
           zIndexClass="z-[9990]"
         />

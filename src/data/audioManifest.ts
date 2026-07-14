@@ -519,16 +519,16 @@ export const AUDIO_MANIFEST = {
   },
 
   /**
-   * 양피지 접힘 — 종이 접고 구기는 소리 (짧은 컷)
-   * https://freesound.org/s/234886/ · Runey · CC0
+   * 양피지 접힘·상승 — 포장지 구기고 접는 소리
+   * https://freesound.org/s/140891/ · jgeralyn · CC BY 3.0
    */
   "parchment-fold": {
     eventId: "parchment-fold",
-    freesoundQuery: "paper fold crumple rustle",
-    freesoundId: 234886,
-    volume: 0.32,
+    freesoundQuery: "wrapping paper crumple fold packaging",
+    freesoundId: 140891,
+    volume: 0.42,
     category: "ui",
-    note: "FS#234886 Runey Unfolding and crumbling paper · CC0 · 접기(초반 컷)",
+    note: "FS#140891 jgeralyn WrappingPaper1 · BY 3.0 · 양피지 접어 올라갈 때",
   },
 
   /**

@@ -59,17 +59,18 @@ export function emitParchmentUnfoldSound() {
   });
 }
 
-/** 양피지 접기 CTA — 접히는 소리 + 날아가는 소리 */
+/** 양피지 접기 CTA — 접히며 올라가는 소리 + 날아가는 whoosh */
 export function emitParchmentFoldSound() {
   emitDashboardSound("parchment-fold", {
     force: true,
-    volumeScale: 1,
-    durationMs: 1200,
+    volumeScale: 1.05,
+    /** FS#140891 ~22s — 접힘 모션 구간에 맞춰 컷 */
+    durationMs: 2200,
     waveVolume: { minFactor: 1, maxFactor: 1, periodMs: 900 },
     chain: {
       eventId: "parchment-flyaway",
       force: true,
-      volumeScale: 1.15,
+      volumeScale: 0.85,
       overlap: true,
     },
   });

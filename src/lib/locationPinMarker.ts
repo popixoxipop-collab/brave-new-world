@@ -72,6 +72,31 @@ type EventPinPoint = ScoredEvent & {
   displayKind: "event";
 };
 
+/** 분쟁 외교사 에피소드 — 좌표 픽스 핀 */
+export function createFrictionPinElement(
+  fill: string,
+  label: string,
+  size = 26,
+): HTMLElement {
+  const el = document.createElement("div");
+  el.className = "friction-episode-pin pointer-events-none";
+  el.setAttribute("role", "img");
+  el.setAttribute("aria-label", label);
+  el.title = label;
+  el.style.width = `${size}px`;
+  el.style.height = `${Math.round(size * (32 / 22))}px`;
+  el.style.transform = "translate(-50%, -100%)";
+  el.style.filter = "drop-shadow(0 2px 6px rgba(0,0,0,0.55))";
+  el.innerHTML = locationPinSvg({
+    fill,
+    size,
+    stroke: "rgba(8, 12, 24, 0.7)",
+    freshRing: true,
+    glowColor: fill,
+  });
+  return el;
+}
+
 export function createEventPinElement(
   point: EventPinPoint,
   altitude: number,

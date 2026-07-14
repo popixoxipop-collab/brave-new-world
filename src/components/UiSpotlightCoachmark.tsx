@@ -11,6 +11,9 @@ type UiSpotlightCoachmarkProps = {
   body: string;
   ctaLabel: string;
   onDismiss: () => void;
+  /** 전체 설명 스킵 (첫 화면용) */
+  skipLabel?: string;
+  onSkip?: () => void;
   /** 말풍선·화살표가 타겟의 아래(기본) / 위 */
   placement?: SpotlightPlacement;
   accent?: "sky" | "amber" | "emerald";
@@ -26,6 +29,8 @@ export function UiSpotlightCoachmark({
   body,
   ctaLabel,
   onDismiss,
+  skipLabel,
+  onSkip,
   placement = "below",
   accent = "sky",
 }: UiSpotlightCoachmarkProps) {
@@ -131,13 +136,26 @@ export function UiSpotlightCoachmark({
       >
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] opacity-70">{title}</p>
         <p className="mt-1.5 leading-snug">{body}</p>
-        <button
-          type="button"
-          onClick={onDismiss}
-          className={`mt-3 rounded-full border px-3 py-1 text-xs ${tone.btn}`}
-        >
-          {ctaLabel}
-        </button>
+        <div className="mt-3 flex items-center justify-between gap-2">
+          {skipLabel && onSkip ? (
+            <button
+              type="button"
+              onClick={onSkip}
+              className={`rounded-full border px-3 py-1 text-xs opacity-80 ${tone.btn}`}
+            >
+              {skipLabel}
+            </button>
+          ) : (
+            <span />
+          )}
+          <button
+            type="button"
+            onClick={onDismiss}
+            className={`rounded-full border px-3 py-1 text-xs ${tone.btn}`}
+          >
+            {ctaLabel}
+          </button>
+        </div>
       </div>
     </div>
   );

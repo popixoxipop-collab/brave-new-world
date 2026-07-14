@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PARCHMENT_FOLD_EXIT_MS } from "@/components/ParchmentLetter";
 import type { LabelLanguage } from "@/lib/layerPrefs";
 import {
@@ -36,6 +36,11 @@ function formatUsdBn(value: number | null | undefined): string | null {
   return `$${value.toLocaleString()}`;
 }
 
+const TYPE_MS_PER_CHAR = 26;
+
+const SPACE_GROTESK_STACK =
+  'var(--font-space-grotesk), "Space Grotesk", var(--font-pretendard), sans-serif';
+
 export type EconInsightParchmentProps = {
   lang: LabelLanguage;
   brief: EconInsightBrief;
@@ -53,14 +58,55 @@ export function EconInsightParchment({
 }: EconInsightParchmentProps) {
   const [phase, setPhase] = useState<"idle" | "folding" | "done">("idle");
   const [worldStats, setWorldStats] = useState<WorldStatsCard | null>(null);
-  const handStack =
-    'var(--font-letter-hand), "Gowun Batang", "Nanum Myeongjo", "Batang", serif';
-  const titleFont = handStack;
+  const [typedChars, setTypedChars] = useState(0);
   const title = lang === "en" ? brief.titleEn : brief.titleKo;
+  const paragraphs = useMemo(
+    () => (compact ? brief.paragraphs.slice(0, 3) : brief.paragraphs),
+    [brief.paragraphs, compact],
+  );
+  const fullBody = useMemo(() => paragraphs.join("\n\n"), [paragraphs]);
+  const totalChars = fullBody.length;
+  const typingDone = typedChars >= totalChars;
 
   useEffect(() => {
     emitParchmentUnfoldSound();
   }, []);
+
+  useEffect(() => {
+    setTypedChars(0);
+    const reduced =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduced || totalChars === 0) {
+      setTypedChars(totalChars);
+      return;
+    }
+    let i = 0;
+    const id = window.setInterval(() => {
+      i += 1;
+      setTypedChars(i);
+      if (i >= totalChars) window.clearInterval(id);
+    }, TYPE_MS_PER_CHAR);
+    return () => window.clearInterval(id);
+  }, [totalChars, fullBody]);
+
+  const visibleParagraphs = useMemo(() => {
+    if (typedChars >= totalChars) return paragraphs;
+    let remaining = typedChars;
+    const out: string[] = [];
+    for (const p of paragraphs) {
+      if (remaining <= 0) break;
+      if (remaining >= p.length) {
+        out.push(p);
+        remaining -= p.length;
+        if (remaining > 0) remaining = Math.max(0, remaining - 2);
+      } else {
+        out.push(p.slice(0, remaining));
+        remaining = 0;
+      }
+    }
+    return out.length > 0 ? out : [""];
+  }, [paragraphs, typedChars, totalChars]);
 
   useEffect(() => {
     if (!brief.countryHint) {
@@ -90,6 +136,10 @@ export function EconInsightParchment({
   const finish = useCallback(
     (next: () => void) => {
       if (phase !== "idle") return;
+      if (!typingDone) {
+        setTypedChars(totalChars);
+        return;
+      }
       setPhase("folding");
       emitParchmentFoldSound();
       const reduced =
@@ -100,12 +150,11 @@ export function EconInsightParchment({
         next();
       }, reduced ? 80 : PARCHMENT_FOLD_EXIT_MS);
     },
-    [phase],
+    [phase, totalChars, typingDone],
   );
 
   const exiting = phase === "folding" || phase === "done";
   const gdp = formatUsdBn(worldStats?.gdpUsd);
-  const paragraphs = compact ? brief.paragraphs.slice(0, 3) : brief.paragraphs;
 
   return (
     <div
@@ -119,10 +168,10 @@ export function EconInsightParchment({
     >
       <div className="welcome-letter-stage">
         <div
-          className={`welcome-letter-card ${
+          className={`econ-insight-parchment welcome-letter-card ${
             exiting ? "welcome-letter-card--fold-exit" : "welcome-letter-card--unfold-enter"
           }`}
-          style={{ fontFamily: handStack }}
+          style={{ fontFamily: SPACE_GROTESK_STACK }}
         >
           <div className="welcome-parchment welcome-letter-face welcome-letter-face--front relative flex max-h-[min(92vh,900px)] w-full max-w-2xl flex-col overflow-hidden rounded-sm shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
             <div className="welcome-parchment-edge pointer-events-none absolute inset-0" aria-hidden />
@@ -139,13 +188,16 @@ export function EconInsightParchment({
 
               <h1
                 id="econ-insight-title"
-                className="welcome-letter-title shrink-0 text-center text-[1.55rem] leading-[1.45] tracking-[0.06em] text-[#3d2a18] sm:text-[1.95rem]"
-                style={{ fontFamily: titleFont, fontWeight: 400 }}
+                className="welcome-letter-title shrink-0 text-center text-[1.55rem] leading-[1.45] tracking-[0.04em] text-[#3d2a18] sm:text-[1.95rem]"
+                style={{ fontFamily: SPACE_GROTESK_STACK, fontWeight: 600 }}
               >
                 {title}
               </h1>
 
-              <p className="mt-3 text-center text-[0.95rem] leading-relaxed tracking-[0.02em] text-[#5a4428]">
+              <p
+                className="mt-3 text-center text-[0.95rem] leading-relaxed tracking-[0.01em] text-[#5a4428]"
+                style={{ fontFamily: SPACE_GROTESK_STACK, fontWeight: 400 }}
+              >
                 {brief.impactLine}
               </p>
 
@@ -154,7 +206,8 @@ export function EconInsightParchment({
                   {brief.marketLinks.map((link) => (
                     <span
                       key={link.symbol}
-                      className="rounded-sm border border-[#8b6914]/35 bg-[#efe0b8]/70 px-2.5 py-1 font-mono text-[0.78rem] tracking-wide text-[#3d2a18]"
+                      className="rounded-sm border border-[#8b6914]/35 bg-[#efe0b8]/70 px-2.5 py-1 text-[0.78rem] tracking-wide text-[#3d2a18]"
+                      style={{ fontFamily: SPACE_GROTESK_STACK, fontWeight: 500 }}
                     >
                       {link.symbol} {arrowFor(link.direction)}
                     </span>
@@ -164,10 +217,13 @@ export function EconInsightParchment({
 
               {worldStats && !worldStats.disabled && (gdp || worldStats.population != null) ? (
                 <div className="mt-4 rounded-sm border border-[#8b6914]/28 bg-[#f6ebcf]/55 px-3 py-2 text-center text-[0.82rem] leading-relaxed text-[#4a3724]">
-                  <div className="font-medium tracking-[0.04em]">
+                  <div className="font-medium tracking-[0.04em]" style={{ fontFamily: SPACE_GROTESK_STACK }}>
                     {worldStats.name ?? brief.countryHint} · countries API
                   </div>
-                  <div className="mt-1 flex flex-wrap justify-center gap-x-3 gap-y-1 font-mono text-[0.75rem]">
+                  <div
+                    className="mt-1 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[0.75rem]"
+                    style={{ fontFamily: SPACE_GROTESK_STACK, fontWeight: 500 }}
+                  >
                     {gdp ? <span>GDP {gdp}</span> : null}
                     {worldStats.population != null ? (
                       <span>Pop {(worldStats.population / 1e6).toFixed(1)}M</span>
@@ -181,15 +237,26 @@ export function EconInsightParchment({
 
               <div className="welcome-letter-divider mx-auto mt-4 shrink-0" aria-hidden />
 
-              <div className="welcome-letter-body mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain text-[1.02rem] leading-[1.9] tracking-[0.03em] text-[#3f2e1c] sm:text-[1.08rem]">
-                {paragraphs.map((p, i) => (
+              <div
+                className="welcome-letter-body mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain text-[1.02rem] leading-[1.9] tracking-[0.01em] text-[#3f2e1c] sm:text-[1.08rem]"
+                style={{ fontFamily: SPACE_GROTESK_STACK, fontWeight: 400 }}
+                aria-live="polite"
+              >
+                {visibleParagraphs.map((p, i) => (
                   <p key={i} className="welcome-letter-verse whitespace-pre-line text-pretty">
                     {p}
+                    {!typingDone && i === visibleParagraphs.length - 1 ? (
+                      <span className="parchment-type-caret" aria-hidden>
+                        ▍
+                      </span>
+                    ) : null}
                   </p>
                 ))}
-                <p className="pt-1 text-[0.72rem] tracking-[0.02em] text-[#7a6348]/90">
-                  {CRITICAL_NODES_ATTRIBUTION}
-                </p>
+                {typingDone ? (
+                  <p className="pt-1 text-[0.72rem] tracking-[0.02em] text-[#7a6348]/90">
+                    {CRITICAL_NODES_ATTRIBUTION}
+                  </p>
+                ) : null}
               </div>
             </div>
 
@@ -198,19 +265,31 @@ export function EconInsightParchment({
                 type="button"
                 onClick={() => finish(onOpenNews)}
                 disabled={phase !== "idle"}
-                className="rounded-sm border border-[#8b6914]/35 bg-[#e8d5a8]/80 px-4 py-2.5 text-[0.92rem] tracking-[0.05em] text-[#3d2a18] transition hover:bg-[#f7ecd0] disabled:cursor-wait disabled:opacity-70"
-                style={{ fontFamily: titleFont }}
+                className="rounded-sm border border-[#8b6914]/35 bg-[#e8d5a8]/80 px-4 py-2.5 text-[0.92rem] tracking-[0.04em] text-[#3d2a18] transition hover:bg-[#f7ecd0] disabled:cursor-wait disabled:opacity-70"
+                style={{ fontFamily: SPACE_GROTESK_STACK, fontWeight: 500 }}
               >
-                {lang === "en" ? "Fold → news panel" : "접고 뉴스 패널로"}
+                {!typingDone
+                  ? lang === "en"
+                    ? "Skip typing"
+                    : "타자 건너뛰기"
+                  : lang === "en"
+                    ? "Fold → news panel"
+                    : "접고 뉴스 패널로"}
               </button>
               <button
                 type="button"
                 onClick={() => finish(onMapOnly)}
                 disabled={phase !== "idle"}
-                className="rounded-sm border border-[#8b6914]/45 bg-[#efe0b8] px-4 py-2.5 text-[0.92rem] tracking-[0.05em] text-[#3d2a18] shadow-sm transition hover:bg-[#f7ecd0] disabled:cursor-wait disabled:opacity-70"
-                style={{ fontFamily: titleFont }}
+                className="rounded-sm border border-[#8b6914]/45 bg-[#efe0b8] px-4 py-2.5 text-[0.92rem] tracking-[0.04em] text-[#3d2a18] shadow-sm transition hover:bg-[#f7ecd0] disabled:cursor-wait disabled:opacity-70"
+                style={{ fontFamily: SPACE_GROTESK_STACK, fontWeight: 500 }}
               >
-                {lang === "en" ? "Map only" : "지도만 남기기"}
+                {!typingDone
+                  ? lang === "en"
+                    ? "Skip typing"
+                    : "타자 건너뛰기"
+                  : lang === "en"
+                    ? "Map only"
+                    : "지도만 남기기"}
               </button>
             </div>
           </div>

@@ -243,3 +243,26 @@ export function hubColorForLens(lens: FrictionLens): string {
   if (lens === "north_korea") return "rgba(255, 0, 85, 0.92)";
   return "rgba(167, 139, 250, 0.9)";
 }
+
+/** 에피소드 좌표 주변 국소 전쟁구역 폴리곤 ([lng, lat] ring) */
+export function frictionEpisodeWarGeometry(ep: FrictionEpisode): {
+  type: "Polygon";
+  coordinates: number[][][];
+} {
+  const lat = episodeLat(ep);
+  const lng = episodeLng(ep);
+  const halfLng = Math.max(0.28, 0.22 * ep.radiusScale);
+  const halfLat = halfLng * 0.72;
+  return {
+    type: "Polygon",
+    coordinates: [
+      [
+        [lng - halfLng, lat - halfLat],
+        [lng + halfLng, lat - halfLat],
+        [lng + halfLng, lat + halfLat],
+        [lng - halfLng, lat + halfLat],
+        [lng - halfLng, lat - halfLat],
+      ],
+    ],
+  };
+}

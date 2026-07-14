@@ -3,7 +3,7 @@
 import { UiSpotlightCoachmark } from "@/components/UiSpotlightCoachmark";
 import type { ViewerMode } from "@/lib/viewPackages";
 
-export const CHROME_COACH_KEY = "geowatch-chrome-coach-v1";
+export const CHROME_COACH_KEY = "geowatch-chrome-coach-v2";
 
 export type ChromeCoachStep = "nav" | "news";
 
@@ -38,9 +38,9 @@ type ChromeOnboardingCoachProps = {
 
 const COPY = {
   ko: {
-    navTitle: "상단 탐색 바",
+    navTitle: "주요 전장 · 허브 메뉴",
     navConflict:
-      "중국 · 러시아 · 북한 · 이란 메뉴를 직접 열어 보세요. 클릭하면 지도가 잠깐 보여진 뒤, 양피지 설명이 펼쳐집니다. 로딩이나 자동으로 들어가지 않습니다.",
+      "여기 상단의 중국 · 러시아 · 북한 · 이란 드롭다운이 ‘주요 전장’ 데이터 입구입니다. 항목을 직접 누르면 그 허브 지도·네트워크·분쟁 외교사로 넘어갑니다. 로딩만으로 자동 진입하지는 않습니다.",
     navEconomy:
       "검색창을 눌러 에너지·초크포인트·금융 허브를 직접 찾아 보세요. 관심 있는 항목을 고를 때만 지도가 이동합니다.",
     newsTitle: "하단 뉴스 · 속보",
@@ -50,11 +50,12 @@ const COPY = {
       "지구본 아래 시장·경제 뉴스 창입니다. 티커와 함께 주요 보도를 열 수 있습니다.",
     next: "다음",
     done: "알겠습니다",
+    skip: "스킵",
   },
   en: {
-    navTitle: "Top navigation",
+    navTitle: "Major theaters · hub menu",
     navConflict:
-      "Open China · Russia · North Korea · Iran yourself. A click briefly shows the map, then a parchment brief. Nothing auto-enters from loading.",
+      "The China · Russia · North Korea · Iran dropdowns are the entry to major-theater data. Click a hub to open its map, network, and friction briefs—nothing auto-enters from loading alone.",
     navEconomy:
       "Focus the search bar to browse energy, chokepoints, and finance hubs. The map moves only when you pick something.",
     newsTitle: "Bottom news strip",
@@ -64,6 +65,7 @@ const COPY = {
       "Market and economy news under the globe—open it with the ticker when you need it.",
     next: "Next",
     done: "Got it",
+    skip: "Skip",
   },
 } as const;
 
@@ -81,6 +83,11 @@ export function ChromeOnboardingCoach({
   const copy = lang === "en" ? COPY.en : COPY.ko;
   const isEconomy = viewerMode === "economy";
 
+  const skipAll = () => {
+    markChromeCoachDone();
+    onStepChange(null);
+  };
+
   if (step === "nav") {
     return (
       <UiSpotlightCoachmark
@@ -89,9 +96,11 @@ export function ChromeOnboardingCoach({
         title={copy.navTitle}
         body={isEconomy ? copy.navEconomy : copy.navConflict}
         ctaLabel={copy.next}
+        skipLabel={copy.skip}
         placement="below"
         accent={isEconomy ? "emerald" : "sky"}
         onDismiss={() => onStepChange("news")}
+        onSkip={skipAll}
       />
     );
   }
@@ -103,12 +112,14 @@ export function ChromeOnboardingCoach({
       title={copy.newsTitle}
       body={isEconomy ? copy.newsEconomy : copy.newsConflict}
       ctaLabel={copy.done}
+      skipLabel={copy.skip}
       placement="above"
       accent={isEconomy ? "emerald" : "amber"}
       onDismiss={() => {
         markChromeCoachDone();
         onStepChange(null);
       }}
+      onSkip={skipAll}
     />
   );
 }

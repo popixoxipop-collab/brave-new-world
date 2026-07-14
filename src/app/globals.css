@@ -21,7 +21,63 @@ body {
     radial-gradient(ellipse 42% 32% at 82% 14%, rgba(69, 243, 255, 0.03) 0%, transparent 54%),
     radial-gradient(ellipse 38% 28% at 14% 86%, rgba(255, 0, 127, 0.025) 0%, transparent 50%),
     var(--background);
-  font-family: var(--font-geist-mono), "IBM Plex Mono", "JetBrains Mono", monospace;
+  font-family: var(--font-geist-mono), var(--font-ibm-plex-mono), "IBM Plex Mono", "JetBrains Mono", monospace;
+}
+
+/** 지경학 상단 nav — Pretendard */
+.font-nav-economy,
+.hover-nav--economy {
+  font-family: var(--font-pretendard), var(--font-ibm-plex-sans), "Pretendard", sans-serif;
+  letter-spacing: -0.01em;
+}
+
+/** 지경학 양피지 — Space Grotesk */
+.econ-insight-parchment {
+  font-family: var(--font-space-grotesk), "Space Grotesk", var(--font-pretendard), sans-serif;
+  font-optical-sizing: auto;
+  font-style: normal;
+}
+
+/** 지정학·지경학 뉴스/속보 헤드라인 — Gmarket Sans */
+.font-news-headline {
+  font-family: var(--font-gmarket), var(--font-ibm-plex-sans), "Gmarket Sans", sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/** 영문 UI — IBM Plex Sans (latin) */
+.font-en,
+[data-ui-lang="en"] .font-news-headline,
+main[data-ui-lang="en"] {
+  --ui-latin-font: var(--font-ibm-plex-sans), "IBM Plex Sans", sans-serif;
+}
+
+main[data-ui-lang="en"] .font-news-headline,
+.font-en {
+  font-family: var(--font-ibm-plex-sans), "IBM Plex Sans", sans-serif;
+}
+
+main[data-viewer="economy"] .font-en,
+.hover-nav--economy .font-en {
+  font-family: var(--font-ibm-plex-sans), var(--font-pretendard), sans-serif;
+}
+
+.parchment-type-caret {
+  display: inline-block;
+  margin-left: 1px;
+  color: rgba(90, 60, 20, 0.75);
+  animation: parchment-caret-blink 0.85s steps(1) infinite;
+}
+
+@keyframes parchment-caret-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
 }
 
 .city-label-marker {

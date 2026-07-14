@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { BRAND_NAME } from "@/lib/brand";
 import type { LabelLanguage } from "@/lib/layerPrefs";
 import {
+  emitBreakingDispatchSound,
   emitParchmentFoldSound,
   emitParchmentUnfoldSound,
 } from "@/components/SoundEffectsBridge";
@@ -74,10 +75,16 @@ export type ParchmentLetterProps = {
   onContinue: () => void;
   /** 펼침 시 종이 소리 (기본 true) */
   playUnfoldSound?: boolean;
+  /** 펼침과 동시에 SOS 모스(타전) 재생 — 분쟁 외교사 등 */
+  playBreakingDispatch?: boolean;
+  /** 본문을 타자기처럼 한 글자씩 출력 (분쟁 외교사 등) */
+  typewriter?: boolean;
   /** dialog 접근성 라벨 id */
   titleId?: string;
   zIndexClass?: string;
 };
+
+const TYPE_MS_PER_CHAR = 28;
 
 export function ParchmentLetter({
   lang,
@@ -89,10 +96,13 @@ export function ParchmentLetter({
   ctaLabel,
   onContinue,
   playUnfoldSound = true,
+  playBreakingDispatch = false,
+  typewriter = false,
   titleId = "parchment-letter-title",
   zIndexClass = "z-[10000]",
 }: ParchmentLetterProps) {
   const [phase, setPhase] = useState<"idle" | "folding" | "done">("idle");
+  const [typedChars, setTypedChars] = useState(0);
   const handStack =
     'var(--font-letter-hand), "Gowun Batang", "Nanum Myeongjo", "Batang", serif';
   const scriptStack =
@@ -102,13 +112,63 @@ export function ParchmentLetter({
   const resolvedBackMark = backMark ?? (lang === "en" ? BRAND_NAME.en : BRAND_NAME.ko);
   const resolvedBackSub = backSub ?? (lang === "en" ? "멋진 신세계" : "Brave New World");
 
+  const fullBody = useMemo(() => paragraphs.join("\n\n"), [paragraphs]);
+  const totalChars = fullBody.length;
+  const typingDone = !typewriter || typedChars >= totalChars;
+
   useEffect(() => {
-    if (!playUnfoldSound) return;
-    emitParchmentUnfoldSound();
-  }, [playUnfoldSound]);
+    if (!playUnfoldSound && !playBreakingDispatch) return;
+    if (playUnfoldSound) emitParchmentUnfoldSound();
+    if (playBreakingDispatch) emitBreakingDispatchSound();
+  }, [playUnfoldSound, playBreakingDispatch]);
+
+  useEffect(() => {
+    if (!typewriter) {
+      setTypedChars(totalChars);
+      return;
+    }
+    setTypedChars(0);
+    const reduced =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduced || totalChars === 0) {
+      setTypedChars(totalChars);
+      return;
+    }
+    let i = 0;
+    const id = window.setInterval(() => {
+      i += 1;
+      setTypedChars(i);
+      if (i >= totalChars) window.clearInterval(id);
+    }, TYPE_MS_PER_CHAR);
+    return () => window.clearInterval(id);
+  }, [typewriter, totalChars, fullBody]);
+
+  const visibleParagraphs = useMemo(() => {
+    if (!typewriter || typedChars >= totalChars) return paragraphs;
+    let remaining = typedChars;
+    const out: string[] = [];
+    for (const p of paragraphs) {
+      if (remaining <= 0) break;
+      if (remaining >= p.length) {
+        out.push(p);
+        remaining -= p.length;
+        // account for "\n\n" join separators between paragraphs
+        if (remaining > 0) remaining = Math.max(0, remaining - 2);
+      } else {
+        out.push(p.slice(0, remaining));
+        remaining = 0;
+      }
+    }
+    return out.length > 0 ? out : [""];
+  }, [paragraphs, typewriter, typedChars, totalChars]);
 
   const handleContinue = useCallback(() => {
     if (phase !== "idle") return;
+    if (typewriter && !typingDone) {
+      setTypedChars(totalChars);
+      return;
+    }
     setPhase("folding");
     emitParchmentFoldSound();
     const reduced =
@@ -118,7 +178,7 @@ export function ParchmentLetter({
       setPhase("done");
       onContinue();
     }, reduced ? 80 : PARCHMENT_FOLD_EXIT_MS);
-  }, [onContinue, phase]);
+  }, [onContinue, phase, totalChars, typewriter, typingDone]);
 
   const exiting = phase === "folding" || phase === "done";
 
@@ -159,13 +219,19 @@ export function ParchmentLetter({
               <div
                 className="welcome-letter-body mt-5 min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain text-[1.06rem] leading-[1.95] tracking-[0.03em] text-[#3f2e1c] sm:text-[1.12rem] sm:leading-[2] sm:tracking-[0.035em]"
                 style={{ fontFamily: bodyFont, fontWeight: 400 }}
+                aria-live="polite"
               >
-                {paragraphs.map((p, i) => (
+                {visibleParagraphs.map((p, i) => (
                   <p key={i} className="welcome-letter-verse whitespace-pre-line text-pretty">
                     {p}
+                    {typewriter && !typingDone && i === visibleParagraphs.length - 1 ? (
+                      <span className="parchment-type-caret" aria-hidden>
+                        ▍
+                      </span>
+                    ) : null}
                   </p>
                 ))}
-                {signOff ? (
+                {signOff && typingDone ? (
                   <p
                     className="whitespace-pre-line pb-2 pt-2 text-right text-[1.02rem] leading-relaxed tracking-[0.04em] text-[#5a4428]"
                     style={{
@@ -187,7 +253,11 @@ export function ParchmentLetter({
                 className="rounded-sm border border-[#8b6914]/45 bg-[#efe0b8] px-6 py-2.5 text-base tracking-[0.06em] text-[#3d2a18] shadow-sm transition hover:bg-[#f7ecd0] disabled:cursor-wait disabled:opacity-70"
                 style={{ fontFamily: titleFont, fontWeight: 400 }}
               >
-                {ctaLabel}
+                {typewriter && !typingDone
+                  ? lang === "en"
+                    ? "Skip typing"
+                    : "타자 건너뛰기"
+                  : ctaLabel}
               </button>
             </div>
           </div>

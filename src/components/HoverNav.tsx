@@ -100,9 +100,11 @@ export function HoverNav({
       <nav
         id="app-hover-nav"
         ref={navRef}
-        className={`pointer-events-auto w-full max-w-2xl transition-all duration-300 ease-out ${
-          navOpen || openHubId ? "max-w-5xl" : ""
-        }`}
+        className={`pointer-events-auto w-full transition-all duration-300 ease-out ${
+          isEconomy
+            ? `max-w-2xl ${navOpen ? "max-w-5xl" : ""}`
+            : "max-w-3xl sm:max-w-4xl"
+        } ${isEconomy ? "hover-nav--economy font-nav-economy" : "hover-nav--conflict"}`}
       >
         <div
           className={`relative rounded-2xl border ${borderTone} ${bgTone} shadow-lg backdrop-blur-xl transition-all duration-300 ${
@@ -144,7 +146,7 @@ export function HoverNav({
           </div>
 
           {!isEconomy ? (
-            <div className="flex flex-wrap items-center justify-center gap-1.5 border-t border-sky-200/10 px-2 pb-2 pt-1.5">
+            <div className="grid grid-cols-4 items-stretch gap-1.5 border-t border-sky-200/10 px-2 pb-2 pt-1.5">
               {HUB_DEFINITIONS.map((hub) => (
                 <HubDropdown
                   key={hub.id}
@@ -298,11 +300,11 @@ function HubDropdown({
   onNavigate: (selection: NavSelection) => void;
 }) {
   return (
-    <div className="relative">
+    <div className="relative min-w-0">
       <button
         type="button"
         onClick={onToggle}
-        className={`flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs transition ${
+        className={`flex w-full items-center justify-center gap-1 rounded-full border px-1.5 py-1.5 text-[11px] sm:px-2.5 sm:text-xs transition ${
           open
             ? "border-sky-300/35 bg-sky-400/15 text-sky-50"
             : "border-sky-200/15 bg-sky-400/5 text-sky-100/85 hover:border-sky-300/30 hover:bg-sky-400/10"
@@ -310,12 +312,12 @@ function HubDropdown({
         style={open ? { boxShadow: `inset 0 0 0 1px ${hub.color}` } : undefined}
       >
         <span
-          className="h-1.5 w-1.5 rounded-full"
+          className="h-1.5 w-1.5 shrink-0 rounded-full"
           style={{ background: hub.color }}
           aria-hidden
         />
-        {hub.label}
-        <ChevronDown className={`opacity-50 transition ${open ? "rotate-180" : ""}`} />
+        <span className="truncate">{hub.label}</span>
+        <ChevronDown className={`shrink-0 opacity-50 transition ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open ? (

@@ -324,7 +324,7 @@ function TodayHotspotChip({
         onClick={onOpen}
         className="flex w-full flex-col gap-1 px-3 py-2.5 text-left transition hover:brightness-110"
       >
-        <p className="text-xs font-semibold leading-snug text-slate-50">{briefing.headline}</p>
+        <p className="font-news-headline text-xs font-semibold leading-snug text-slate-50">{briefing.headline}</p>
         <ol className="space-y-0.5 text-[11px] leading-5 text-slate-400">
           {briefing.lines.map((line, i) => (
             <li key={i} className="line-clamp-2">
@@ -389,7 +389,7 @@ function HeroHeadlineBanner({
           >
             {statusLabels[hero.heroStatus]}
           </span>
-          <span className="min-w-0 flex-1 truncate text-sm font-semibold leading-snug text-slate-50">
+          <span className="font-news-headline min-w-0 flex-1 truncate text-sm font-semibold leading-snug text-slate-50">
             {hero.heroStatus === "unverified"
               ? lang === "ko"
                 ? `${hero.source}에 따르면 `

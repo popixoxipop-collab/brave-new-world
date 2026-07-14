@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond } from "next/font/google";
+import { Cormorant_Garamond, IBM_Plex_Mono, IBM_Plex_Sans, Space_Grotesk } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 
@@ -30,6 +30,59 @@ const letterScript = Cormorant_Garamond({
   display: "swap",
 });
 
+/** 지경학 nav — Pretendard Variable */
+const pretendard = localFont({
+  src: "./fonts/PretendardVariable.ttf",
+  variable: "--font-pretendard",
+  weight: "45 920",
+  display: "swap",
+});
+
+/** 뉴스·속보 헤드라인 — Gmarket Sans */
+const gmarket = localFont({
+  src: [
+    {
+      path: "./fonts/GmarketSansLight.otf",
+      weight: "300",
+      style: "normal",
+    },
+    {
+      path: "./fonts/GmarketSansMedium.otf",
+      weight: "500",
+      style: "normal",
+    },
+    {
+      path: "./fonts/GmarketSansBold.otf",
+      weight: "700",
+      style: "normal",
+    },
+  ],
+  variable: "--font-gmarket",
+  display: "swap",
+});
+
+/** 영문 UI — IBM Plex (IBM/plex · OFL) */
+const ibmPlexSans = IBM_Plex_Sans({
+  weight: ["400", "500", "600", "700"],
+  subsets: ["latin"],
+  variable: "--font-ibm-plex-sans",
+  display: "swap",
+});
+
+const ibmPlexMono = IBM_Plex_Mono({
+  weight: ["400", "500", "600"],
+  subsets: ["latin"],
+  variable: "--font-ibm-plex-mono",
+  display: "swap",
+});
+
+/** 지경학 양피지 — Space Grotesk */
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-space-grotesk",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "멋진 신세계",
   description:
@@ -44,7 +97,7 @@ export default function RootLayout({
   return (
     <html lang="ko" suppressHydrationWarning style={{ background: "#02040a" }}>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${letterHand.variable} ${letterScript.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${letterHand.variable} ${letterScript.variable} ${pretendard.variable} ${gmarket.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable} ${spaceGrotesk.variable} antialiased`}
         style={{
           background: "#02040a",
           minHeight: "100vh",

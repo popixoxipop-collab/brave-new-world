@@ -9,6 +9,7 @@ import { MAX_ON_LAYERS, MAX_ON_LAYERS_ECONOMY } from "@/lib/viewPackages";
 
 type EntryCautionOverlayProps = {
   lang: LabelLanguage;
+  onLangChange: (lang: LabelLanguage) => void;
   onContinue: () => void;
   /** 경고·편지 스킵 → 지정학/지경학 선택 */
   onSkipToDomain: () => void;
@@ -16,6 +17,7 @@ type EntryCautionOverlayProps = {
 
 export function EntryCautionOverlay({
   lang,
+  onLangChange,
   onContinue,
   onSkipToDomain,
 }: EntryCautionOverlayProps) {
@@ -29,18 +31,44 @@ export function EntryCautionOverlay({
       aria-labelledby="entry-caution-title"
     >
       <div className="relative my-auto w-full max-w-lg rounded-2xl border border-amber-400/30 bg-[#0c1018]/95 p-6 shadow-2xl sm:p-8">
-        <div className="absolute right-3 top-3 sm:right-4 sm:top-4">
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2" role="group" aria-label="Language mode">
+            <button
+              type="button"
+              onClick={() => onLangChange("en")}
+              aria-pressed={lang === "en"}
+              className={`rounded-full border px-3 py-1.5 text-[11px] font-medium tracking-wide transition font-en ${
+                lang === "en"
+                  ? "border-sky-300/50 bg-sky-400/20 text-sky-50"
+                  : "border-slate-500/35 bg-slate-900/40 text-slate-400 hover:border-sky-300/30 hover:text-sky-100/85"
+              }`}
+            >
+              English mode
+            </button>
+            <button
+              type="button"
+              onClick={() => onLangChange("ko")}
+              aria-pressed={lang === "ko"}
+              className={`font-news-headline rounded-full border px-3 py-1.5 text-[12px] font-medium tracking-wide transition ${
+                lang === "ko"
+                  ? "border-amber-300/50 bg-amber-400/20 text-amber-50"
+                  : "border-slate-500/35 bg-slate-900/40 text-slate-400 hover:border-amber-300/30 hover:text-amber-100/90"
+              }`}
+            >
+              한글모드
+            </button>
+          </div>
           <button
             type="button"
             onClick={onSkipToDomain}
             title={t("entryCautionSkipHint", lang)}
-            className="rounded-full border border-slate-500/35 bg-slate-900/50 px-2.5 py-1 text-[10px] font-medium tracking-wide text-slate-400 transition hover:border-amber-300/35 hover:bg-amber-500/10 hover:text-amber-100/90"
+            className="shrink-0 rounded-full border border-slate-500/35 bg-slate-900/50 px-2.5 py-1 text-[10px] font-medium tracking-wide text-slate-400 transition hover:border-amber-300/35 hover:bg-amber-500/10 hover:text-amber-100/90"
           >
             {t("entryCautionSkip", lang)}
           </button>
         </div>
 
-        <p className="pr-24 text-center text-sm font-bold tracking-wide text-amber-200 sm:text-base">
+        <p className="text-center text-sm font-bold tracking-wide text-amber-200 sm:text-base">
           {t("entryCautionMustRead", lang)}
         </p>
         <p className="mt-3 text-center text-[11px] font-medium tracking-[0.28em] text-amber-200/70 sm:tracking-[0.36em]">
