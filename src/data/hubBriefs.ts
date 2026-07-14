@@ -87,6 +87,7 @@ const NETWORK: Record<AxisHubId, { ko: HubBriefDoc; en: HubBriefDoc }> = {
       [
         "조선민주주의인민공화국(북한)은 한반도 북부에 위치하며, 핵·미사일 프로그램을 국가 안보의 핵심으로 공표해 왔습니다. 유엔 안전보장이사회는 핵·미사일 관련 제재를 장기간 유지해 왔습니다.",
         "중국과는 국경·후원 관계가 구조적으로 두껍고, 러시아와는 전시·전후 군수·조약 협력 보도가 이어졌습니다. 이란과는 미사일·군수·하이브리드 연계 의혹이 국제기구·정보기관 보고에 자주 등장합니다. 시리아·예멘·벨라루스·쿠바·베네수엘라 등과는 외교·군수 성격의 연결이 단편적으로 기록되어 있습니다.",
+        "2023년 말 노동당 전원회의 등에서 김정은은 ‘통일’을 국가 과제로 두지 않겠다는 취지를 공식화하고, 대한민국을 화해·통일의 상대가 아닌 적대적 국가로 규정하는 방향으로 노선을 전환했습니다. 이후 통일 관련 기구·상징물 철거·헌법 서술 변경 등 후속 조치가 보도되었습니다. 과거 ‘조국 통일’ 선전과는 결이 다릅니다.",
         "이 네트워크는 NATO식 집단방위 조약과 같지 않습니다. 제재 환경 속에서 생존·기술·외화 확보를 위한 선택적 연대가 겹친 결과로 읽는 것이 정확합니다.",
       ],
       false,
@@ -97,6 +98,7 @@ const NETWORK: Record<AxisHubId, { ko: HubBriefDoc; en: HubBriefDoc }> = {
       [
         "The Democratic People’s Republic of Korea sits in the northern half of the Korean Peninsula and has declared nuclear and missile programs central to its security. The UN Security Council has maintained related sanctions for years.",
         "Ties with China remain structurally thick along the border and patronage axis; cooperation with Russia in arms and treaty terms has been widely reported in wartime and after. Links with Iran—missiles, arms, hybrid channels—recur in IGO and intelligence public reporting. Fragmentary diplomatic and arms-related ties appear with Syria, Yemen, Belarus, Cuba, and Venezuela.",
+        "In late 2023, Kim Jong Un formally moved away from reunification as a state task and framed the Republic of Korea as a hostile state rather than a partner for reconciliation—followed by reported dismantling of unification organs/symbols and constitutional wording changes. This diverges from earlier ‘reunification’ propaganda.",
         "This is not a NATO-style collective-defense web. Read it as selective solidarities under sanctions pressure—survival, technology, and hard-currency needs overlapping.",
       ],
       false,
@@ -130,7 +132,7 @@ const NETWORK: Record<AxisHubId, { ko: HubBriefDoc; en: HubBriefDoc }> = {
 const CLAIMS: Record<string, { ko: HubBriefDoc; en: HubBriefDoc }> = {
   "claim-chn-taiwan": {
     ko: doc(
-      "주장 · 대만",
+      "영유권 주장 · 대만",
       [
         "중화인민공화국은 대만을 자국 영토의 일부로 간주하는 ‘하나의 중국’ 원칙을 공식 정책으로 유지합니다. 중화민국(대만)은 실효 지배하는 섬과 부속도서를 주권 정부로 운영하며, 양측 모두 완전한 상호 승인을 전제로 한 통일 방식에는 합의하지 못한 상태입니다.",
         "대만해협은 세계 반도체·해상 물류의 핵심 통로 중 하나입니다. 중국 인민해방군의 훈련·항행, 미국과 파트너국의 통과·무기 이전 논의가 주기적으로 긴장을 끌어올립니다. 무력 통일을 배제하지 않는다는 중국의 입장과, 현상 유지를 선호하는 지역 안보 논리가 병존합니다.",
@@ -152,7 +154,7 @@ const CLAIMS: Record<string, { ko: HubBriefDoc; en: HubBriefDoc }> = {
   },
   "claim-chn-scs": {
     ko: doc(
-      "주장 · 남중국해 (구단선)",
+      "영유권 주장 · 남중국해 (구단선)",
       [
         "중국은 남중국해에서 구단선에 기초한 광역 해양 주장을 제시해 왔습니다. 스프래틀리·파라셀(시사·난사) 등을 포함하며, 인공섬·시설화와 순시가 관측됩니다.",
         "2016년 상설중재재판소(PCA)는 필리핀이 제기한 사건에서 구단선에 기초한 역사적 권리 주장을 국제법상 배척하는 취지의 판단을 내렸습니다. 중국은 이를 수용하지 않는다고 밝혔습니다. 베트남·필리핀·말레이시아·브루나이 등도 중첩 주장을 가지고 있습니다.",
@@ -174,7 +176,7 @@ const CLAIMS: Record<string, { ko: HubBriefDoc; en: HubBriefDoc }> = {
   },
   "claim-chn-senkaku": {
     ko: doc(
-      "주장 · 센카쿠 · 댜오위다오",
+      "영유권 주장 · 센카쿠 · 댜오위다오",
       [
         "센카쿠 열도(중국·대만명 댜오위다오)는 동중국해에 위치하며, 일본이 실효 지배하고 중국·대만이 영유권을 주장합니다. 일본 정부는 영유권 분쟁 자체가 존재하지 않는다는 입장을 취해 왔으나, 중국은 역사적·지리적 근거를 들어 주권을 주장합니다.",
         "2012년 일본의 국유화 조치 이후 해경·해군 자산의 대치와 순시가 잦아졌습니다. 어업·대륙붕·안보 인식이 겹친 장기 마찰입니다.",
@@ -194,7 +196,7 @@ const CLAIMS: Record<string, { ko: HubBriefDoc; en: HubBriefDoc }> = {
   },
   "claim-chn-arunachal": {
     ko: doc(
-      "주장 · 아루나찰 (짱난)",
+      "영유권 주장 · 아루나찰 (짱난)",
       [
         "인도 아루나찰프라데시주는 인도가 통치하는 주이며, 중국은 이를 ‘짱난(藏南)’으로 부르며 영토 주장의 대상으로 삼아 왔습니다. 맥마흔 라인 등 식민기·초기 공화국 시기 경계 유산이 갈등 배경에 있습니다.",
         "1962년 중인전쟁 이후에도 실질통제선(LAC)을 둘러싼 대치가 이어졌고, 2020년 갈완 계곡 충돌은 양국 관계를 급랭시켰습니다. 경계는 완전히 획정되지 않은 상태입니다.",
@@ -214,7 +216,7 @@ const CLAIMS: Record<string, { ko: HubBriefDoc; en: HubBriefDoc }> = {
   },
   "claim-rus-crimea": {
     ko: doc(
-      "주장 · 크림",
+      "영유권 주장 · 크림",
       [
         "2014년 러시아는 크림반도를 병합했다고 선포했습니다. 우크라이나와 유엔 총회 다수 결의는 이를 우크라이나 주권·영토보전 위반으로 규정합니다. 러시아는 주민투표와 역사적 소속을 근거로 편입을 정당화합니다.",
         "세바스토폴 해군 기지는 흑해 함대의 요충입니다. 반도 통제는 흑해·아조프해 접근과 직결됩니다. 지도의 표시는 러시아의 실효·주장 공간을 보여 주며, 국제적 승인 여부를 단정하지 않습니다.",
@@ -234,7 +236,7 @@ const CLAIMS: Record<string, { ko: HubBriefDoc; en: HubBriefDoc }> = {
   },
   "claim-rus-donbas": {
     ko: doc(
-      "주장 · 돈바스",
+      "영유권 주장 · 돈바스",
       [
         "도네츠크·루한스크 일대(돈바스)는 2014년 이후 분리주의 전쟁과 민스크 합의 국면을 거쳤고, 2022년 전면전에서 러시아는 이들 지역의 ‘독립 인정’과 이후 병합 선포를 진행했습니다. 우크라이나와 다수국은 이를 위법으로 봅니다.",
         "전선은 고정되지 않았고, 도시·마을 단위로 통제선이 이동합니다. 이 브리프는 점령·주장의 존재를 기록할 뿐, 전리품을 승인하지 않습니다.",
@@ -254,7 +256,7 @@ const CLAIMS: Record<string, { ko: HubBriefDoc; en: HubBriefDoc }> = {
   },
   "claim-rus-abkhazia": {
     ko: doc(
-      "주장 · 압하지야",
+      "영유권 주장 · 압하지야",
       [
         "압하지야는 Georgia 북서부에 위치하며, 1990년대 전쟁과 2008년 러–조지아 전쟁 이후 러시아 등이 ‘독립’을 인정했습니다. 조지아와 유엔 회원국 다수는 이를 조지아 영토로 간주합니다.",
         "러시아군 주둔과 조약 관계가 이어져 왔습니다. 흑해 연안·코카서스 안보의 장기 미해결 분쟁입니다.",
@@ -274,7 +276,7 @@ const CLAIMS: Record<string, { ko: HubBriefDoc; en: HubBriefDoc }> = {
   },
   "claim-rus-s-ossetia": {
     ko: doc(
-      "주장 · 남오세티야",
+      "영유권 주장 · 남오세티야",
       [
         "남오세티야 역시 2008년 전쟁 이후 러시아가 독립을 인정한 지역으로, 조지아는 자국 영토로 봅니다. 러시아군 주둔과 ‘국경화’ 조치가 보고되어 왔습니다.",
         "압하지야와 함께 코카서스에서 러시아–서방·조지아 관계의 해결과제를 남긴 사례입니다.",
@@ -294,10 +296,11 @@ const CLAIMS: Record<string, { ko: HubBriefDoc; en: HubBriefDoc }> = {
   },
   "claim-prk-rok": {
     ko: doc(
-      "주장 · 한반도 전체",
+      "영유권 주장 · 한반도 전체",
       [
-        "북한 헌법·당 문헌은 한반도 전체를 민족사적·국가적 과제의 공간으로 서술해 왔으며, 체제 선전은 ‘조국 통일’을 반복해 왔습니다. 대한민국은 실효 지배하는 남쪽 영토에서 주권 국가로 기능하며, 유엔 회원국입니다.",
-        "정전협정(1953)은 전쟁을 정지시켰을 뿐 평화조약을 대체하지 못했습니다. 서로가 상대를 ‘최종 합법 정부’로 완전 인정하는 통일 방식은 합의되지 않았습니다. 지도 표시는 북한 측 서사 공간을 참고로 보여줄 뿐입니다.",
+        "오랫동안 북한 헌법·당 문헌과 체제 선전은 한반도 전체를 ‘조국 통일’의 공간으로 서술해 왔습니다. 대한민국은 실효 지배하는 남쪽 영토에서 주권 국가·유엔 회원국으로 기능해 왔습니다.",
+        "2023년 말 김정은은 노동당 전원회의 등에서 통일·민족공조 노선을 공식 폐기하는 취지를 밝히고, 남쪽을 화해의 상대가 아닌 적대적 별개 국가로 규정하는 방향으로 전환했습니다. 이후 통일 관련 기구·기념물 철거, 헌법·당 문서 서술 조정 등이 공개 보도로 확인되었습니다. 과거의 ‘전 반도 통일 서사’와 현재의 공식 노선은 같지 않습니다.",
+        "정전협정(1953)은 전쟁을 정지시켰을 뿐 평화조약을 대체하지 못했습니다. 지도상의 ‘한반도 전체’ 표시는 역사적 주장·선전 공간을 참고로 보여 줄 뿐, 2023년 말 이후의 공식 통일 포기를 덮어쓰지 않습니다.",
       ],
       true,
       "ko",
@@ -305,8 +308,9 @@ const CLAIMS: Record<string, { ko: HubBriefDoc; en: HubBriefDoc }> = {
     en: doc(
       "Claim · Entire peninsula",
       [
-        "DPRK constitutional and party texts have long cast the whole peninsula as a national historical task; propaganda repeats ‘reunification.’ The Republic of Korea functions as a sovereign UN member over the south it administers.",
-        "The 1953 Armistice halted fighting; it did not replace a peace treaty. No mutually recognized reunification formula exists. The map marks North Korean narrative space for reference only.",
+        "For decades DPRK constitutional and party texts cast the whole peninsula as a reunification task, while the Republic of Korea functioned as a sovereign UN member in the south.",
+        "In late 2023 Kim Jong Un formally discarded reunification and inter-Korean ‘national reconciliation’ framing, casting the South as a separate hostile state. Subsequent reporting described dismantling of unification institutions/symbols and wording changes in governing documents. Earlier ‘whole-peninsula reunification’ narrative and the post-2023 official line are not the same.",
+        "The 1953 Armistice halted fighting; it did not replace a peace treaty. The map’s ‘entire peninsula’ mark is historical narrative reference—it does not override the late-2023 abandonment of official reunification.",
       ],
       true,
       "en",
@@ -314,7 +318,7 @@ const CLAIMS: Record<string, { ko: HubBriefDoc; en: HubBriefDoc }> = {
   },
   "claim-prk-nll": {
     ko: doc(
-      "주장 · 서해 NLL",
+      "영유권 주장 · 서해 NLL",
       [
         "북방한계선(NLL)은 정전 이후 유엔군 사령부가 서해에 설정한 군사분계선 성격의 선으로, 한국은 이를 사실상의 해상 경계로 운용해 왔습니다. 북한은 NLL을 일방적으로 그어진 선이라며 부정하고, 자체 해상군사분계선을 제시해 왔습니다.",
         "연평·대청 일대에서는 해전·포격 사건이 반복되었습니다. 어선·경비함의 근접이 위기 고조로 이어질 수 있는 좁은 수역입니다.",
@@ -334,7 +338,7 @@ const CLAIMS: Record<string, { ko: HubBriefDoc; en: HubBriefDoc }> = {
   },
   "claim-irn-tunbs": {
     ko: doc(
-      "주장 · 아부무사 · 톤브 제도",
+      "영유권 주장 · 아부무사 · 톤브 제도",
       [
         "아부무사와 대·소 톤브 섬은 페르시아만(아라비아만) 입구 인근에 있습니다. 이란이 실효 통제하는 가운데, UAE는 영유권을 주장합니다. 1971년 영국 철수 전후의 조치와 협약이 해석 쟁점이 되어 왔습니다.",
         "호르무즈 접근로에 가까운 위치 때문에 상징·군사 가치가 함께 거론됩니다. 분쟁은 양자 외교 의제로 남아 있습니다.",
@@ -354,7 +358,7 @@ const CLAIMS: Record<string, { ko: HubBriefDoc; en: HubBriefDoc }> = {
   },
   "claim-irn-gulf": {
     ko: doc(
-      "주장 · 페르시아만 영향권",
+      "영유권 주장 · 페르시아만 영향권",
       [
         "호르무즈 해협은 전 세계 해상 원유 수송의 상당 비중만 통과하는 초크포인트입니다. 이란은 자국 연안과 인접 수역에서의 군사·경비 활동을 안보 권리로 설명하고, 미국과 걸프 연안국은 통항의 자유와 억지력을 강조합니다.",
         "유조선 나포·드론·기뢰 위협 보도가 긴장 국면에서 반복됩니다. ‘영향권’은 법적 EEZ 획정과 동일하지 않으며, 이란이 행사·과시하는 거부권(sea denial) 능력에 가깝게 읽어야 합니다.",
@@ -374,7 +378,7 @@ const CLAIMS: Record<string, { ko: HubBriefDoc; en: HubBriefDoc }> = {
   },
   "claim-irn-levant": {
     ko: doc(
-      "주장 · 레반트 축",
+      "영유권 주장 · 레반트 축",
       [
         "이란은 시리아 내전 국면에서 아사드 정권을 지원했고, 이라크 내 친이란 민병 네트워크, 레바논 헤즈볼라와의 이념·군수 관계가 공개·반공개 자료에 축적되어 있습니다. ‘축’은 공식 방위조약 하나라기보다 병참·정치·종파 연결의 묶음입니다.",
         "이스라엘·미국은 이를 자국 안보 위협으로 규정하고 공습·제재로 대응해 왔습니다. 전장은 시리아·레바논·이라크·홍해로 파급되는 경우가 있습니다.",

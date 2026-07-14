@@ -345,7 +345,9 @@ function HubDropdown({
             ))}
           </div>
 
-          <p className="mt-2 px-2 text-[9px] uppercase tracking-[0.18em] text-sky-200/45">주장 · 영향 지역</p>
+          <p className="mt-2 px-2 text-[9px] uppercase tracking-[0.18em] text-sky-200/45">
+            영유권 주장 및 영향
+          </p>
           <div className="mt-1 space-y-0.5">
             {hub.claims.map((claim) => (
               <button

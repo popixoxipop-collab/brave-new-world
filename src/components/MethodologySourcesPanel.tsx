@@ -9,6 +9,16 @@ import {
   VIINA_POLICY,
 } from "@/lib/licensing/viinaPolicy";
 import {
+  SIPRI_ATTRIBUTION_EN,
+  SIPRI_ATTRIBUTION_KO,
+  SIPRI_POLICY,
+} from "@/lib/licensing/sipriPolicy";
+import {
+  VDEM_ATTRIBUTION_EN,
+  VDEM_ATTRIBUTION_KO,
+  VDEM_POLICY,
+} from "@/lib/licensing/vdemPolicy";
+import {
   IRONSIGHT_ATTRIBUTION_EN,
   IRONSIGHT_ATTRIBUTION_KO,
   IRONSIGHT_POLICY,
@@ -113,6 +123,38 @@ export function MethodologySourcesPanel({ open, onClose }: MethodologySourcesPan
                 <li key={item}>{item}</li>
               ))}
             </ul>
+          </section>
+
+          <section className="rounded-xl border border-orange-900/35 bg-orange-950/15 p-3">
+            <h3 className="text-sm font-medium text-orange-100">
+              SIPRI — 재래식 무기이전 ({SIPRI_POLICY.product})
+            </h3>
+            <p className="mt-2 text-[12px] leading-5 text-sky-100/80">{SIPRI_ATTRIBUTION_KO}</p>
+            <p className="mt-2 text-[11px] italic leading-5 text-sky-100/60">{SIPRI_ATTRIBUTION_EN}</p>
+            <p className="mt-3 text-[11px] leading-5 text-orange-200/75">
+              {SIPRI_POLICY.fullName} · {SIPRI_POLICY.licenseNote}
+            </p>
+            <p className="mt-2 text-[11px] leading-5 text-sky-100/65">
+              별도 공식 딥링크를 UI에 고정하지 않습니다. SIPRI 웹사이트에서 Arms Transfers
+              Database / Trade Register 문서를 직접 검색·인용해 주십시오. 화면의 호·목록은
+              축 허브 필터가 적용된 요약이며, 연구·보도 인용 시 원자료를 확인하십시오.
+            </p>
+          </section>
+
+          <section className="rounded-xl border border-fuchsia-900/35 bg-fuchsia-950/15 p-3">
+            <h3 className="text-sm font-medium text-fuchsia-100">
+              V-Dem — 체제·권위주의 프레임 ({VDEM_POLICY.product})
+            </h3>
+            <p className="mt-2 text-[12px] leading-5 text-sky-100/80">{VDEM_ATTRIBUTION_KO}</p>
+            <p className="mt-2 text-[11px] italic leading-5 text-sky-100/60">{VDEM_ATTRIBUTION_EN}</p>
+            <p className="mt-3 text-[11px] leading-5 text-fuchsia-200/75">
+              {VDEM_POLICY.fullName} · {VDEM_POLICY.licenseNote}
+            </p>
+            <p className="mt-2 text-[11px] leading-5 text-sky-100/65">
+              별도 공식 딥링크를 UI에 고정하지 않습니다. V-Dem Institute(예: University of
+              Gothenburg) 공개 데이터·문서를 검색해 인용하십시오. 분쟁 외교사 카드는 큐레이션
+              에피소드이며 V-Dem 변수 전체를 시각화하지 않습니다.
+            </p>
           </section>
 
           <section className="rounded-xl border border-violet-900/35 bg-violet-950/15 p-3">
