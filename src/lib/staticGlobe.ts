@@ -4,6 +4,7 @@ import {
   MILITARY_BASE_AREA_MAX_BY_TIER,
   STATIC_POINT_MAX_BY_TIER,
 } from "@/lib/staticLayerLod";
+import { HTML_STATIC_KINDS, isHtmlStaticKind } from "@/lib/infraStaticMarkers";
 import { getZoomOutScale } from "@/lib/zoomScale";
 
 type ViewState = { lat: number; lng: number };
@@ -84,12 +85,8 @@ export const STATIC_POINT_COLORS: Record<StaticPoint["kind"], string> = {
   "critical-node": "rgba(250, 204, 21, 0.95)",
 };
 
-/** 공항/항구/미군기지는 HTML 마커로 표시 (일반 points와 이중 렌더 금지) */
-export const STATIC_EMOJI_KINDS = new Set<StaticPoint["kind"]>([
-  "airport",
-  "port",
-  "military-base",
-]);
+/** HTML 실루엣 마커 kinds — globe points와 이중 렌더 금지 */
+export const STATIC_EMOJI_KINDS = HTML_STATIC_KINDS;
 
 /** @deprecated 이모지 배지 대신 soft marker 사용; 호환용 유지 */
 export const STATIC_POINT_EMOJI: Record<"airport" | "port" | "military-base", string> = {
@@ -122,10 +119,8 @@ export const STATIC_MARKER_PALETTE: Record<
   },
 };
 
-export function isEmojiStaticKind(
-  kind: StaticPoint["kind"],
-): kind is "airport" | "port" | "military-base" {
-  return STATIC_EMOJI_KINDS.has(kind);
+export function isEmojiStaticKind(kind: StaticPoint["kind"]): boolean {
+  return isHtmlStaticKind(kind);
 }
 
 export function staticPointRadius(kind: StaticPoint["kind"], altitude = 1): number {

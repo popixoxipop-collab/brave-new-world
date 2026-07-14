@@ -1,78 +1,116 @@
 import type { StaticPoint } from "@/data/geoTypes";
 
 /**
- * 해상 초크포인트 · 핵심 물류 거점 — 정적 시드 (버전 관리).
- * 금융 티커 연동은 meta.relatedTickers 라벨로 hover에 표시.
+ * 글로벌 4대(+보조) 해상 초크포인트 — 좌표 [경도, 위도] 기준 시드.
+ * 카메라 힌트(meta.cameraZoom / cameraPitch)는 nav fly 시 참고.
  */
 export const LOGISTICS_RISK_POINTS: StaticPoint[] = [
+  {
+    id: "choke-hormuz",
+    kind: "chokepoint",
+    name: "호르무즈 해협",
+    lat: 26.58,
+    lng: 56.25,
+    tier: 1,
+    meta: {
+      category: "strait",
+      nameEn: "Strait of Hormuz",
+      throughput: "~20% global oil",
+      riskNote: "걸프 원유 수출 관문. 봉쇄 위협 시 유가·LNG 스프레드 즉각 반응.",
+      relatedTickers: "Brent · DXY · VIX",
+      cameraZoom: 8.5,
+      cameraPitch: 55,
+      glow: 1,
+    },
+  },
   {
     id: "choke-suez",
     kind: "chokepoint",
     name: "수에즈 운하",
-    lat: 30.45,
-    lng: 32.35,
+    lat: 31.25,
+    lng: 32.34,
     tier: 1,
     meta: {
       category: "canal",
+      nameEn: "Suez Canal",
       throughput: "~12% global trade",
       riskNote: "유럽·아시아 컨테이너·원유 우회 비용의 핵심 병목. 봉쇄·공습 시 Brent·운임 프리미엄 급등.",
       relatedTickers: "Brent · DXY · VIX",
+      cameraZoom: 9,
+      cameraPitch: 45,
+      glow: 1,
     },
   },
   {
     id: "choke-bab-el-mandeb",
     kind: "chokepoint",
     name: "바브엘만데브 해협",
-    lat: 12.58,
-    lng: 43.33,
+    lat: 12.61,
+    lng: 43.35,
     tier: 1,
     meta: {
       category: "strait",
+      nameEn: "Bab-el-Mandeb",
       throughput: "Red Sea gateway",
       riskNote: "홍해·수에즈 연결 관문. 후티·해상 공격 시 아프리카 우회·운송 지연.",
       relatedTickers: "Brent · Gold · VIX",
-    },
-  },
-  {
-    id: "choke-hormuz",
-    kind: "chokepoint",
-    name: "호르무즈 해협",
-    lat: 26.56,
-    lng: 56.25,
-    tier: 1,
-    meta: {
-      category: "strait",
-      throughput: "~20% global oil",
-      riskNote: "걸프 원유 수출 관문. 봉쇄 위협 시 유가·LNG 스프레드 즉각 반응.",
-      relatedTickers: "Brent · DXY · VIX",
+      cameraZoom: 8.5,
+      cameraPitch: 50,
+      glow: 1,
     },
   },
   {
     id: "choke-malacca",
     kind: "chokepoint",
     name: "말라카 해협",
-    lat: 2.8,
-    lng: 101.0,
+    lat: 2.52,
+    lng: 101.34,
     tier: 1,
     meta: {
       category: "strait",
+      nameEn: "Strait of Malacca",
       throughput: "~25% traded goods",
       riskNote: "중국·동남아 에너지·제조 공급망 허리. 대만·남중국해 긴장과 연동.",
       relatedTickers: "Shanghai · Hang Seng · Brent",
+      cameraZoom: 8,
+      cameraPitch: 45,
+      glow: 1,
+    },
+  },
+  {
+    id: "choke-taiwan",
+    kind: "chokepoint",
+    name: "대만 해협",
+    lat: 24.32,
+    lng: 120.85,
+    tier: 1,
+    meta: {
+      category: "strait",
+      nameEn: "Taiwan Strait",
+      throughput: "Semiconductor lane",
+      riskNote: "반도체·해운 핵심 수로. 군사 긴장 시 아시아·미국 기술주 변동성 확대.",
+      relatedTickers: "NASDAQ · Hang Seng · Shanghai",
+      cameraZoom: 7.5,
+      cameraPitch: 50,
+      glow: 1,
     },
   },
   {
     id: "choke-panama",
     kind: "chokepoint",
     name: "파나마 운하",
-    lat: 9.08,
-    lng: -79.68,
+    lat: 9.12,
+    lng: -79.91,
     tier: 1,
     meta: {
       category: "canal",
+      nameEn: "Panama Canal",
       throughput: "Americas–Asia link",
       riskNote: "태평양·대서양 연결. 가뭄·통행 제한 시 미주·아시아 컨테이너 재배치.",
       relatedTickers: "S&P 500 · Brent",
+      cameraZoom: 10,
+      cameraPitch: 45,
+      glow: 1,
     },
   },
   {
@@ -81,12 +119,14 @@ export const LOGISTICS_RISK_POINTS: StaticPoint[] = [
     name: "터키 해협(보스포루스)",
     lat: 41.12,
     lng: 29.05,
-    tier: 1,
+    tier: 2,
     meta: {
       category: "strait",
+      nameEn: "Bosporus",
       throughput: "Black Sea grain·oil",
       riskNote: "흑해 곡물·에너지 수출 관문. 우크라·러 전쟁·제재와 직접 연동.",
       relatedTickers: "Brent · Gold · S&P 500",
+      glow: 0.7,
     },
   },
   {
@@ -95,26 +135,14 @@ export const LOGISTICS_RISK_POINTS: StaticPoint[] = [
     name: "지브롤터 해협",
     lat: 35.98,
     lng: -5.6,
-    tier: 1,
+    tier: 2,
     meta: {
       category: "strait",
+      nameEn: "Strait of Gibraltar",
       throughput: "Med–Atlantic",
       riskNote: "지중해·대서양 연결. 유럽 에너지·LNG 수입 경로.",
       relatedTickers: "Brent · DXY",
-    },
-  },
-  {
-    id: "choke-taiwan",
-    kind: "chokepoint",
-    name: "대만 해협",
-    lat: 24.5,
-    lng: 119.5,
-    tier: 1,
-    meta: {
-      category: "strait",
-      throughput: "Semiconductor lane",
-      riskNote: "반도체·해운 핵심 수로. 군사 긴장 시 아시아·미국 기술주 변동성 확대.",
-      relatedTickers: "NASDAQ · Hang Seng · Shanghai",
+      glow: 0.55,
     },
   },
   {
@@ -126,22 +154,11 @@ export const LOGISTICS_RISK_POINTS: StaticPoint[] = [
     tier: 2,
     meta: {
       category: "cape",
+      nameEn: "Cape of Good Hope",
       throughput: "Red Sea bypass",
       riskNote: "홍해 리스크 시 대체 항로. 운항 거리·연료·운임 상승의 벤치마크.",
       relatedTickers: "Brent · VIX",
-    },
-  },
-  {
-    id: "hub-eurotunnel",
-    kind: "logistics-hub",
-    name: "유로터널",
-    lat: 50.922,
-    lng: 1.831,
-    tier: 1,
-    meta: {
-      category: "tunnel",
-      riskNote: "영·프 육상 물류·화물 열차 허리. 봉쇄·사보타주 시 유럽 공급망 즉각 타격.",
-      relatedTickers: "DXY · S&P 500 · Brent",
+      glow: 0.45,
     },
   },
   {
@@ -171,3 +188,15 @@ export const LOGISTICS_RISK_POINTS: StaticPoint[] = [
     },
   },
 ];
+
+/** 초크포인트 은은한 주황 링용 — logisticsRisk 레이어 ON일 때 */
+export function chokeGlowRingSeed(points: StaticPoint[] = LOGISTICS_RISK_POINTS) {
+  return points
+    .filter((p) => p.kind === "chokepoint")
+    .map((p) => ({
+      id: p.id,
+      lat: p.lat,
+      lng: p.lng,
+      glow: typeof p.meta?.glow === "number" ? p.meta.glow : p.tier === 1 ? 1 : 0.55,
+    }));
+}

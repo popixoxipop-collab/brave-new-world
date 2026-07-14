@@ -276,6 +276,9 @@ import {
   isEmojiStaticKind,
   staticPointRadius,
 } from "@/lib/staticGlobe";
+import { createInfraStaticBadge, isHtmlStaticKind } from "@/lib/infraStaticMarkers";
+import { chokeGlowRingSeed } from "@/data/logisticsRiskPoints";
+import { aisCommercialPointColor } from "@/lib/aisVesselClass";
 import { COUNTRY_BORDER_PATH_COLOR, COUNTRY_FILL_ALTITUDE, COUNTRY_TEXTURE_MODE_FILL, POLYGON_NO_STROKE } from "@/lib/countryColors";
 import { getPlaceLabelColor, getPlaceLabelDotRadius, getPlaceLabelSize, getPlaceLabelTier } from "@/lib/placeLabelColors";
 import { filterMajorCityLabels } from "@/lib/placeLod";
@@ -526,6 +529,14 @@ type PulseRingPoint =
       color: string;
       markerId: string;
       label: string;
+    }
+  | {
+      pulseKind: "choke-glow";
+      id: string;
+      lat: number;
+      lng: number;
+      glow: number;
+      markerId: string;
     };
 
 type TzevaAdomGlobePoint = TzevaAdomAlert & {
@@ -741,9 +752,9 @@ const INFRA_STROKE = {
 
 const PATH_LAYER_COLORS = {
   "shipping-lane": "rgba(56, 189, 248, 0.88)",
-  "submarine-cable": "rgba(167, 139, 250, 0.82)",
-  "oil-pipeline": "rgba(234, 179, 8, 0.9)",
-  "gas-pipeline": "rgba(34, 197, 94, 0.88)",
+  "submarine-cable": "rgba(196, 181, 253, 0.92)",
+  "oil-pipeline": "rgba(251, 191, 36, 0.95)",
+  "gas-pipeline": "rgba(52, 211, 153, 0.92)",
 } as const;
 
 const STATIC_KIND_LABELS: Record<StaticPoint["kind"], string> = {
@@ -797,7 +808,10 @@ function createAirportPortBadge(
   onHover: (point: StaticGlobePoint | null) => void,
   altitude = 0.2,
 ): HTMLElement {
-  const kind = isEmojiStaticKind(point.kind) ? point.kind : "airport";
+  const kind =
+    point.kind === "airport" || point.kind === "port" || point.kind === "military-base"
+      ? point.kind
+      : "airport";
   const palette = STATIC_MARKER_PALETTE[kind];
   const isSquareHub = kind === "airport" || kind === "port";
   const zoomScale = getZoomOutScale(altitude);
@@ -1615,13 +1629,31 @@ export function GlobeDashboard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applyLayerPrefs, isCompactUi, viewerMode]);
 
-  const handlePanelDraftPatch = useCallback((patch: Partial<LayerPrefs>) => {
-    panelDraftPatchRef.current = { ...panelDraftPatchRef.current, ...patch };
-  }, []);
+  const handlePanelDraftPatch = useCallback(
+    (patch: Partial<LayerPrefs>) => {
+      panelDraftPatchRef.current = { ...panelDraftPatchRef.current, ...patch };
+      // 패널이 열려 있어도 체크 즉시 지도·데이터 페치에 반영 (지정학/지경학 공통)
+      applyLayerPrefs({
+        ...layerPrefsLiveRef.current,
+        ...panelDraftPatchRef.current,
+      });
+    },
+    [applyLayerPrefs],
+  );
 
-  const handlePanelLangDraft = useCallback((lang: LabelLanguage) => {
-    panelDraftPatchRef.current = { ...panelDraftPatchRef.current, labelLanguage: lang };
-  }, []);
+  const handlePanelLangDraft = useCallback(
+    (lang: LabelLanguage) => {
+      panelDraftPatchRef.current = {
+        ...panelDraftPatchRef.current,
+        labelLanguage: lang,
+      };
+      applyLayerPrefs({
+        ...layerPrefsLiveRef.current,
+        ...panelDraftPatchRef.current,
+      });
+    },
+    [applyLayerPrefs],
+  );
 
   const {
     showWarZones,
@@ -2933,11 +2965,23 @@ export function GlobeDashboard({
       });
   }, [econNavSelection, visibleStaticPoints]);
 
-  /** 공항/항구/미군기지 HTML 마커 */
+  /** 인프라 HTML 실루엣 마커 (공항·항구·DC·핵·초크 등) */
   const airportPortHtmlMarkers = useMemo(
-    () => staticGlobePoints.filter((point) => isEmojiStaticKind(point.kind)),
+    () => staticGlobePoints.filter((point) => isHtmlStaticKind(point.kind)),
     [staticGlobePoints],
   );
+
+  const chokeGlowRings = useMemo<PulseRingPoint[]>(() => {
+    if (!showLogisticsRisk) return [];
+    return chokeGlowRingSeed().map((p) => ({
+      pulseKind: "choke-glow" as const,
+      id: p.id,
+      lat: p.lat,
+      lng: p.lng,
+      glow: p.glow,
+      markerId: `choke-glow-${p.id}`,
+    }));
+  }, [showLogisticsRisk]);
 
   const carrierAisMerge = useMemo(
     () => mergeCarriersWithAisPositions(usCarriers, aisVessels),
@@ -3382,10 +3426,10 @@ export function GlobeDashboard({
     );
   }, [immediateUntilRef, isCameraMoving, neptunArchivedTrackPathsRaw]);
 
-  /** 정적 포인트 + AIS 선박 + AI 전쟁지역 + FIRMS (군용기는 HTML 이모지 마커) */
+  /** 정적 포인트 + AIS 선박 + AI 전쟁지역 + FIRMS (HTML 실루엣 kinds는 제외) */
   const globeDisplayPoints = useMemo<GlobeDisplayPoint[]>(() => {
     const points: GlobeDisplayPoint[] = [
-      ...staticGlobePoints.filter((point) => !isEmojiStaticKind(point.kind)),
+      ...staticGlobePoints.filter((point) => !isHtmlStaticKind(point.kind)),
       ...aisDisplayPoints,
       ...firmsDisplayPoints,
       ...conflictClusterPoints,
@@ -3406,8 +3450,15 @@ export function GlobeDashboard({
       ...firmsBombRingPoints,
       ...claimRingPoints,
       ...frictionRingPoints,
+      ...chokeGlowRings,
     ],
-    [claimRingPoints, conflictClusterPoints, firmsBombRingPoints, frictionRingPoints],
+    [
+      claimRingPoints,
+      chokeGlowRings,
+      conflictClusterPoints,
+      firmsBombRingPoints,
+      frictionRingPoints,
+    ],
   );
 
   const handleHtmlMarkerHover = useCallback((point: GlobeDisplayPoint | null) => {
@@ -4252,9 +4303,6 @@ export function GlobeDashboard({
 
   const refreshGdeltEvents = useCallback(async () => {
     if (!viewerChromePreset.fetchGdelt || !showGdeltLayers) {
-      setGdeltEvents([]);
-      setGdeltFetchedAt(null);
-      setGdeltError(null);
       setGdeltLoading(false);
       return;
     }
@@ -4279,8 +4327,14 @@ export function GlobeDashboard({
       if (!response.ok || payload.error) {
         throw new Error(payload.error || `GDELT 요청 실패: ${response.status}`);
       }
-      setGdeltEvents(payload.events || []);
-      setGdeltFetchedAt(payload.fetchedAt || new Date().toISOString());
+      const next = payload.events || [];
+      // 빈 성공 응답으로 기존 핀을 지우지 않음 — 폴링 공백·캐시 미스를 견딤
+      if (next.length > 0) {
+        setGdeltEvents(next);
+        setGdeltFetchedAt(payload.fetchedAt || new Date().toISOString());
+      } else if (payload.fetchedAt) {
+        setGdeltFetchedAt(payload.fetchedAt);
+      }
     } catch (error) {
       setGdeltError(error instanceof Error ? error.message : "GDELT 로드 실패");
       // 마지막 성공 스냅샷 유지 — 빈 배열로 지우지 않음
@@ -4386,11 +4440,7 @@ export function GlobeDashboard({
 
   useEffect(() => {
     if (!showGdeltLayers || !globeReady) {
-      if (!showGdeltLayers) {
-        setGdeltEvents([]);
-        setGdeltError(null);
-        setGdeltFetchedAt(null);
-      }
+      // 레이어가 캡·토글로 잠깐 꺼져도 스냅샷은 유지 (다시 켜면 바로 표시)
       return;
     }
     const cancel = runWhenIdle(() => {
@@ -4888,7 +4938,7 @@ export function GlobeDashboard({
         items: [
           {
             id: "oil-pipelines",
-            label: "기름 파이프",
+            label: "송유관",
             detail: showOilPipelines
               ? `${visibleOilPipelines.length.toLocaleString()}개`
               : off(staticCounts.oilPipelines),
@@ -6450,9 +6500,27 @@ export function GlobeDashboard({
       if (item.displayKind === "friction-pin") {
         return createFrictionPinElement(item.color, item.label);
       }
+      if (item.displayKind === "static" && isHtmlStaticKind(item.kind)) {
+        return createInfraStaticBadge(
+          item,
+          {
+            onHover: (p) => handleHtmlMarkerHover(p as GlobeDisplayPoint | null),
+          },
+          { lang: labelLanguage },
+        );
+      }
       return createAirportPortBadge(item as StaticGlobePoint, handleHtmlMarkerHover, alt);
     },
-    [handleCarrierSelect, handleCivAircraftSelect, handleHtmlMarkerHover, handleMilAircraftSelect, handleNeptunThreatSelect, labelLanguage, openIntelFromCoords, usCarrierLabelOffsets],
+    [
+      handleCarrierSelect,
+      handleCivAircraftSelect,
+      handleHtmlMarkerHover,
+      handleMilAircraftSelect,
+      handleNeptunThreatSelect,
+      labelLanguage,
+      openIntelFromCoords,
+      usCarrierLabelOffsets,
+    ],
   );
 
   function handleGlobePointClick(point: GlobeDisplayPoint) {
@@ -6739,7 +6807,7 @@ export function GlobeDashboard({
                 if (point.displayKind === "ais") {
                   return point.category === "military"
                     ? "rgba(52, 211, 153, 0.92)"
-                    : "rgba(56, 189, 248, 0.9)";
+                    : aisCommercialPointColor(point.shipType);
                 }
                 if (point.displayKind === "firms-fire") {
                   return INTEL_NASA_FIRE;
@@ -6889,6 +6957,9 @@ export function GlobeDashboard({
               ringLng={(point: PulseRingPoint) => point.lng}
               ringAltitude={() => 0.005}
               ringColor={(point: PulseRingPoint) => {
+                if (point.pulseKind === "choke-glow") {
+                  return `rgba(251, 146, 60, ${0.22 + point.glow * 0.28})`;
+                }
                 if (point.pulseKind === "claim" || point.pulseKind === "friction") {
                   return point.color;
                 }
@@ -6904,6 +6975,9 @@ export function GlobeDashboard({
               }}
               ringMaxRadius={(point: PulseRingPoint) => {
                 const scale = getZoomOutScale(viewState.altitude);
+                if (point.pulseKind === "choke-glow") {
+                  return (2.4 + point.glow * 2.2) * scale;
+                }
                 if (point.pulseKind === "claim" || point.pulseKind === "friction") {
                   return point.radiusScale * scale;
                 }
@@ -6916,9 +6990,11 @@ export function GlobeDashboard({
                   point.tension === "high" ? 1.8 : point.tension === "medium" ? 1.35 : 1.0;
                 return base * scale;
               }}
-              ringPropagationSpeed={(point: PulseRingPoint) =>
-                point.pulseKind === "claim" || point.pulseKind === "friction" ? 0.85 : 2.2
-              }
+              ringPropagationSpeed={(point: PulseRingPoint) => {
+                if (point.pulseKind === "choke-glow") return 0.55;
+                if (point.pulseKind === "claim" || point.pulseKind === "friction") return 0.85;
+                return 2.2;
+              }}
               htmlElementsData={htmlOverlayMarkers}
               htmlLat={(point: HtmlOverlayMarker) => point.lat}
               htmlLng={(point: HtmlOverlayMarker) => point.lng}
@@ -7210,7 +7286,7 @@ export function GlobeDashboard({
                 if (path.kind === "dispute-hatch") return 0.28;
                 if (path.kind === "conflict-hatch") return 0.3;
                 if (path.kind === "shipping-lane") return 0.48;
-                if (path.kind === "submarine-cable") return 0.36;
+                if (path.kind === "submarine-cable") return 0.55;
                 if (path.kind === "oil-pipeline") return 0.52;
                 if (path.kind === "gas-pipeline") return 0.5;
                 if (path.kind === "arms-embargo") return ARMS_EMBARGO_STROKE_WIDTH;
@@ -7718,7 +7794,7 @@ export function GlobeDashboard({
           <p className="text-xs uppercase tracking-[0.24em] text-slate-500">
             {t("layers", labelLanguage)}
           </p>
-          <p className="mt-1 text-[11px] text-slate-600">켜진 레이어가 있는 주제는 자동으로 펼쳐집니다 · 패널을 닫으면 지도에 반영됩니다</p>
+          <p className="mt-1 text-[11px] text-slate-600">켜진 레이어가 있는 주제는 자동으로 펼쳐집니다 · 체크하면 바로 지도에 반영됩니다</p>
           <div className="mt-3 text-sm">
             {frozenPanelCategories ? (
             <LayerCategoryDraftHost

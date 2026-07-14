@@ -1,0 +1,278 @@
+import type { StaticPoint } from "@/data/geoTypes";
+import { staticKindLabel } from "@/lib/hoverLabels";
+
+/** HTML 실루엣 마커로 그리는 정적 포인트 kinds (globe points와 이중 렌더 금지) */
+export const HTML_STATIC_KINDS = new Set<StaticPoint["kind"]>([
+  "airport",
+  "port",
+  "military-base",
+  "ai-data-center",
+  "economic-center",
+  "nuclear-site",
+  "lng-terminal",
+  "chokepoint",
+  "logistics-hub",
+  "resource",
+  "critical-node",
+]);
+
+export function isHtmlStaticKind(kind: StaticPoint["kind"]): boolean {
+  return HTML_STATIC_KINDS.has(kind);
+}
+
+function esc(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function wrapSvg(body: string, size = 28, view = 32): string {
+  return `<svg class="infra-static-icon" width="${size}" height="${size}" viewBox="0 0 ${view} ${view}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${body}</svg>`;
+}
+
+/** 직육면체 서버랙 / 데이터센터 */
+function dataCenterSvg(): string {
+  return wrapSvg(`
+    <defs>
+      <linearGradient id="dc-g" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#c4b5fd"/>
+        <stop offset="100%" stop-color="#6366f1"/>
+      </linearGradient>
+    </defs>
+    <path d="M6 10 L16 5 L26 10 L26 22 L16 27 L6 22 Z" fill="url(#dc-g)" stroke="#e0e7ff" stroke-width="0.8" opacity="0.95"/>
+    <path d="M16 5 V27 M6 10 L16 15 L26 10" fill="none" stroke="#312e81" stroke-width="0.7" opacity="0.55"/>
+    <rect x="10" y="14" width="5" height="2.2" rx="0.4" fill="#a5f3fc" opacity="0.9"/>
+    <rect x="17" y="14" width="5" height="2.2" rx="0.4" fill="#a5f3fc" opacity="0.7"/>
+    <rect x="10" y="18" width="5" height="2.2" rx="0.4" fill="#67e8f9" opacity="0.85"/>
+  `);
+}
+
+/** 도시 스카이라인 = 경제중심지 */
+function economicCenterSvg(): string {
+  return wrapSvg(`
+    <rect x="4" y="14" width="5" height="12" rx="0.6" fill="#34d399" stroke="#a7f3d0" stroke-width="0.6"/>
+    <rect x="10" y="8" width="6" height="18" rx="0.6" fill="#10b981" stroke="#6ee7b7" stroke-width="0.6"/>
+    <rect x="17" y="12" width="5" height="14" rx="0.6" fill="#059669" stroke="#6ee7b7" stroke-width="0.6"/>
+    <rect x="23" y="16" width="4" height="10" rx="0.5" fill="#047857" stroke="#a7f3d0" stroke-width="0.5"/>
+    <rect x="11.5" y="11" width="1.2" height="1.2" fill="#ecfdf5" opacity="0.85"/>
+    <rect x="14" y="11" width="1.2" height="1.2" fill="#ecfdf5" opacity="0.7"/>
+    <rect x="11.5" y="14" width="1.2" height="1.2" fill="#ecfdf5" opacity="0.75"/>
+    <rect x="14" y="14" width="1.2" height="1.2" fill="#ecfdf5" opacity="0.6"/>
+    <path d="M3 26 H29" stroke="#6ee7b7" stroke-width="1.2" stroke-linecap="round" opacity="0.8"/>
+  `);
+}
+
+/** 냉각탑 = 원자력 */
+function nuclearSvg(): string {
+  return wrapSvg(`
+    <ellipse cx="11" cy="24" rx="5" ry="2" fill="#facc15" opacity="0.35"/>
+    <ellipse cx="21" cy="24" rx="5" ry="2" fill="#facc15" opacity="0.35"/>
+    <path d="M7 24 C7 14 9 8 11 6 C13 8 15 14 15 24 Z" fill="#fde047" stroke="#fef9c3" stroke-width="0.7"/>
+    <path d="M17 24 C17 14 19 8 21 6 C23 8 25 14 25 24 Z" fill="#eab308" stroke="#fef9c3" stroke-width="0.7"/>
+    <circle cx="16" cy="12" r="3.2" fill="none" stroke="#fef08a" stroke-width="1.1"/>
+    <path d="M16 8.8 V15.2 M12.8 12 H19.2" stroke="#fef08a" stroke-width="0.9"/>
+  `);
+}
+
+/** LNG 저장탱크 */
+function lngSvg(): string {
+  return wrapSvg(`
+    <ellipse cx="16" cy="22" rx="10" ry="3.5" fill="#fb923c" opacity="0.35"/>
+    <rect x="7" y="10" width="18" height="12" rx="8" fill="#f97316" stroke="#fed7aa" stroke-width="0.8"/>
+    <ellipse cx="16" cy="10" rx="9" ry="3" fill="#fdba74"/>
+    <path d="M10 14 H22 M10 17 H22" stroke="#fff7ed" stroke-width="0.7" opacity="0.55"/>
+  `, 26);
+}
+
+/** 초크포인트 — 닻 + 주황 글로우 */
+function chokepointSvg(): string {
+  return wrapSvg(`
+    <circle cx="16" cy="16" r="13" fill="#fb923c" opacity="0.18"/>
+    <circle cx="16" cy="16" r="9" fill="#f97316" opacity="0.22"/>
+    <path d="M16 6 V20 M12 10 H20" stroke="#ffedd5" stroke-width="1.6" stroke-linecap="round"/>
+    <path d="M16 20 C10 20 8 24 8 26 M16 20 C22 20 24 24 24 26" fill="none" stroke="#fdba74" stroke-width="1.5" stroke-linecap="round"/>
+    <circle cx="16" cy="8" r="2.2" fill="#ffedd5"/>
+  `);
+}
+
+/** 광물·자원 — 결정체 */
+function resourceSvg(mineralColor: string): string {
+  return wrapSvg(`
+    <path d="M16 4 L26 14 L16 28 L6 14 Z" fill="${mineralColor}" stroke="#fff7ed" stroke-width="0.8" opacity="0.92"/>
+    <path d="M16 4 L16 28 M6 14 H26" fill="none" stroke="#1c1917" stroke-width="0.55" opacity="0.35"/>
+  `);
+}
+
+/** 크리티컬 노드 — 육각 골드 */
+function criticalNodeSvg(): string {
+  return wrapSvg(`
+    <path d="M16 4 L26 10 V22 L16 28 L6 22 V10 Z" fill="#fbbf24" stroke="#fef3c7" stroke-width="1" opacity="0.95"/>
+    <circle cx="16" cy="16" r="3.5" fill="#78350f" opacity="0.35"/>
+    <circle cx="16" cy="16" r="2" fill="#fde68a"/>
+  `);
+}
+
+/** 물류 거점 */
+function logisticsHubSvg(): string {
+  return wrapSvg(`
+    <rect x="6" y="12" width="20" height="12" rx="1.5" fill="#f43f5e" stroke="#fecdd3" stroke-width="0.8"/>
+    <path d="M6 16 H26 M16 12 V24" stroke="#fff1f2" stroke-width="0.7" opacity="0.5"/>
+    <path d="M10 12 V8 H22 V12" fill="none" stroke="#fecdd3" stroke-width="1.1"/>
+  `);
+}
+
+function airportSvg(): string {
+  return wrapSvg(`
+    <path d="M16 5 L18 14 L28 16 L18 18 L16 27 L14 18 L4 16 L14 14 Z" fill="#93c5fd" stroke="#dbeafe" stroke-width="0.8"/>
+  `);
+}
+
+function portSvg(): string {
+  return wrapSvg(`
+    <path d="M16 6 V18 M11 10 H21" stroke="#a5f3fc" stroke-width="1.6" stroke-linecap="round"/>
+    <path d="M16 18 C9 18 7 23 7 26 M16 18 C23 18 25 23 25 26" fill="none" stroke="#67e8f9" stroke-width="1.5"/>
+    <circle cx="16" cy="8" r="2" fill="#ecfeff"/>
+  `);
+}
+
+function militaryBaseSvg(): string {
+  return wrapSvg(`
+    <rect x="5" y="8" width="22" height="14" rx="1" fill="#2563eb" stroke="#bfdbfe" stroke-width="0.8"/>
+    <path d="M5 12 H27 M11 8 V22" stroke="#93c5fd" stroke-width="0.7" opacity="0.55"/>
+    <circle cx="20" cy="15" r="3" fill="#1d4ed8" stroke="#dbeafe" stroke-width="0.6"/>
+  `);
+}
+
+const MINERAL_COLORS: Record<string, string> = {
+  Lithium: "#38bdf8",
+  Cobalt: "#818cf8",
+  Copper: "#f59e0b",
+  Nickel: "#a3e635",
+  "Rare Earths": "#e879f9",
+  Graphite: "#94a3b8",
+  PGM: "#f472b6",
+  Uranium: "#facc15",
+  Iron: "#fb7185",
+  Gold: "#fbbf24",
+};
+
+export function mineralMarkerColor(mineralType: unknown): string {
+  if (typeof mineralType === "string" && MINERAL_COLORS[mineralType]) {
+    return MINERAL_COLORS[mineralType];
+  }
+  return "#fbbf24";
+}
+
+function iconFor(point: StaticPoint): string {
+  switch (point.kind) {
+    case "ai-data-center":
+      return dataCenterSvg();
+    case "economic-center":
+      return economicCenterSvg();
+    case "nuclear-site":
+      return nuclearSvg();
+    case "lng-terminal":
+      return lngSvg();
+    case "chokepoint":
+      return chokepointSvg();
+    case "logistics-hub":
+      return logisticsHubSvg();
+    case "critical-node":
+      return criticalNodeSvg();
+    case "resource":
+      return resourceSvg(mineralMarkerColor(point.meta?.mineralType));
+    case "airport":
+      return airportSvg();
+    case "port":
+      return portSvg();
+    case "military-base":
+      return militaryBaseSvg();
+    default:
+      return wrapSvg(`<circle cx="16" cy="16" r="6" fill="#94a3b8"/>`);
+  }
+}
+
+let stylesReady = false;
+function ensureStyles() {
+  if (stylesReady || typeof document === "undefined") return;
+  stylesReady = true;
+  const style = document.createElement("style");
+  style.setAttribute("data-infra-static-markers", "1");
+  style.textContent = `
+    @keyframes choke-glow-pulse {
+      0%, 100% { box-shadow: 0 0 10px 4px rgba(251,146,60,0.35); }
+      50% { box-shadow: 0 0 18px 8px rgba(249,115,22,0.45); }
+    }
+    .infra-static-marker-root { pointer-events: auto; }
+    .infra-static-marker-root button {
+      display: flex; flex-direction: column; align-items: center;
+      margin: 0; padding: 0; border: none; background: transparent; cursor: pointer;
+    }
+    .infra-static-marker-root .infra-static-icon {
+      display: block; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.75));
+    }
+    .infra-static-marker-root[data-kind="chokepoint"] .infra-static-glow {
+      width: 34px; height: 34px; border-radius: 9999px;
+      background: radial-gradient(circle, rgba(251,146,60,0.45) 0%, rgba(249,115,22,0.12) 55%, transparent 72%);
+      animation: choke-glow-pulse 2.8s ease-in-out infinite;
+      display: flex; align-items: center; justify-content: center;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+export function createInfraStaticBadge(
+  point: StaticPoint & { markerId?: string },
+  handlers: {
+    onHover: (point: (StaticPoint & { markerId?: string }) | null) => void;
+    onClick?: (point: StaticPoint & { markerId?: string }) => void;
+  },
+  options?: { lang?: "ko" | "en"; size?: number },
+): HTMLElement {
+  ensureStyles();
+  const lang = options?.lang ?? "ko";
+  const outer = document.createElement("div");
+  outer.className = "infra-static-marker-root";
+  outer.dataset.kind = point.kind;
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  const kindLabel = staticKindLabel(point.kind, lang);
+  btn.setAttribute("role", "img");
+  btn.setAttribute("aria-label", `${kindLabel} ${point.name}`);
+  btn.title = `${kindLabel} · ${point.name}`;
+
+  if (point.kind === "chokepoint") {
+    const glow = document.createElement("span");
+    glow.className = "infra-static-glow";
+    glow.innerHTML = iconFor(point);
+    btn.appendChild(glow);
+  } else {
+    const wrap = document.createElement("span");
+    wrap.innerHTML = iconFor(point);
+    btn.appendChild(wrap);
+  }
+
+  const label = document.createElement("span");
+  label.textContent = point.name;
+  label.style.cssText =
+    "margin-top:2px;max-width:88px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px;font-weight:600;color:rgba(248,250,252,0.92);text-shadow:0 1px 3px rgba(0,0,0,0.9);pointer-events:none;";
+  if (point.kind === "chokepoint" || point.kind === "critical-node" || (point.tier ?? 3) <= 1) {
+    btn.appendChild(label);
+  }
+
+  btn.addEventListener("mouseenter", () => handlers.onHover(point));
+  btn.addEventListener("mouseleave", () => handlers.onHover(null));
+  if (handlers.onClick) {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      handlers.onClick?.(point);
+    });
+  }
+
+  outer.appendChild(btn);
+  void esc;
+  return outer;
+}

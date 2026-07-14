@@ -76,9 +76,10 @@ export const LayerCategoryDraftHost = memo(function LayerCategoryDraftHost({
       const key = LAYER_ITEM_PREF_KEYS[itemId];
       if (
         value &&
+        ultraLite &&
         key &&
         isLayerCapCountedKey(key) &&
-        countCheckedLayers(checked) >= activeLayerCap(ultraLite)
+        countCheckedLayers(checked) >= activeLayerCap(true)
       ) {
         showCapWarn();
         return;

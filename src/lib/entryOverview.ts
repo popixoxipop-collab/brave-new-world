@@ -58,17 +58,38 @@ function allBooleanLayersOff(base: LayerPrefs): LayerPrefs {
   return next;
 }
 
-/** 지정학 히어로 — 전쟁/긴장/GDELT만 (축 관계망은 허브 nav 선택 시) */
+/** 지정학 히어로 — 요청 기본 레이어 */
 const CONFLICT_HERO_ON: Partial<LayerPrefs> = {
   showWarZones: true,
-  showDiplomaticTension: true,
+  showEastAsiaAdiz: true,
   showGdeltWar: true,
+  showGdeltDiplomatic: true,
+  showGdeltAlliance: true,
+  showGdeltProtests: true,
+  showMilitaryActivity: true,
+  showAis: true,
+  showLogisticsRisk: true,
+  showAxisNetwork: true,
+  showSubmarineCables: true,
+};
+
+/** 지경학 히어로 — 요청 기본 레이어 */
+const ECONOMY_HERO_ON: Partial<LayerPrefs> = {
+  showAis: true,
+  showAirTraffic: true,
+  showLogisticsRisk: true,
+  showCriticalNodes: true,
+  showSubmarineCables: true,
+  showOilPipelines: true,
+  showGasPipelines: true,
+  showNuclearSites: true,
+  showAiDataCenters: true,
+  showPorts: true,
+  showAirports: true,
 };
 
 /**
  * 도메인 게이트 직후 첫 화면용 레이어.
- * 지정학: 전쟁·긴장·GDELT / 지경학: 항로·초크포인트·항구
- * (ADS-B·AIS는 ExplorationTabs·전장 프리셋에서만 ON)
  */
 export function buildDomainOverviewPrefs(
   mode: ViewerMode,
@@ -80,32 +101,15 @@ export function buildDomainOverviewPrefs(
   if (mode === "conflict") {
     next = { ...next, ...CONFLICT_HERO_ON };
   } else {
-    next = {
-      ...next,
-      showShippingLanes: true,
-      showLogisticsRisk: true,
-      showCriticalNodes: true,
-      showPorts: true,
-    };
+    next = { ...next, ...ECONOMY_HERO_ON };
   }
 
   if (options?.ultraLite) {
     next = applyUltraLiteToLayerPrefs(next);
     if (mode === "conflict") {
-      next = {
-        ...next,
-        showWarZones: true,
-        showDiplomaticTension: true,
-        showGdeltWar: true,
-      };
+      next = { ...next, ...CONFLICT_HERO_ON };
     } else {
-      next = {
-        ...next,
-        showShippingLanes: true,
-        showLogisticsRisk: true,
-        showCriticalNodes: true,
-        showPorts: true,
-      };
+      next = { ...next, ...ECONOMY_HERO_ON };
     }
     next = clampPrefsToActiveCap(next, true);
     if (mode === "conflict") {

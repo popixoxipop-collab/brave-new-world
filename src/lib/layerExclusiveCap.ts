@@ -1,10 +1,13 @@
 import type { LayerPrefs } from "@/lib/layerPrefs";
 
-/** 일반 모드 — 동시 ON 레이어 하드캡 */
-export const ACTIVE_LAYER_CAP_DEFAULT = 5;
+/**
+ * 레이어 동시 ON 캡 — 해제(사실상 무제한).
+ * Ultra-Lite만 약한 상한을 남겨 저사양 모드 의미를 유지한다.
+ */
+export const ACTIVE_LAYER_CAP_DEFAULT = Number.POSITIVE_INFINITY;
 
-/** ultra-lite — 더 빡센 캡 */
-export const ACTIVE_LAYER_CAP_ULTRA = 3;
+/** ultra-lite — 무거운 폴링 레이어를 줄이는 소프트 상한 */
+export const ACTIVE_LAYER_CAP_ULTRA = 12;
 
 /**
  * 캡 집계에서 제외:
@@ -56,27 +59,28 @@ export function activeLayerCap(ultraLite: boolean): number {
   return ultraLite ? ACTIVE_LAYER_CAP_ULTRA : ACTIVE_LAYER_CAP_DEFAULT;
 }
 
-/** 끄기(false)는 항상 OK. 켜기(true)는 캡 여유 있을 때만 */
+/** 끄기(false)는 항상 OK. 일반 모드는 캡 없음. Ultra-Lite만 상한. */
 export function canEnableLayer(
   prefs: LayerPrefs,
   key: keyof LayerPrefs,
   ultraLite: boolean,
 ): boolean {
+  if (!ultraLite) return true;
   if (!isLayerCapCountedKey(key)) return true;
   if (prefs[key] === true) return true;
-  return countActiveLayers(prefs) < activeLayerCap(ultraLite);
+  return countActiveLayers(prefs) < activeLayerCap(true);
 }
 
 /**
  * prefs가 캡을 넘으면 우선순위 밖·뒤쪽 ON을 끈다.
- * 반환: 클램프된 prefs (참조 동일 가능)
+ * 일반 모드(cap=∞)에서는 no-op.
  */
 export function clampPrefsToActiveCap(
   prefs: LayerPrefs,
   ultraLite: boolean,
 ): LayerPrefs {
   const cap = activeLayerCap(ultraLite);
-  if (countActiveLayers(prefs) <= cap) return prefs;
+  if (!Number.isFinite(cap) || countActiveLayers(prefs) <= cap) return prefs;
 
   const next = { ...prefs };
   const onKeys = (Object.keys(next) as Array<keyof LayerPrefs>).filter(

@@ -79,6 +79,29 @@ export function matchesAisClassFilter(
   return category === "commercial" || category === "other";
 }
 
+/** 민간 AIS — 함종별 색 (화물/탱커/여객/어선/고속선/기타) */
+export function aisCommercialPointColor(shipType: number | null | undefined): string {
+  if (shipType == null || !Number.isFinite(shipType)) return "rgba(148, 163, 184, 0.88)";
+  if (shipType === 35 || shipType === 55) return "rgba(52, 211, 153, 0.92)";
+  const g = Math.floor(shipType / 10);
+  switch (g) {
+    case 8:
+      return "rgba(251, 146, 60, 0.92)"; // Tanker
+    case 7:
+      return "rgba(56, 189, 248, 0.92)"; // Cargo
+    case 6:
+      return "rgba(244, 114, 182, 0.92)"; // Passenger
+    case 2:
+      return "rgba(52, 211, 153, 0.9)"; // Fishing
+    case 4:
+      return "rgba(167, 139, 250, 0.92)"; // HSC
+    case 3:
+      return "rgba(250, 204, 21, 0.88)"; // Special
+    default:
+      return "rgba(125, 211, 252, 0.88)";
+  }
+}
+
 export function parseAisClassFilter(raw: string | null): AisClassFilter {
   if (raw === "military" || raw === "commercial" || raw === "all") return raw;
   return "all";

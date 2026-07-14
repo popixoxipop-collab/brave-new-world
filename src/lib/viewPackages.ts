@@ -101,16 +101,22 @@ export const VIEW_PACKAGES: ViewPackageDef[] = [
     layers: {
       showWarZones: false,
       showDiplomaticTension: false,
-      showOilPipelines: true,
-      showGasPipelines: true,
-      showLngTerminals: true,
-      showShippingLanes: true,
+      showAis: true,
+      showAirTraffic: true,
       showLogisticsRisk: true,
       showCriticalNodes: true,
+      showSubmarineCables: true,
+      showOilPipelines: true,
+      showGasPipelines: true,
+      showNuclearSites: true,
       showAiDataCenters: true,
-      showInternetExchanges: true,
       showPorts: true,
-      showEconomicCenters: true,
+      showAirports: true,
+      showLngTerminals: false,
+      showShippingLanes: false,
+      showInternetExchanges: false,
+      showEconomicCenters: false,
+      showSubmarineTunnels: false,
       showSanctionsEntities: false,
       showGdeltWar: false,
       showGdeltDiplomatic: false,
@@ -138,12 +144,21 @@ export const VIEW_PACKAGES: ViewPackageDef[] = [
     layers: {
       // 우크라 전선은 ModePicker/내비「우크라」세부 선택 시에만
       showUkraineControl: false,
+      showWarZones: true,
+      showEastAsiaAdiz: true,
+      showGdeltWar: true,
+      showGdeltDiplomatic: true,
+      showGdeltAlliance: true,
+      showGdeltProtests: true,
+      showMilitaryActivity: true,
+      showAis: true,
+      showLogisticsRisk: true,
+      showAxisNetwork: true,
+      showSubmarineCables: true,
       showNeptun: true,
       showNeptunPreviousTrails: false,
       showTzevaAdom: true,
       showTelegramOsint: true,
-      showGdeltWar: true,
-      showWarZones: true,
       showDiplomaticTension: true,
       showConflictZones: false,
     },
@@ -236,7 +251,7 @@ export const LAYER_PREF_LABELS: Partial<Record<BooleanLayerKey, string>> = {
   showEastAsiaAdiz: "동아시아 ADIZ",
   showAxisNetwork: "축 관계망 (이란·중·러·북)",
   showSanctionsEntities: "제재",
-  showOilPipelines: "유가 파이프라인",
+  showOilPipelines: "송유관",
   showLngTerminals: "LNG 터미널",
   showGasPipelines: "가스 파이프라인",
   showShippingLanes: "해운로",
@@ -248,10 +263,10 @@ export const LAYER_PREF_LABELS: Partial<Record<BooleanLayerKey, string>> = {
   showArmsEmbargo: "무기 금수",
 };
 
-/** Conflict 동시 ON 레이어 hard cap — 타협 금지 */
-export const MAX_ON_LAYERS = 11 as const;
-/** Economy 동시 ON 레이어 hard cap — 타협 금지 */
-export const MAX_ON_LAYERS_ECONOMY = 12 as const;
+/** Conflict 동시 ON 레이어 hard cap */
+export const MAX_ON_LAYERS = 64 as const;
+/** Economy 동시 ON 레이어 hard cap */
+export const MAX_ON_LAYERS_ECONOMY = 64 as const;
 
 const PACKAGE_BY_ID = Object.fromEntries(
   VIEW_PACKAGES.map((pkg) => [pkg.id, pkg]),

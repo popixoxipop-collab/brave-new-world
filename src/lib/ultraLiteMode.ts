@@ -114,7 +114,7 @@ export function applyUltraLiteToLayerPrefs(prefs: LayerPrefs): LayerPrefs {
   return next;
 }
 
-/** ultra-lite 끌 때는 캡만 일반(5)으로 재클램프 — 레이어는 사용자 값 유지 */
+/** ultra-lite 끌 때는 캡만 일반(20)으로 재클램프 — 레이어는 사용자 값 유지 */
 export function applyNormalCapToLayerPrefs(prefs: LayerPrefs): LayerPrefs {
   return clampPrefsToActiveCap(prefs, false);
 }

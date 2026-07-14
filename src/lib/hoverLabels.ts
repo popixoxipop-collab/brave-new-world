@@ -33,7 +33,7 @@ const STATIC_KIND: Record<string, Bi> = {
 const PATH_KIND: Partial<Record<TransportPath["kind"], Bi>> = {
   "shipping-lane": { ko: "해상 운송로", en: "Shipping lane" },
   "submarine-cable": { ko: "해저 케이블", en: "Submarine cable" },
-  "oil-pipeline": { ko: "유류 파이프라인 (GEM)", en: "Oil pipeline (GEM)" },
+  "oil-pipeline": { ko: "송유관 (GEM)", en: "Oil pipeline (GEM)" },
   "gas-pipeline": { ko: "가스 파이프라인 (GEM)", en: "Gas pipeline (GEM)" },
   "dispute-boundary": { ko: "분쟁 경계선", en: "Dispute boundary" },
   "country-border": { ko: "국경선", en: "Country border" },

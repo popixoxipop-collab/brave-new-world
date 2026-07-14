@@ -66,8 +66,22 @@ export function createMilAircraftBadge(
   ensureMilMarkerStyles();
   const lang = options?.lang ?? "ko";
   const palette = options?.palette ?? "military";
-  const kind = options?.kind ?? classifyMilAircraft(aircraft);
-  const roleLabel = milAircraftRoleLabel(kind, lang);
+  // 민간 운항은 여객기(수송기) 실루엣으로 통일
+  const kind =
+    options?.kind ??
+    (palette === "civil"
+      ? {
+          role: "transport" as const,
+          labelKo: "여객기",
+          labelEn: "Airliner",
+        }
+      : classifyMilAircraft(aircraft));
+  const roleLabel =
+    palette === "civil"
+      ? lang === "en"
+        ? "Airliner"
+        : "여객기"
+      : milAircraftRoleLabel(kind, lang);
   const track = headingDeg(aircraft);
   // B-52 / Tu-95 급은 전투기보다 확실히 크게 (장폭 전략폭격기)
   const iconSize =

@@ -54,42 +54,45 @@ export type ViewerChromePreset = {
 
 const CONFLICT_FORCE_ON: Partial<LayerPrefs> = {
   // 우크라 전선은 전장/내비 세부 선택(UKRAINE_STACK) 시에만 ON
-  showNeptun: true,
-  showNeptunPreviousTrails: false,
+  showWarZones: true,
+  showEastAsiaAdiz: true,
   showGdeltWar: true,
   showGdeltDiplomatic: true,
+  showGdeltAlliance: true,
+  showGdeltProtests: true,
+  showMilitaryActivity: true,
+  showAis: true,
+  showLogisticsRisk: true,
+  showAxisNetwork: true,
+  showSubmarineCables: true,
+  showNeptun: true,
+  showNeptunPreviousTrails: false,
   showTelegramOsint: true,
-  showWarZones: true,
-  // AIS·항모는 토글 시에만 — stub OFF 시 외부 API 해머 방지
   showUsCarriers: false,
-  showAis: false,
 };
 
 const CONFLICT_FORCE_OFF: Partial<LayerPrefs> = {
   showAiDataCenters: false,
   showAirTraffic: false,
-  showAis: false,
+  showSubmarineTunnels: false,
 };
 
 const ECONOMY_FORCE_ON: Partial<LayerPrefs> = {
-  showOilPipelines: true,
-  showGasPipelines: true,
-  showLngTerminals: true,
-  showShippingLanes: true,
+  showAis: true,
+  showAirTraffic: true,
   showLogisticsRisk: true,
   showCriticalNodes: true,
+  showSubmarineCables: true,
+  showOilPipelines: true,
+  showGasPipelines: true,
+  showNuclearSites: true,
   showAiDataCenters: true,
-  showInternetExchanges: true,
   showPorts: true,
-  showEconomicCenters: true,
-  showSubmarineTunnels: true,
-  // AIS·민간 ADS-B는 토글 시에만 (live 폴링 비용)
-  showAis: false,
-  showAirTraffic: false,
+  showAirports: true,
 };
 
 const ECONOMY_FORCE_OFF: Partial<LayerPrefs> = {
-  /** 지정학 전선 UI/레이어 — 지경학에서는 기본 비활성 (초크·파이프만 유지) */
+  /** 지정학 전선 UI/레이어 — 지경학에서는 기본 비활성 */
   showWarZones: false,
   showDiplomaticTension: false,
   showGdeltWar: false,
@@ -108,6 +111,9 @@ const ECONOMY_FORCE_OFF: Partial<LayerPrefs> = {
   showUsCarriers: false,
   showFirmsFires: false,
   showSanctionsEntities: false,
+  showSubmarineTunnels: false,
+  showEastAsiaAdiz: false,
+  showAxisNetwork: false,
 };
 
 export const VIEWER_CHROME: Record<ViewerMode, ViewerChromePreset> = {
