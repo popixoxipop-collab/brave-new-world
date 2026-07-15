@@ -234,6 +234,7 @@ import {
   isEastAsiaAdizVisibleAtAltitude,
 } from "@/lib/eastAsiaAdiz";
 import { axisNetworkToPaths } from "@/lib/axisNetworkPaths";
+import { buildAxisHubCountriesGeoJson } from "@/lib/axisHubCountryPolygons";
 import {
   armsPairsToPaths,
   filterArmsForHub,
@@ -2695,6 +2696,12 @@ export function GlobeDashboard({
   ]);
 
   const polygonDataWithUkraine = polygonData;
+
+  const axisHubCountriesGeoJson = useMemo(() => {
+    return buildAxisHubCountriesGeoJson(data.countries, {
+      activeIso: activeHubId ?? null,
+    });
+  }, [activeHubId, data.countries]);
 
   const eastAsiaAdizPaths = useMemo<TransportPath[]>(() => {
     if (!showEastAsiaAdiz) return [];
@@ -6880,7 +6887,7 @@ export function GlobeDashboard({
                 if (point.displayKind === "mil") return "rgba(248, 113, 113, 0.92)";
                 if (point.displayKind === "ais") {
                   return point.category === "military"
-                    ? "rgba(52, 211, 153, 0.92)"
+                    ? "rgba(239, 68, 68, 0.92)"
                     : aisCommercialPointColor(point.shipType);
                 }
                 if (point.displayKind === "firms-fire") {
@@ -7269,6 +7276,7 @@ export function GlobeDashboard({
               }
               ukraineMacroGeoJson={ukraineMacroGeoJson}
               ukraineMicroGeoJson={ukraineMicroGeoJson}
+              axisHubCountriesGeoJson={axisHubCountriesGeoJson}
               pathPoints={(path: TransportPath) => path.points}
               pathPointLat={(point: { lat: number; lng: number }) => point.lat}
               pathPointLng={(point: { lat: number; lng: number }) => point.lng}
@@ -8231,6 +8239,8 @@ export function GlobeDashboard({
           signOff={hubBriefDoc.signOff}
           ctaLabel={t("hubBriefCta", labelLanguage)}
           onContinue={closeHubBrief}
+          playBreakingDispatch={hubBriefDoc.playBreakingDispatch}
+          typewriter={hubBriefDoc.playBreakingDispatch}
           titleId="hub-brief-letter-title"
           zIndexClass="z-[9990]"
         />

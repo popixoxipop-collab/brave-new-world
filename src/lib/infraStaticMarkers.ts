@@ -32,21 +32,56 @@ function wrapSvg(body: string, size = 28, view = 32): string {
   return `<svg class="infra-static-icon" width="${size}" height="${size}" viewBox="0 0 ${view} ${view}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${body}</svg>`;
 }
 
-/** 직육면체 서버랙 / 데이터센터 */
+/**
+ * AI 데이터센터 — 긴 평지붕 건물 + 지붕 HVAC 격자 (아이소메트릭 단순 도면).
+ * 보라 서버랙/이모지 스타일 금지 · 파란색 건물만.
+ */
 function dataCenterSvg(): string {
-  return wrapSvg(`
+  const uid = `dc${Math.random().toString(36).slice(2, 8)}`;
+  // 지붕 HVAC 큐브 (작은 아이소메트릭 박스) — 격자 배치
+  const hvac = (cx: number, cy: number) => `
+    <path d="M${cx} ${cy - 1.4} L${cx + 1.6} ${cy - 0.55} L${cx} ${cy + 0.3} L${cx - 1.6} ${cy - 0.55} Z" fill="#1e3a8a" stroke="#dbeafe" stroke-width="0.25"/>
+    <path d="M${cx - 1.6} ${cy - 0.55} L${cx} ${cy + 0.3} L${cx} ${cy + 1.5} L${cx - 1.6} ${cy + 0.65} Z" fill="#1d4ed8"/>
+    <path d="M${cx + 1.6} ${cy - 0.55} L${cx} ${cy + 0.3} L${cx} ${cy + 1.5} L${cx + 1.6} ${cy + 0.65} Z" fill="#2563eb"/>
+  `;
+
+  return wrapSvg(
+    `
     <defs>
-      <linearGradient id="dc-g" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#c4b5fd"/>
-        <stop offset="100%" stop-color="#6366f1"/>
+      <linearGradient id="${uid}-roof" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#93c5fd"/>
+        <stop offset="100%" stop-color="#3b82f6"/>
+      </linearGradient>
+      <linearGradient id="${uid}-front" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#60a5fa"/>
+        <stop offset="100%" stop-color="#1d4ed8"/>
+      </linearGradient>
+      <linearGradient id="${uid}-side" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#2563eb"/>
+        <stop offset="100%" stop-color="#1e3a8a"/>
       </linearGradient>
     </defs>
-    <path d="M6 10 L16 5 L26 10 L26 22 L16 27 L6 22 Z" fill="url(#dc-g)" stroke="#e0e7ff" stroke-width="0.8" opacity="0.95"/>
-    <path d="M16 5 V27 M6 10 L16 15 L26 10" fill="none" stroke="#312e81" stroke-width="0.7" opacity="0.55"/>
-    <rect x="10" y="14" width="5" height="2.2" rx="0.4" fill="#a5f3fc" opacity="0.9"/>
-    <rect x="17" y="14" width="5" height="2.2" rx="0.4" fill="#a5f3fc" opacity="0.7"/>
-    <rect x="10" y="18" width="5" height="2.2" rx="0.4" fill="#67e8f9" opacity="0.85"/>
-  `);
+    <ellipse cx="16" cy="28.2" rx="12" ry="2.2" fill="#0f172a" opacity="0.35"/>
+    <path d="M4 12 L16 6 L28 12 L16 18 Z" fill="url(#${uid}-roof)" stroke="#dbeafe" stroke-width="0.7" stroke-linejoin="round"/>
+    <path d="M4 12 L16 18 L16 26 L4 20 Z" fill="url(#${uid}-front)" stroke="#bfdbfe" stroke-width="0.55" stroke-linejoin="round"/>
+    <path d="M16 18 L28 12 L28 20 L16 26 Z" fill="url(#${uid}-side)" stroke="#93c5fd" stroke-width="0.55" stroke-linejoin="round"/>
+    ${hvac(10.5, 10.2)}
+    ${hvac(14.0, 10.2)}
+    ${hvac(17.5, 10.2)}
+    ${hvac(21.0, 10.2)}
+    ${hvac(12.2, 12.4)}
+    ${hvac(15.7, 12.4)}
+    ${hvac(19.2, 12.4)}
+    <g fill="#0ea5e9" stroke="#e0f2fe" stroke-width="0.3" opacity="0.95">
+      <rect x="24.2" y="14.2" width="2.4" height="1.5" rx="0.2"/>
+      <rect x="23.4" y="16.0" width="2.4" height="1.5" rx="0.2"/>
+      <rect x="22.6" y="17.8" width="2.4" height="1.5" rx="0.2"/>
+    </g>
+    <path d="M7 14.2 L14.5 18 M7 16.2 L14.5 20 M7 18.2 L14.5 22" fill="none" stroke="#bfdbfe" stroke-width="0.45" opacity="0.55"/>
+  `,
+    32,
+    32,
+  );
 }
 
 /** 도시 스카이라인 = 경제중심지 */
@@ -259,7 +294,11 @@ export function createInfraStaticBadge(
   label.textContent = point.name;
   label.style.cssText =
     "margin-top:2px;max-width:88px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px;font-weight:600;color:rgba(248,250,252,0.92);text-shadow:0 1px 3px rgba(0,0,0,0.9);pointer-events:none;";
-  if (point.kind === "chokepoint" || point.kind === "critical-node" || (point.tier ?? 3) <= 1) {
+  // 데이터센터는 건물 도면만 — 이름/이모지 캡션 없음
+  if (
+    point.kind !== "ai-data-center" &&
+    (point.kind === "chokepoint" || point.kind === "critical-node" || (point.tier ?? 3) <= 1)
+  ) {
     btn.appendChild(label);
   }
 

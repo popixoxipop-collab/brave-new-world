@@ -19,6 +19,9 @@ function ensureAisMarkerStyles() {
     .${AIS_VESSEL_MARKER_ROOT_CLASS} button:hover .ais-vessel-icon {
       filter: drop-shadow(0 0 8px rgba(125,211,252,0.65)) drop-shadow(0 1px 3px rgba(0,0,0,0.75));
     }
+    .${AIS_VESSEL_MARKER_ROOT_CLASS}[data-ais-military="1"] button:hover .ais-vessel-icon {
+      filter: drop-shadow(0 0 8px rgba(239,68,68,0.7)) drop-shadow(0 1px 3px rgba(0,0,0,0.75));
+    }
   `;
   document.head.appendChild(style);
 }
@@ -34,8 +37,10 @@ export function aisVesselHeadingDeg(vessel: AisVessel): number | null {
   return ((raw % 360) + 360) % 360;
 }
 
+const MILITARY_VESSEL_COLOR = "#ef4444";
+
 function shipColor(vessel: AisVessel): string {
-  if (vessel.category === "military") return "rgba(52, 211, 153, 0.98)";
+  if (vessel.category === "military") return MILITARY_VESSEL_COLOR;
   const c = aisCommercialPointColor(vessel.shipType);
   return c.replace(/[\d.]+\)$/, "0.98)") || c;
 }
@@ -84,6 +89,7 @@ export function createAisVesselBadge(
   const outer = document.createElement("div");
   outer.className = AIS_VESSEL_MARKER_ROOT_CLASS;
   outer.dataset.aisMmsi = vessel.mmsi;
+  if (military) outer.dataset.aisMilitary = "1";
   if (heading != null) outer.dataset.aisHeading = String(Math.round(heading));
 
   const inner = document.createElement("button");
@@ -117,26 +123,8 @@ export function createAisVesselBadge(
   }
   icon.innerHTML = aisShipIconSvg(color, size, military);
 
-  const label = document.createElement("span");
-  label.textContent = vessel.shipName?.trim() || vessel.mmsi;
-  label.style.display = "block";
-  label.style.maxWidth = "72px";
-  label.style.fontSize = "8px";
-  label.style.fontWeight = "600";
-  label.style.lineHeight = "1.1";
-  label.style.textAlign = "center";
-  label.style.color = "rgba(248,250,252,0.95)";
-  label.style.whiteSpace = "nowrap";
-  label.style.overflow = "hidden";
-  label.style.textOverflow = "ellipsis";
-  label.style.textShadow = "0 1px 3px rgba(0,0,0,0.9)";
-  label.style.pointerEvents = "none";
-  if (heading != null) {
-    label.style.transform = `rotate(${-heading}deg)`;
-    label.style.transformOrigin = "50% 0%";
-  }
-
-  inner.append(icon, label);
+  // 캐릭터(선명 라벨) 없이 실루엣만
+  inner.append(icon);
   outer.append(inner);
 
   inner.addEventListener("mouseenter", () => {

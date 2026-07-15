@@ -74,7 +74,7 @@ export const STATIC_POINT_COLORS: Record<StaticPoint["kind"], string> = {
   "internet-exchange": "rgba(45, 212, 191, 0.88)",
   "refugee-camp": "rgba(251, 146, 60, 0.9)",
   "ucdp-event": "rgba(248, 113, 113, 0.88)",
-  "ai-data-center": "rgba(129, 140, 248, 0.9)",
+  "ai-data-center": "rgba(59, 130, 246, 0.92)",
   "economic-center": "rgba(52, 211, 153, 0.9)",
   "sanctions-entity": "rgba(244, 114, 182, 0.9)",
   "space-launch": "rgba(96, 165, 250, 0.9)",

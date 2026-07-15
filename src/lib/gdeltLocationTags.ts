@@ -10,21 +10,21 @@ type ViewState = { lat: number; lng: number; altitude: number };
 type MapTagTier = Extract<EventTier, "war" | "diplomatic" | "protest">;
 type PinTier = Extract<EventTier, "alliance" | "protest">;
 
-/** WebGL·라벨 부담을 줄이기 위한 줌 단계별 상한 — global(ISS)은 극소 */
+/** WebGL·라벨 부담을 줄이기 위한 줌 단계별 상한 — 화려한 전역 밀도를 위해 상향 */
 const MAX_TAGS_BY_TIER: Record<GlobeLodTier, Record<MapTagTier, number>> = {
-  global: { war: 6, diplomatic: 6, protest: 4 },
-  continent: { war: 12, diplomatic: 12, protest: 10 },
-  regional: { war: 18, diplomatic: 18, protest: 16 },
-  near: { war: 22, diplomatic: 22, protest: 20 },
-  village: { war: 28, diplomatic: 28, protest: 24 },
+  global: { war: 14, diplomatic: 14, protest: 10 },
+  continent: { war: 28, diplomatic: 28, protest: 22 },
+  regional: { war: 40, diplomatic: 40, protest: 36 },
+  near: { war: 50, diplomatic: 50, protest: 44 },
+  village: { war: 64, diplomatic: 64, protest: 56 },
 };
 
 const MAX_PINS_BY_TIER: Record<GlobeLodTier, Record<PinTier, number>> = {
-  global: { alliance: 4, protest: 0 },
-  continent: { alliance: 12, protest: 0 },
-  regional: { alliance: 22, protest: 0 },
-  near: { alliance: 30, protest: 0 },
-  village: { alliance: 38, protest: 0 },
+  global: { alliance: 10, protest: 0 },
+  continent: { alliance: 28, protest: 0 },
+  regional: { alliance: 48, protest: 0 },
+  near: { alliance: 64, protest: 0 },
+  village: { alliance: 80, protest: 0 },
 };
 
 const TAG_LABELS: Partial<Record<EventTier, { ko: string; en: string }>> = {
@@ -48,12 +48,12 @@ export function gdeltLocationTagSize(tier: EventTier, altitude = 1): number {
   return base * getZoomOutScale(altitude);
 }
 
-/** ISS/전역: 거친 헥사곤 근사 격자 · 근접: 세밀 격자 */
+/** ISS/전역: 거친 헥사곤 근사 격자 · 근접: 세밀 격자 (작을수록 더 빽빽) */
 function cellStepForLod(lod: GlobeLodTier) {
-  if (lod === "global") return 2.4;
-  if (lod === "continent") return 1.2;
-  if (lod === "regional") return 0.65;
-  return 0.45;
+  if (lod === "global") return 1.8;
+  if (lod === "continent") return 0.9;
+  if (lod === "regional") return 0.5;
+  return 0.32;
 }
 
 function cellKey(lat: number, lng: number, lod: GlobeLodTier) {

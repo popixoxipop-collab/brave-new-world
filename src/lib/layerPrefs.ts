@@ -108,7 +108,7 @@ export const DEFAULT_LAYER_PREFS: LayerPrefs = {
   showGdeltDiplomatic: false,
   showGdeltAlliance: false,
   showGdeltProtests: false,
-  showTelegramOsint: false,
+  showTelegramOsint: true,
   showTzevaAdom: false,
   showNeptun: true,
   showNeptunPreviousTrails: false,

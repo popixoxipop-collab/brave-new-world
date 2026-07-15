@@ -4,7 +4,7 @@
  */
 
 /** 클라이언트 GDELT 이벤트 링 상한 (렌더 LOD와 별개 — React state 폭증 방지) */
-export const GDELT_CLIENT_RING_CAP = 800;
+export const GDELT_CLIENT_RING_CAP = 1600;
 
 /** 클라이언트 Telegram 알림 링 상한 (서버 MAX_ALERTS=200과 정렬) */
 export const TELEGRAM_CLIENT_RING_CAP = 200;

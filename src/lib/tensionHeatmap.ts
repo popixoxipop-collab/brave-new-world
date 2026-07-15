@@ -14,26 +14,26 @@ export type TensionHeatmapLayer = {
 function getHeatmapWeight(event: ScoredEvent): number {
   const tensionPart = event.tensionScore / 100;
   const scopeBoost =
-    event.greatPowerScope === "rivalry" ? 0.42 : event.greatPowerScope === "intervention" ? 0.24 : 0;
-  return 0.22 + tensionPart * 0.52 + scopeBoost;
+    event.greatPowerScope === "rivalry" ? 0.48 : event.greatPowerScope === "intervention" ? 0.28 : 0;
+  return 0.28 + tensionPart * 0.58 + scopeBoost;
 }
 
 function getBandwidth(altitude: number, tier: "war" | "diplomatic"): number {
-  const base = tier === "war" ? 1.5 : 1.85;
+  const base = tier === "war" ? 1.65 : 2.0;
   const { tier: lodTier } = getGlobeLod(altitude);
-  if (lodTier === "global") return base * 2.1;
-  if (lodTier === "continent") return base * 1.5;
-  if (lodTier === "regional") return base * 1.18;
+  if (lodTier === "global") return base * 2.2;
+  if (lodTier === "continent") return base * 1.55;
+  if (lodTier === "regional") return base * 1.22;
   return base;
 }
 
 export function warHeatmapColor(t: number): string {
-  const alpha = Math.min(0.7, Math.pow(Math.max(0, t), 1.22) * 0.74);
+  const alpha = Math.min(0.78, Math.pow(Math.max(0, t), 1.15) * 0.82);
   return `rgba(239, 68, 68, ${alpha})`;
 }
 
 export function diplomaticHeatmapColor(t: number): string {
-  const alpha = Math.min(0.64, Math.pow(Math.max(0, t), 1.18) * 0.68);
+  const alpha = Math.min(0.72, Math.pow(Math.max(0, t), 1.12) * 0.76);
   return `rgba(251, 146, 60, ${alpha})`;
 }
 
@@ -60,7 +60,7 @@ export function buildTensionHeatmaps(
           weight: getHeatmapWeight(event),
         })),
         bandwidth: getBandwidth(altitude, "war"),
-        colorSaturation: 1.32,
+        colorSaturation: 1.55,
       });
     }
   }
@@ -77,7 +77,7 @@ export function buildTensionHeatmaps(
           weight: getHeatmapWeight(event),
         })),
         bandwidth: getBandwidth(altitude, "diplomatic"),
-        colorSaturation: 1.48,
+        colorSaturation: 1.68,
       });
     }
   }

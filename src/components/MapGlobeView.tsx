@@ -146,6 +146,10 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
     const raw = props.ukraineMicroGeoJson as GeoJSON.FeatureCollection | undefined;
     return raw?.type === "FeatureCollection" ? raw : emptyUkraineFc;
   }, [emptyUkraineFc, props.ukraineMicroGeoJson]);
+  const axisHubCountriesGeoJson = useMemo(() => {
+    const raw = props.axisHubCountriesGeoJson as GeoJSON.FeatureCollection | undefined;
+    return raw?.type === "FeatureCollection" ? raw : emptyUkraineFc;
+  }, [emptyUkraineFc, props.axisHubCountriesGeoJson]);
 
   const interactiveLayerIds = useMemo(() => {
     const fromProps = props.interactiveLayerIds;
@@ -530,6 +534,28 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
               paint={{
                 "line-color": ["get", "stroke"],
                 "line-width": 1.1,
+                "line-opacity": 0.85,
+              }}
+            />
+          </Source>
+        ) : null}
+
+        {axisHubCountriesGeoJson.features.length > 0 ? (
+          <Source id="axis-hub-countries-source" type="geojson" data={axisHubCountriesGeoJson}>
+            <Layer
+              id="axis-hub-countries-fill"
+              type="fill"
+              paint={{
+                "fill-color": ["coalesce", ["get", "fill"], "#dc2626"],
+                "fill-opacity": ["coalesce", ["get", "fillOpacity"], 0.28],
+              }}
+            />
+            <Layer
+              id="axis-hub-countries-outline"
+              type="line"
+              paint={{
+                "line-color": ["coalesce", ["get", "stroke"], "rgba(248,113,113,0.75)"],
+                "line-width": 1.2,
                 "line-opacity": 0.85,
               }}
             />

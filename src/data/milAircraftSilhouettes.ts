@@ -34,19 +34,20 @@ export const MIL_AIRCRAFT_MARKER_ICON_SIZE: MilAircraftIconSize = {
 };
 
 /** 역할별 강조색 (항모 status color 와 비슷한 채도) */
+/** 군용기 실루엣 — 역할 무관 단일 빨강 */
 export const MIL_ROLE_COLORS: Record<MilAircraftRole, string> = {
-  fighter: "#f87171",
-  bomber: "#fb923c",
-  helicopter: "#fbbf24",
-  tanker: "#34d399",
-  transport: "#60a5fa",
-  awacs: "#a78bfa",
-  recon: "#22d3ee",
-  patrol: "#38bdf8",
-  gunship: "#f472b6",
-  trainer: "#94a3b8",
-  uav: "#c084fc",
-  other: "#fca5a5",
+  fighter: "#ef4444",
+  bomber: "#ef4444",
+  helicopter: "#ef4444",
+  tanker: "#ef4444",
+  transport: "#ef4444",
+  awacs: "#ef4444",
+  recon: "#ef4444",
+  patrol: "#ef4444",
+  gunship: "#ef4444",
+  trainer: "#ef4444",
+  uav: "#ef4444",
+  other: "#ef4444",
 };
 
 /** 지경학 민간 항적 — 청록 계열 */

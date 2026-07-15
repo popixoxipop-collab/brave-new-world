@@ -74,7 +74,7 @@ export type D1GdeltSnapshot = {
 };
 
 /** Cron GDELT Geo 포인트를 D1에서 읽어 ZIP 파싱을 피한다. */
-export async function readGdeltPointsFromD1(max = 500): Promise<D1GdeltSnapshot | null> {
+export async function readGdeltPointsFromD1(max = 1200): Promise<D1GdeltSnapshot | null> {
   try {
     const db = await getDb();
     const rows = await db

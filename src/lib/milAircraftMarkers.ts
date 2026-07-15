@@ -143,55 +143,8 @@ export function createMilAircraftBadge(
   icon.innerHTML = milAircraftIconSvg(kind.role, iconSize, { palette });
   iconWrap.appendChild(icon);
 
-  const badge = document.createElement("span");
-  badge.textContent = roleLabel;
-  badge.style.display = "block";
-  badge.style.marginTop = "1px";
-  badge.style.padding = "1px 5px";
-  badge.style.borderRadius = "9999px";
-  badge.style.border =
-    palette === "civil"
-      ? "1px solid rgba(56, 189, 248, 0.55)"
-      : "1px solid rgba(248, 113, 113, 0.55)";
-  badge.style.background =
-    palette === "civil" ? "rgba(12, 74, 110, 0.55)" : "rgba(127, 29, 29, 0.55)";
-  badge.style.fontSize = "8px";
-  badge.style.fontWeight = "700";
-  badge.style.lineHeight = "1.2";
-  badge.style.letterSpacing = "0.04em";
-  badge.style.color = "rgba(254, 242, 242, 0.98)";
-  badge.style.textShadow = "0 1px 2px rgba(0,0,0,0.85)";
-  badge.style.pointerEvents = "none";
-  badge.style.whiteSpace = "nowrap";
-
-  const label = document.createElement("span");
-  label.textContent = aircraft.callsign?.trim() || aircraft.hex.toUpperCase();
-  label.style.display = "block";
-  label.style.maxWidth = "68px";
-  label.style.fontSize = "8px";
-  label.style.fontWeight = "600";
-  label.style.lineHeight = "1.15";
-  label.style.textAlign = "center";
-  label.style.color = "rgba(248, 250, 252, 0.95)";
-  label.style.whiteSpace = "nowrap";
-  label.style.overflow = "hidden";
-  label.style.textOverflow = "ellipsis";
-  label.style.textShadow = "0 0 6px rgba(248,113,113,0.55), 0 1px 3px rgba(0,0,0,0.92)";
-  label.style.pointerEvents = "none";
-
-  /** Marker가 heading으로 돌면 캡션만 역회전 → 지도 북 기준 가독성 유지 */
-  const caption = document.createElement("span");
-  caption.style.display = "flex";
-  caption.style.flexDirection = "column";
-  caption.style.alignItems = "center";
-  caption.style.gap = "1px";
-  if (track != null) {
-    caption.style.transform = `rotate(${-track}deg)`;
-    caption.style.transformOrigin = "50% 0%";
-  }
-  caption.append(badge, label);
-
-  inner.append(iconWrap, caption);
+  // 캐릭터(역할 배지·콜사인) 없이 실루엣만
+  inner.append(iconWrap);
   outer.append(inner);
 
   inner.addEventListener("mouseenter", () => {

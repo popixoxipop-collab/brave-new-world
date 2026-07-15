@@ -41,7 +41,7 @@ export async function GET(request: Request) {
 
     // Cron Geo 스냅샷 우선 — ZIP/CSV는 ?live=1 일 때만
     if (!preferLive) {
-      const fromD1 = await readGdeltPointsFromD1(600);
+      const fromD1 = await readGdeltPointsFromD1(1200);
       if (fromD1 && fromD1.count > 0) {
         return NextResponse.json({
           fetchedAt: fromD1.fetchedAt,
