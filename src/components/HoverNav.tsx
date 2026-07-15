@@ -96,14 +96,14 @@ export function HoverNav({
     : "bg-sky-400/15 text-sky-50 shadow-[inset_0_0_0_1px_rgba(125,211,252,0.25)]";
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-0 z-[75] flex justify-center px-3 pt-3">
+    <div className="pointer-events-none fixed inset-x-0 top-0 z-[75] flex justify-center px-2 pt-3 sm:px-3">
       <nav
         id="app-hover-nav"
         ref={navRef}
         className={`pointer-events-auto w-full transition-all duration-300 ease-out ${
           isEconomy
-            ? `max-w-2xl ${navOpen ? "max-w-5xl" : ""}`
-            : "max-w-3xl sm:max-w-4xl"
+            ? `max-w-md sm:max-w-lg ${navOpen ? "max-w-3xl sm:max-w-4xl" : ""}`
+            : "max-w-[min(100%,16.75rem)] sm:max-w-lg md:max-w-xl"
         } ${isEconomy ? "hover-nav--economy font-nav-economy" : "hover-nav--conflict"}`}
       >
         <div
@@ -111,7 +111,7 @@ export function HoverNav({
             navOpen && isEconomy ? "rounded-b-none border-b-0" : ""
           }`}
         >
-          <div className="flex items-center gap-2 px-3 py-2">
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 sm:gap-2 sm:px-3 sm:py-2">
             <SearchIcon
               className={`shrink-0 ${isEconomy ? "text-emerald-200/50" : "text-sky-200/50"}`}
             />
@@ -125,7 +125,7 @@ export function HoverNav({
                 if (isEconomy) setNavOpen(true);
               }}
               placeholder={chrome.searchPlaceholder}
-              className={`w-full bg-transparent text-sm outline-none placeholder:opacity-35 ${
+              className={`w-full bg-transparent text-xs outline-none placeholder:opacity-35 sm:text-sm ${
                 isEconomy
                   ? "text-emerald-50/90 placeholder:text-emerald-100/35"
                   : "text-sky-50/90 placeholder:text-sky-100/35"
@@ -146,7 +146,7 @@ export function HoverNav({
           </div>
 
           {!isEconomy ? (
-            <div className="grid grid-cols-4 items-stretch gap-1.5 border-t border-sky-200/10 px-2 pb-2 pt-1.5">
+            <div className="grid grid-cols-4 items-stretch gap-1 border-t border-sky-200/10 px-1.5 pb-1.5 pt-1 sm:gap-1.5 sm:px-2 sm:pb-2 sm:pt-1.5">
               {HUB_DEFINITIONS.map((hub) => (
                 <HubDropdown
                   key={hub.id}
@@ -304,7 +304,7 @@ function HubDropdown({
       <button
         type="button"
         onClick={onToggle}
-        className={`flex w-full items-center justify-center gap-1 rounded-full border px-1.5 py-1.5 text-[11px] sm:px-2.5 sm:text-xs transition ${
+        className={`flex w-full items-center justify-center gap-0.5 rounded-full border px-1 py-1 text-[10px] sm:gap-1 sm:px-2 sm:py-1.5 sm:text-[11px] md:text-xs transition ${
           open
             ? "border-sky-300/35 bg-sky-400/15 text-sky-50"
             : "border-sky-200/15 bg-sky-400/5 text-sky-100/85 hover:border-sky-300/30 hover:bg-sky-400/10"
@@ -317,7 +317,7 @@ function HubDropdown({
           aria-hidden
         />
         <span className="truncate">{hub.label}</span>
-        <ChevronDown className={`shrink-0 opacity-50 transition ${open ? "rotate-180" : ""}`} />
+        <ChevronDown className={`hidden shrink-0 opacity-50 transition sm:block ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open ? (

@@ -277,6 +277,11 @@ type IntelCompactBarProps = {
   viewerMode?: ViewerMode;
   /** 카메라 tween/드래그 중 티커 폴링·스크롤 일시정지 */
   pauseUpdates?: boolean;
+  /**
+   * 모바일 우크라 전선 등 — 티커·범례·투데이칩을 숨기고 📰/📈 FAB만 유지.
+   * 전선 지도 가독성을 지키면서 Intel 시트 진입 경로를 남긴다.
+   */
+  fabOnly?: boolean;
   onOpenSheet: (theater?: IntelTheaterFilter) => void;
   /** 오늘 핫한 곳 → 맵 fly-to */
   onFlyToTheater?: (theater: NewsTheater) => void;
@@ -430,6 +435,7 @@ export function DynamicIntelStack({
   showTicker = true,
   viewerMode = "conflict",
   pauseUpdates = false,
+  fabOnly = false,
   onOpenSheet,
   onFlyToTheater,
 }: IntelCompactBarProps) {
@@ -459,11 +465,20 @@ export function DynamicIntelStack({
   }, []);
 
   const todayBriefing = useMemo(() => {
-    if (isAlert || todayHidden) return null;
+    if (fabOnly || isAlert || todayHidden) return null;
     return buildTodayBriefing(payload, lang);
-  }, [isAlert, todayHidden, payload, lang]);
+  }, [fabOnly, isAlert, todayHidden, payload, lang]);
 
   useEffect(() => {
+    if (fabOnly) {
+      document.documentElement.style.setProperty("--bottom-intel-stack-clearance", "4.5rem");
+      return () => {
+        document.documentElement.style.setProperty(
+          "--bottom-intel-stack-clearance",
+          resolveIntelStackClearance("calm", viewerMode),
+        );
+      };
+    }
     const base = resolveIntelStackClearance(mode, viewerMode);
     const withToday =
       todayBriefing && !isAlert
@@ -476,10 +491,11 @@ export function DynamicIntelStack({
         resolveIntelStackClearance("calm", viewerMode),
       );
     };
-  }, [mode, viewerMode, todayBriefing, isAlert]);
+  }, [fabOnly, mode, viewerMode, todayBriefing, isAlert]);
 
-  const showLegend = viewerMode === "conflict";
-  const showCompactTicker = viewerMode === "economy" || showTicker;
+  const showLegend = !fabOnly && viewerMode === "conflict";
+  const showCompactTicker = !fabOnly && (viewerMode === "economy" || showTicker);
+  const showFab = fabOnly || !isAlert;
 
   const handleTodayOpen = useCallback(() => {
     if (!todayBriefing) return;
@@ -491,6 +507,34 @@ export function DynamicIntelStack({
     dismissTodayBriefing();
     setTodayHidden(true);
   }, []);
+
+  if (fabOnly) {
+    return (
+      <div
+        id="bottom-intel-compact"
+        className="intel-stack intel-stack--fab-only pointer-events-none absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center"
+      >
+        <HoverHint
+          placement="top"
+          title={isEconomy ? t("hoverEconomyFab") : t("hoverIntelFab")}
+          detail={isEconomy ? t("hoverEconomyFabHint") : t("hoverIntelFabHint")}
+        >
+          <button
+            type="button"
+            onClick={() => onOpenSheet("all")}
+            aria-label={isEconomy ? t("hoverEconomyFabOpenAria") : t("hoverIntelFabOpenAria")}
+            className={`intel-mini-fab pointer-events-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-sm shadow-lg backdrop-blur-md transition ${
+              isEconomy
+                ? "border-emerald-300/25 bg-emerald-950/85 text-emerald-100 hover:border-emerald-200/40 hover:bg-emerald-900/90"
+                : "border-sky-300/20 bg-[#0a1830]/85 text-sky-100 hover:border-sky-200/40 hover:bg-[#0c2040]/90"
+            }`}
+          >
+            {isEconomy ? "📈" : "📰"}
+          </button>
+        </HoverHint>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -557,7 +601,7 @@ export function DynamicIntelStack({
             className="pointer-events-none w-max max-w-[min(96vw,960px)]"
           />
         ) : null}
-        {!isAlert ? (
+        {showFab ? (
           <HoverHint
             placement="top"
             title={isEconomy ? t("hoverEconomyFab") : t("hoverIntelFab")}

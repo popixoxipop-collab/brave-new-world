@@ -25,7 +25,7 @@ export function CompactPresetChips({
 
   return (
     <div
-      className="pointer-events-auto flex max-w-[min(100vw-1.5rem,360px)] flex-wrap justify-end gap-1.5"
+      className="pointer-events-auto flex max-w-[min(100vw-5.5rem,280px)] flex-wrap justify-start gap-1.5"
       role="toolbar"
       aria-label={lang === "en" ? "Compact view presets" : "간이 보기 프리셋"}
     >

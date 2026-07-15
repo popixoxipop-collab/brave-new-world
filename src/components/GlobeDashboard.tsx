@@ -325,8 +325,10 @@ import {
   getDisputeOutlineColor,
   isCombatHazard,
   parseConflictHatchGrade,
+  rankDisputesForDisplay,
   TENSION_GRADE_STYLES,
 } from "@/lib/disputeHatch";
+import { getCachedDisputeHatchPaths } from "@/lib/disputeHatchCache";
 import { selectViinaPolygons } from "@/lib/viinaLod";
 import {
   prefetchUkraineControl,
@@ -2513,8 +2515,27 @@ export function GlobeDashboard({
           return disputeMatchesWarDiplomaticLayers(dispute, showWarZones, showDiplomaticTension);
         });
         paths.push(...filtered);
+      } else {
+        // 스냅샷(D1/파일) 없을 때 disputes geometry → path 폴백
+        const preferDetail = disputeHatchLod === "detail";
+        const candidates = rankDisputesForDisplay(data.disputes ?? []).filter(
+          (d) =>
+            Boolean(d.geometry) &&
+            disputeMatchesWarDiplomaticLayers(d, showWarZones, showDiplomaticTension) &&
+            isCenterInView(resolveDisputeCenter(d), layerViewState, radiusDeg),
+        );
+        for (const dispute of candidates.slice(0, maxZones)) {
+          const built = getCachedDisputeHatchPaths(dispute, {
+            preferDetailSegments: preferDetail,
+          });
+          if (!built.length) continue;
+          paths.push(...built);
+          if (paths.length >= maxPaths) {
+            paths.length = maxPaths;
+            break;
+          }
+        }
       }
-      // 클라우드 스냅샷 대기 — 클라 geometry hatch 폴백 없음 (이란·중동 포함)
     }
 
     if (showConflictZones) {
@@ -2531,6 +2552,7 @@ export function GlobeDashboard({
   }, [
     data.disputes,
     disputeHatchCachePaths,
+    disputeHatchLod,
     globeLod.tier,
     layerViewState,
     showAnyDisputeOverlay,
@@ -2572,10 +2594,16 @@ export function GlobeDashboard({
     return conflictZoneByPath.get(frameMatch[1]);
   }
 
-  const disputeZoneOutlineCount = useMemo(
-    () => disputeZonePaths.filter((path) => path.kind === "dispute-zone").length,
-    [disputeZonePaths],
-  );
+  /** 뷰포트에 잡힌 분쟁 구역 수(고유 id) — MultiPolygon 외곽 path 개수와 구분 */
+  const disputeZoneOutlineCount = useMemo(() => {
+    const ids = new Set<string>();
+    for (const path of disputeZonePaths) {
+      if (path.kind !== "dispute-zone") continue;
+      const match = path.id.match(/^dispute-zone-(.+)-\d+$/);
+      ids.add(match?.[1] ?? path.id);
+    }
+    return ids.size;
+  }, [disputeZonePaths]);
 
   const armsEmbargoFramePaths = useMemo<TransportPath[]>(() => {
     if (!showArmsEmbargo) return [];
@@ -5441,7 +5469,6 @@ export function GlobeDashboard({
   );
 
   const toggleLeftPanel = useCallback(() => {
-    if (isCompactUi) return;
     startTransition(() => {
       setShowLeftPanel((open) => {
         if (open) {
@@ -5454,7 +5481,7 @@ export function GlobeDashboard({
         return true;
       });
     });
-  }, [dismissLayerPanel, isCompactUi]);
+  }, [dismissLayerPanel]);
 
   const closeLeftPanel = useCallback(() => {
     dismissLayerPanel(true);
@@ -7534,32 +7561,33 @@ export function GlobeDashboard({
             hint={hoverCard.hint}
           />
         )}
-        <div
-          className={
-            !intelSheetOpen && !showLeftPanel && !selected && !isUkraineTheaterFocus
-              ? "contents"
-              : "pointer-events-none invisible"
-          }
-          aria-hidden={
-            showLeftPanel ||
-            intelSheetOpen ||
-            selected !== null ||
-            isUkraineTheaterFocus
-          }
-        >
-          <IntelCompactBar
-            deployedCarrierCount={deployedCarrierCount}
-            showAllCarriers={showUsCarriers}
-            showTicker={viewUi.showTicker}
-            viewerMode={viewerMode}
-            pauseUpdates={isCameraMoving}
-            onOpenSheet={(theater) => openIntelSheet({ theater: theater ?? "all" })}
-            onFlyToTheater={(theater) => {
-              const target = flyTargetForTheater(theater);
-              if (target) handleIntelFlyTo(target);
-            }}
-          />
-        </div>
+        {(() => {
+          /** 모바일 우크라 전선: 스택은 접고 📰 FAB만 유지 (지도 가독성 + Intel 진입) */
+          const ukraineHidesFullStack = isUkraineTheaterFocus && !isCompactUi;
+          const fabOnly = Boolean(isCompactUi && isUkraineTheaterFocus);
+          const stackVisible =
+            !intelSheetOpen && !showLeftPanel && !selected && !ukraineHidesFullStack;
+          return (
+            <div
+              className={stackVisible ? "contents" : "pointer-events-none invisible"}
+              aria-hidden={!stackVisible}
+            >
+              <IntelCompactBar
+                deployedCarrierCount={deployedCarrierCount}
+                showAllCarriers={showUsCarriers}
+                showTicker={viewUi.showTicker}
+                viewerMode={viewerMode}
+                pauseUpdates={isCameraMoving}
+                fabOnly={fabOnly}
+                onOpenSheet={(theater) => openIntelSheet({ theater: theater ?? "all" })}
+                onFlyToTheater={(theater) => {
+                  const target = flyTargetForTheater(theater);
+                  if (target) handleIntelFlyTo(target);
+                }}
+              />
+            </div>
+          );
+        })()}
       </section>
         </div>
 
@@ -7624,7 +7652,7 @@ export function GlobeDashboard({
         onDismiss={() => setShowViewerIntro(false)}
       />
 
-      {showLeftPanel && !isCompactUi ? (
+      {showLeftPanel ? (
         <button
           type="button"
           aria-label={t("ariaClosePanel", labelLanguage)}
@@ -7633,40 +7661,39 @@ export function GlobeDashboard({
         />
       ) : null}
 
-      <div className="pointer-events-none absolute left-3 top-3 z-[60]">
-        {isCompactUi ? (
+      <div className="pointer-events-none absolute left-3 top-3 z-[60] flex flex-col items-start gap-2">
+        <div className="pointer-events-auto flex shrink-0 items-center gap-2">
+          <HoverHint
+            placement="bottom"
+            title={
+              showLeftPanel
+                ? t("hoverLayerPanelClose", labelLanguage)
+                : t("hoverLayerPanel", labelLanguage)
+            }
+            detail={t("hoverLayerPanelHint", labelLanguage)}
+          >
+            <button
+              type="button"
+              aria-label={
+                showLeftPanel
+                  ? t("hoverLayerPanelClose", labelLanguage)
+                  : t("hoverLayerPanelOpenAria", labelLanguage)
+              }
+              onClick={() => toggleLeftPanel()}
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-sky-200/15 bg-[#1e3a5f]/55 text-sky-50/90 shadow-lg backdrop-blur-md transition hover:border-sky-200/30 hover:bg-[#254875]/65"
+            >
+              <HamburgerIcon open={showLeftPanel} />
+            </button>
+          </HoverHint>
+        </div>
+        {isCompactUi && !showLeftPanel ? (
           <CompactPresetChips
             mode={viewerMode}
             activeId={compactChipId}
             lang={labelLanguage}
             onSelect={handleCompactChipSelect}
           />
-        ) : (
-          <div className="pointer-events-auto flex shrink-0 items-center gap-2">
-            <HoverHint
-              placement="bottom"
-              title={
-                showLeftPanel
-                  ? t("hoverLayerPanelClose", labelLanguage)
-                  : t("hoverLayerPanel", labelLanguage)
-              }
-              detail={t("hoverLayerPanelHint", labelLanguage)}
-            >
-              <button
-                type="button"
-                aria-label={
-                  showLeftPanel
-                    ? t("hoverLayerPanelClose", labelLanguage)
-                    : t("hoverLayerPanelOpenAria", labelLanguage)
-                }
-                onClick={() => toggleLeftPanel()}
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-sky-200/15 bg-[#1e3a5f]/55 text-sky-50/90 shadow-lg backdrop-blur-md transition hover:border-sky-200/30 hover:bg-[#254875]/65"
-              >
-                <HamburgerIcon open={showLeftPanel} />
-              </button>
-            </HoverHint>
-          </div>
-        )}
+        ) : null}
       </div>
 
       {/* 데스크톱: 우상단 공습·주요전장·도움말 / 모바일: 주요전장만 우상단 */}
@@ -7769,8 +7796,14 @@ export function GlobeDashboard({
         <MethodologySourcesPanel open={showSourcesPanel} onClose={() => setShowSourcesPanel(false)} />
       ) : null}
 
-      {showLeftPanel && !isCompactUi ? (
-        <aside className="intel-panel pointer-events-auto absolute left-3 top-14 z-50 flex max-h-[calc(100vh-4.5rem)] w-[min(calc(100vw-1.5rem),384px)] flex-col gap-4 overflow-y-auto rounded-2xl p-4 shadow-2xl">
+      {showLeftPanel ? (
+        <aside
+          className={`intel-panel pointer-events-auto absolute left-3 z-50 flex flex-col gap-4 overflow-y-auto rounded-2xl p-4 shadow-2xl ${
+            isCompactUi
+              ? "top-[4.75rem] max-h-[calc(100dvh-5.5rem)] w-[min(calc(100vw-1.5rem),360px)]"
+              : "top-14 max-h-[calc(100vh-4.5rem)] w-[min(calc(100vw-1.5rem),384px)]"
+          }`}
+        >
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.32em] text-sky-200/70">
