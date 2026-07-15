@@ -26,7 +26,7 @@ export function TelegramOsintPanel({
   channelCount = TELEGRAM_CHANNEL_COUNT,
 }: TelegramOsintPanelProps) {
   return (
-    <div className="pointer-events-auto absolute bottom-5 left-4 z-20 w-[min(92vw,360px)]">
+    <div className="pointer-events-auto absolute bottom-5 left-4 z-20 w-[min(88vw,280px)]">
       <TelegramIntelFeed
         alerts={alerts}
         live={live}
