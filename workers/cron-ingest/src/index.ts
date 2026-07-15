@@ -3,12 +3,15 @@ import {
   getFirmsMapKey,
   pruneOldRows,
   readIntVar,
+  readTelegramAlerts,
   recordIngestRun,
   upsertFirmsFires,
   upsertGdeltPoints,
+  upsertTelegramAlerts,
 } from "./db";
 import { fetchFirmsForTheaters } from "./firms";
 import { fetchGdeltTensionPoints } from "./gdeltExport";
+import { fetchTelegramAlerts } from "./telegram";
 
 export type { IngestEnv };
 
@@ -20,6 +23,7 @@ type IngestResult = {
   finishedAt: string;
   firmsCount: number;
   gdeltCount: number;
+  telegramCount: number;
   newsWarm?: WarmResult;
   videoNewsWarm?: WarmResult;
   aisWarm?: WarmResult;
@@ -29,6 +33,7 @@ type IngestResult = {
   ukraineHatchWarm?: WarmResult;
   firmsErrors: string[];
   gdeltErrors: string[];
+  telegramErrors: string[];
   pruned?: {
     firmsDeleted: number;
     gdeltDeleted: number;
@@ -36,6 +41,7 @@ type IngestResult = {
     newsItemsDeleted?: number;
     aisDeleted?: number;
     adsbDeleted?: number;
+    telegramDeleted?: number;
     cutoff: string;
   };
   error: string | null;
@@ -72,8 +78,10 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
   const startedAt = new Date().toISOString();
   const firmsErrors: string[] = [];
   const gdeltErrors: string[] = [];
+  const telegramErrors: string[] = [];
   let firmsCount = 0;
   let gdeltCount = 0;
+  let telegramCount = 0;
   let pruned: IngestResult["pruned"];
   let newsWarm: IngestResult["newsWarm"];
   let videoNewsWarm: IngestResult["videoNewsWarm"];
@@ -112,6 +120,16 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
     gdeltErrors.push(...gdelt.errors);
     gdeltCount = await upsertGdeltPoints(env.DB, gdelt.points);
 
+    const telegramEnabled =
+      (env.TELEGRAM_INGEST_ENABLED ?? "true").toLowerCase() !== "false" &&
+      env.TELEGRAM_INGEST_ENABLED !== "0";
+    if (telegramEnabled) {
+      const tgMax = Math.min(400, Math.max(50, readIntVar(env, "TELEGRAM_MAX_ALERTS", 200)));
+      const telegram = await fetchTelegramAlerts({ maxAlerts: tgMax });
+      telegramErrors.push(...telegram.errors.slice(0, 10));
+      telegramCount = await upsertTelegramAlerts(env.DB, telegram.alerts);
+    }
+
     pruned = await pruneOldRows(env.DB, retentionHours);
     newsWarm = await warmEndpoint(env.NEWS_WARM_URL, env, "news");
     videoNewsWarm = await warmEndpoint(env.VIDEO_NEWS_WARM_URL, env, "video-news");
@@ -131,6 +149,7 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
       finishedAt,
       firmsCount,
       gdeltCount,
+      telegramCount,
       newsWarm,
       videoNewsWarm,
       aisWarm,
@@ -140,6 +159,7 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
       ukraineHatchWarm,
       firmsErrors,
       gdeltErrors,
+      telegramErrors,
       pruned,
       error: hardFail ? firmsErrors.join("; ") || "ingest failed" : null,
     };
@@ -154,6 +174,8 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
       detail: {
         firmsErrors,
         gdeltErrors,
+        telegramErrors,
+        telegramCount,
         pruned,
         newsWarm,
         videoNewsWarm,
@@ -177,7 +199,7 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
         gdeltCount,
         ok: false,
         error: message,
-        detail: { firmsErrors, gdeltErrors, newsWarm, aisWarm, adsbWarm, tunnelsWarm, disputeHatchWarm, ukraineHatchWarm },
+        detail: { firmsErrors, gdeltErrors, telegramErrors, telegramCount, newsWarm, aisWarm, adsbWarm, tunnelsWarm, disputeHatchWarm, ukraineHatchWarm },
       });
     } catch {
       // ignore secondary logging failure
@@ -188,6 +210,7 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
       finishedAt,
       firmsCount,
       gdeltCount,
+      telegramCount,
       newsWarm,
       aisWarm,
       adsbWarm,
@@ -196,6 +219,7 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
       ukraineHatchWarm,
       firmsErrors,
       gdeltErrors,
+      telegramErrors,
       error: message,
     };
   }
@@ -219,7 +243,7 @@ const worker = {
     ctx.waitUntil(
       runIngest(env).then((result) => {
         console.log(
-          `[ingest] ok=${result.ok} firms=${result.firmsCount} gdelt=${result.gdeltCount}` +
+          `[ingest] ok=${result.ok} firms=${result.firmsCount} gdelt=${result.gdeltCount} telegram=${result.telegramCount}` +
             (result.newsWarm
               ? ` newsWarm=${result.newsWarm.ok ? "ok" : "fail"}`
               : ""),
@@ -240,8 +264,46 @@ const worker = {
           health: "GET /health",
           run: "POST /run (optional Bearer INGEST_CRON_SECRET)",
           latest: "GET /latest",
+          telegram: "GET /telegram?limit=200 (public read of D1 alerts)",
         },
       });
+    }
+
+    if (url.pathname === "/telegram") {
+      const limitRaw = Number.parseInt(url.searchParams.get("limit") || "200", 10);
+      const limit = Math.min(400, Math.max(1, Number.isFinite(limitRaw) ? limitRaw : 200));
+      let alerts: Array<Record<string, unknown>> = [];
+      let fetchedAt: string | null = null;
+      try {
+        const rows = await readTelegramAlerts(env.DB, limit);
+        alerts = rows.map((row) => ({
+          id: row.id,
+          channelUsername: row.channel_username,
+          channelTitle: row.channel_title,
+          region: row.region,
+          text: row.text,
+          messageUrl: row.message_url,
+          receivedAt: row.received_at,
+        }));
+        fetchedAt = rows[0]?.ingested_at ?? null;
+      } catch {
+        alerts = [];
+      }
+      return new Response(
+        JSON.stringify({
+          fetchedAt: fetchedAt ?? new Date().toISOString(),
+          live: alerts.length > 0,
+          source: "d1-cron",
+          alerts,
+        }),
+        {
+          headers: {
+            "content-type": "application/json; charset=utf-8",
+            "access-control-allow-origin": "*",
+            "cache-control": "public, max-age=60",
+          },
+        },
+      );
     }
 
     if (url.pathname === "/latest") {
@@ -251,6 +313,15 @@ const worker = {
       const gdelt = await env.DB.prepare(
         `SELECT COUNT(*) AS c FROM gdelt_points`,
       ).first<{ c: number }>();
+      let telegramRows = 0;
+      try {
+        const tg = await env.DB.prepare(
+          `SELECT COUNT(*) AS c FROM telegram_alerts`,
+        ).first<{ c: number }>();
+        telegramRows = tg?.c ?? 0;
+      } catch {
+        // migration 0005 not applied yet
+      }
       let newsSnapshots = 0;
       let newsItems = 0;
       try {
@@ -272,6 +343,7 @@ const worker = {
       return Response.json({
         firmsRows: firms?.c ?? 0,
         gdeltRows: gdelt?.c ?? 0,
+        telegramRows,
         newsSnapshots,
         newsItems,
         lastRun: last ?? null,

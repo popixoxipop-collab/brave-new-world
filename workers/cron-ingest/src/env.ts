@@ -48,6 +48,10 @@ export type IngestEnv = {
   FIRMS_MAX_PER_THEATER?: string;
   GDELT_MAX_POINTS?: string;
   RETENTION_HOURS?: string;
+  /** 텔레그램 스크레이프 최대 속보 수 (기본 200) */
+  TELEGRAM_MAX_ALERTS?: string;
+  /** "false"/"0" 이면 텔레그램 스크레이프 비활성 */
+  TELEGRAM_INGEST_ENABLED?: string;
 };
 
 export type FirmsFireRow = {
@@ -74,4 +78,14 @@ export type GdeltPointRow = {
   mention_count: number | null;
   share_image: string | null;
   query_tag: string;
+};
+
+export type TelegramAlertRow = {
+  id: string;
+  channel_username: string;
+  channel_title: string | null;
+  region: string;
+  text: string;
+  message_url: string | null;
+  received_at: string;
 };

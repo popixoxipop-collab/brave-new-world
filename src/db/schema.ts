@@ -355,6 +355,31 @@ export const videoNewsSnapshots = sqliteTable(
   }),
 );
 
+/**
+ * 텔레그램 OSINT 라이브 속보 (Cloudflare cron 워커가 t.me 공개 채널 스크레이프 → D1).
+ * 서버리스(Vercel/CF) 어디에 배포해도 방문자 모두 같은 피드를 본다.
+ */
+export const telegramAlerts = sqliteTable(
+  "telegram_alerts",
+  {
+    /** `${channelUsername}/${postId}` */
+    id: text("id").primaryKey(),
+    channelUsername: text("channel_username").notNull(),
+    channelTitle: text("channel_title"),
+    /** ukraine | middle-east | global */
+    region: text("region").notNull().default("global"),
+    text: text("text").notNull(),
+    messageUrl: text("message_url"),
+    receivedAt: text("received_at").notNull(),
+    ingestedAt: text("ingested_at").notNull(),
+  },
+  (t) => ({
+    receivedIdx: index("idx_tg_received").on(t.receivedAt),
+    ingestedIdx: index("idx_tg_ingested").on(t.ingestedAt),
+    regionIdx: index("idx_tg_region").on(t.region),
+  }),
+);
+
 /** Cron / 빌드 실행 로그 */
 export const ingestRuns = sqliteTable("ingest_runs", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -380,3 +405,5 @@ export type AdsbAircraftRow = typeof adsbAircraft.$inferSelect;
 export type SubmarineTunnelRow = typeof submarineTunnels.$inferSelect;
 export type DisputeHatchPathRow = typeof disputeHatchPaths.$inferSelect;
 export type NewDisputeHatchPathRow = typeof disputeHatchPaths.$inferInsert;
+export type TelegramAlertRow = typeof telegramAlerts.$inferSelect;
+export type NewTelegramAlertRow = typeof telegramAlerts.$inferInsert;

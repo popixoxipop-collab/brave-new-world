@@ -7,9 +7,12 @@
  * 좌표는 항상 [lng, lat].
  */
 
-import { union as clipUnion } from "polygon-clipping";
+import polygonClipping from "polygon-clipping";
 import type { MultiPolygon, Polygon, Position } from "geojson";
 import type { GeoJsonGeometry, UkraineControlZone } from "@/data/geoTypes";
+
+// ESM 빌드가 named export 없이 default만 제공 → webpack "union is not exported" 방지
+const clipUnion = polygonClipping.union;
 
 export const UA_DISSOLVE_THEATER = {
   minLng: 22,

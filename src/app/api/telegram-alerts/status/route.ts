@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { getTelegramAlertStore } from "@/lib/telegramAlertStore";
 import { TELEGRAM_CHANNEL_COUNT, TELEGRAM_CATALOG_NOTE } from "@/lib/telegramAlerts";
 import { isTelegramEmbedEnabled } from "@/lib/telegramEmbedScrape";
+import { readTelegramAlertsFromD1 } from "@/lib/d1LiveSnapshots";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,6 +30,12 @@ export async function GET() {
     } catch {
       alertCount = 0;
     }
+  }
+
+  // 배포 환경: 로컬 파일이 없으면 공유 D1 속보 수를 반영
+  if (alertCount === 0) {
+    const fromD1 = await readTelegramAlertsFromD1(200);
+    if (fromD1) alertCount = fromD1.count;
   }
 
   return NextResponse.json({

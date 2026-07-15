@@ -80,6 +80,21 @@ CREATE INDEX IF NOT EXISTS idx_news_items_tier ON news_stream_items (trust_tier)
 CREATE INDEX IF NOT EXISTS idx_news_items_theater ON news_stream_items (theater);
 CREATE INDEX IF NOT EXISTS idx_news_items_ingested ON news_stream_items (ingested_at);
 
+CREATE TABLE IF NOT EXISTS telegram_alerts (
+  id TEXT PRIMARY KEY,
+  channel_username TEXT NOT NULL,
+  channel_title TEXT,
+  region TEXT NOT NULL DEFAULT 'global',
+  text TEXT NOT NULL,
+  message_url TEXT,
+  received_at TEXT NOT NULL,
+  ingested_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_tg_received ON telegram_alerts (received_at);
+CREATE INDEX IF NOT EXISTS idx_tg_ingested ON telegram_alerts (ingested_at);
+CREATE INDEX IF NOT EXISTS idx_tg_region ON telegram_alerts (region);
+
 CREATE TABLE IF NOT EXISTS ingest_runs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   started_at TEXT NOT NULL,

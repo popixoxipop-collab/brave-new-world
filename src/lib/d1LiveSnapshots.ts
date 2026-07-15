@@ -1,7 +1,8 @@
 import { and, desc, gte, lte, sql } from "drizzle-orm";
 import type { FirmsFire } from "@/data/geoTypes";
 import { getDb } from "@/db";
-import { firmsFires, gdeltPoints } from "@/db/schema";
+import { firmsFires, gdeltPoints, telegramAlerts } from "@/db/schema";
+import type { TelegramAlert, TelegramAlertRegion } from "@/lib/telegramAlerts";
 
 export type D1FirmsSnapshot = {
   fires: FirmsFire[];
@@ -97,6 +98,46 @@ export async function readGdeltPointsFromD1(max = 1200): Promise<D1GdeltSnapshot
         url: row.url,
         mentionCount: row.mentionCount,
         queryTag: row.queryTag,
+      })),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export type D1TelegramSnapshot = {
+  alerts: TelegramAlert[];
+  count: number;
+  source: "d1";
+  fetchedAt: string;
+};
+
+/** Cron 워커가 적재한 텔레그램 속보를 D1에서 읽는다 (Cloudflare 배포 시). */
+export async function readTelegramAlertsFromD1(
+  max = 200,
+): Promise<D1TelegramSnapshot | null> {
+  try {
+    const db = await getDb();
+    const rows = await db
+      .select()
+      .from(telegramAlerts)
+      .orderBy(desc(telegramAlerts.receivedAt))
+      .limit(max);
+
+    if (rows.length === 0) return null;
+
+    return {
+      source: "d1",
+      fetchedAt: new Date().toISOString(),
+      count: rows.length,
+      alerts: rows.map((row) => ({
+        id: row.id,
+        channelUsername: row.channelUsername,
+        channelTitle: row.channelTitle ?? row.channelUsername,
+        region: (row.region as TelegramAlertRegion) || "global",
+        text: row.text,
+        receivedAt: row.receivedAt,
+        messageUrl: row.messageUrl,
       })),
     };
   } catch {
