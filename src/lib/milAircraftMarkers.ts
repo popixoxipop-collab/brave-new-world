@@ -17,13 +17,7 @@ function ensureMilMarkerStyles() {
   const style = document.createElement("style");
   style.setAttribute("data-mil-aircraft-markers", "1");
   style.textContent = `
-    @keyframes mil-aircraft-bob {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-3px); }
-    }
     .${MIL_AIRCRAFT_MARKER_ROOT_CLASS} .mil-aircraft-icon-wrap {
-      animation: mil-aircraft-bob 2.6s ease-in-out infinite;
-      will-change: transform;
       line-height: 0;
     }
     .${MIL_AIRCRAFT_MARKER_ROOT_CLASS} .mil-aircraft-icon {
@@ -31,8 +25,8 @@ function ensureMilMarkerStyles() {
       transform-origin: 50% 50%;
       filter: drop-shadow(0 2px 4px rgba(0,0,0,0.75));
     }
-    .${MIL_AIRCRAFT_MARKER_ROOT_CLASS} button:hover .mil-aircraft-icon-wrap {
-      animation-duration: 1.5s;
+    .${MIL_AIRCRAFT_MARKER_ROOT_CLASS} button:hover .mil-aircraft-icon {
+      filter: drop-shadow(0 0 10px rgba(248,113,113,0.55)) drop-shadow(0 2px 4px rgba(0,0,0,0.75));
     }
   `;
   document.head.appendChild(style);
@@ -44,10 +38,9 @@ function headingDeg(aircraft: MilitaryAircraft): number | null {
   return ((raw % 360) + 360) % 360;
 }
 
-/** 실루엣 코가 viewBox 위쪽 → track(진북 기준)으로 회전 */
-function iconRotationDeg(track: number | null): number {
-  if (track == null) return -25;
-  return track;
+/** MapLibre Marker rotation (map-aligned). 코가 위쪽인 실루엣 기준. */
+export function milAircraftMarkerRotationDeg(aircraft: MilitaryAircraft): number {
+  return headingDeg(aircraft) ?? 0;
 }
 
 export function createMilAircraftBadge(
@@ -99,12 +92,14 @@ export function createMilAircraftBadge(
     aircraft.type,
     aircraft.altitude != null ? `${aircraft.altitude} ft` : null,
     aircraft.groundSpeed != null ? `${aircraft.groundSpeed} kn` : null,
+    track != null ? `${Math.round(track)}°` : null,
   ].filter(Boolean);
 
   const outer = document.createElement("div");
   outer.className = MIL_AIRCRAFT_MARKER_ROOT_CLASS;
   outer.dataset.milRole = kind.role;
   outer.dataset.milHex = aircraft.hex;
+  if (track != null) outer.dataset.milTrack = String(Math.round(track));
 
   const inner = document.createElement("button");
   inner.type = "button";
@@ -133,17 +128,17 @@ export function createMilAircraftBadge(
   iconWrap.style.display = "block";
   iconWrap.style.width = `${iconSize.width}px`;
   iconWrap.style.height = `${iconSize.height}px`;
-  const phase = Number.parseInt(aircraft.hex.slice(0, 2), 16);
-  if (Number.isFinite(phase)) {
-    iconWrap.style.animationDelay = `${(phase % 12) * 0.18}s`;
-  }
 
   const icon = document.createElement("span");
   icon.className = "mil-aircraft-icon";
   icon.style.display = "block";
   icon.style.width = `${iconSize.width}px`;
   icon.style.height = `${iconSize.height}px`;
-  icon.style.transform = `rotate(${iconRotationDeg(track)}deg)`;
+  // 회전은 MapLibre Marker.rotation + rotationAlignment="map" 가 담당 (코=위)
+  if (track == null) {
+    icon.style.transform = "rotate(-18deg)";
+    icon.style.opacity = "0.8";
+  }
   icon.style.boxShadow = milAircraftGlowShadow(kind.role, palette);
   icon.innerHTML = milAircraftIconSvg(kind.role, iconSize, { palette });
   iconWrap.appendChild(icon);
@@ -184,7 +179,19 @@ export function createMilAircraftBadge(
   label.style.textShadow = "0 0 6px rgba(248,113,113,0.55), 0 1px 3px rgba(0,0,0,0.92)";
   label.style.pointerEvents = "none";
 
-  inner.append(iconWrap, badge, label);
+  /** Marker가 heading으로 돌면 캡션만 역회전 → 지도 북 기준 가독성 유지 */
+  const caption = document.createElement("span");
+  caption.style.display = "flex";
+  caption.style.flexDirection = "column";
+  caption.style.alignItems = "center";
+  caption.style.gap = "1px";
+  if (track != null) {
+    caption.style.transform = `rotate(${-track}deg)`;
+    caption.style.transformOrigin = "50% 0%";
+  }
+  caption.append(badge, label);
+
+  inner.append(iconWrap, caption);
   outer.append(inner);
 
   inner.addEventListener("mouseenter", () => {

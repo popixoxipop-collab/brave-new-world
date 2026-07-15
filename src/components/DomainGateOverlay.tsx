@@ -5,7 +5,7 @@ import { useLocale } from "@/contexts/LocaleContext";
 import { brandName } from "@/lib/brand";
 import { t } from "@/lib/uiStrings";
 import type { ViewerMode } from "@/lib/viewerChrome";
-import { loadPerfPrefs } from "@/lib/ultraLiteMode";
+import { loadPerfPrefs, savePerfPrefs } from "@/lib/ultraLiteMode";
 
 type DomainGateOverlayProps = {
   onSelect: (mode: ViewerMode, ultraLite: boolean) => void;
@@ -18,6 +18,14 @@ export function DomainGateOverlay({ onSelect }: DomainGateOverlayProps) {
   useEffect(() => {
     setUltraLite(loadPerfPrefs().ultraLite);
   }, []);
+
+  const toggleUltraLite = () => {
+    setUltraLite((current) => {
+      const next = !current;
+      savePerfPrefs({ ultraLite: next });
+      return next;
+    });
+  };
 
   return (
     <div
@@ -46,7 +54,7 @@ export function DomainGateOverlay({ onSelect }: DomainGateOverlayProps) {
               role="switch"
               aria-checked={ultraLite}
               aria-label={t("domainUltraLiteLabel", lang)}
-              onClick={() => setUltraLite((v) => !v)}
+              onClick={toggleUltraLite}
               className={`relative h-7 w-12 shrink-0 rounded-full border transition ${
                 ultraLite
                   ? "border-amber-300/55 bg-amber-400/85"

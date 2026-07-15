@@ -425,7 +425,11 @@ import { UsCarrierFixedToggle } from "@/components/UsCarrierFixedToggle";
 import { carrierLabelOffsets, createUsCarrierBadge, CARRIER_MARKER_ROOT_CLASS, filterVisibleCarriers, isOperationalCarrier } from "@/lib/usCarrierMarkers";
 import { mergeCarriersWithAisPositions } from "@/lib/aisCarrierMatch";
 import { classifyMilAircraft, milAircraftRoleLabel } from "@/lib/milAircraftKind";
-import { createMilAircraftBadge } from "@/lib/milAircraftMarkers";
+import { createMilAircraftBadge, milAircraftMarkerRotationDeg } from "@/lib/milAircraftMarkers";
+import {
+  aisVesselHeadingDeg,
+  createAisVesselBadge,
+} from "@/lib/aisVesselMarkers";
 import { milAircraftIconSvg } from "@/lib/milAircraftIcon";
 import { US_CARRIER_STATUS_COLORS, US_CARRIER_STATUS_LABELS } from "@/data/usCarriers";
 
@@ -491,6 +495,7 @@ type MilHtmlMarker = MilitaryAircraft & {
 };
 
 type AisGlobePoint = AisVessel & { markerId: string; displayKind: "ais" };
+type AisHtmlMarker = AisVessel & { markerId: string; displayKind: "ais-html" };
 
 type FirmsFireGlobePoint = FirmsFire & { markerId: string; displayKind: "firms-fire" };
 
@@ -606,6 +611,7 @@ type HtmlOverlayMarker =
   | GlobePoint
   | UsCarrierHtmlMarker
   | MilHtmlMarker
+  | AisHtmlMarker
   | GdeltTagHtmlMarker
   | SituationCalloutMarker
   | UkraineSettlementHtmlMarker
@@ -3108,6 +3114,16 @@ export function GlobeDashboard({
     [aisVessels, carrierAisMerge.matchedMmsi, globeLod.tier, layerViewState, showAis],
   );
 
+  const aisHtmlMarkers = useMemo<AisHtmlMarker[]>(
+    () =>
+      aisDisplayPoints.map((vessel) => ({
+        ...vessel,
+        markerId: `ais-html-${vessel.mmsi}`,
+        displayKind: "ais-html" as const,
+      })),
+    [aisDisplayPoints],
+  );
+
   const visibleFirmsFires = useMemo(() => {
     if (!showFirmsFires) return [];
     const radiusDeg = VIEWPORT_RADIUS_BY_TIER[globeLod.tier];
@@ -3454,18 +3470,16 @@ export function GlobeDashboard({
     );
   }, [immediateUntilRef, isCameraMoving, neptunArchivedTrackPathsRaw]);
 
-  /** 정적 포인트 + AIS 선박 + AI 전쟁지역 + FIRMS (HTML 실루엣 kinds는 제외) */
+  /** 정적 포인트 + AI 전쟁지역 + FIRMS (HTML 실루엣 kinds·AIS 화살표는 제외) */
   const globeDisplayPoints = useMemo<GlobeDisplayPoint[]>(() => {
     const points: GlobeDisplayPoint[] = [
       ...staticGlobePoints.filter((point) => !isHtmlStaticKind(point.kind)),
-      ...aisDisplayPoints,
       ...firmsDisplayPoints,
       ...conflictClusterPoints,
       ...tzevaAdomDisplayPoints,
     ];
     return points;
   }, [
-      aisDisplayPoints,
       conflictClusterPoints,
       firmsDisplayPoints,
       staticGlobePoints,
@@ -3663,6 +3677,7 @@ export function GlobeDashboard({
       ...usCarrierHtmlMarkers,
       ...milHtmlMarkers,
       ...civHtmlMarkers,
+      ...aisHtmlMarkers,
       ...gdeltTagHtmlMarkers,
       ...neptunHtmlMarkers,
       ...neptunImpactHtmlMarkers,
@@ -3670,6 +3685,7 @@ export function GlobeDashboard({
     ];
     return markers;
   }, [
+      aisHtmlMarkers,
       airportPortHtmlMarkers,
       frictionPinMarkers,
       gdeltTagHtmlMarkers,
@@ -6499,6 +6515,30 @@ export function GlobeDashboard({
           },
         );
       }
+      if (item.displayKind === "ais-html") {
+        return createAisVesselBadge(
+          item,
+          {
+            onHover: (vessel) => {
+              if (!vessel) {
+                handleHtmlMarkerHover(null);
+                return;
+              }
+              handleHtmlMarkerHover({
+                ...vessel,
+                markerId: item.markerId,
+                displayKind: "ais",
+              });
+            },
+            onClick: (vessel) => {
+              skipNextGlobeClickRef.current = true;
+              openSelection({ kind: "ais", item: vessel });
+              flyTo(vessel.lat, vessel.lng, 0.45);
+            },
+          },
+          { lang: labelLanguage },
+        );
+      }
       if (item.displayKind === "gdelt-tag-html") {
         return createGdeltLocationTagBadge(
           item,
@@ -6544,6 +6584,7 @@ export function GlobeDashboard({
       return createAirportPortBadge(item as StaticGlobePoint, handleHtmlMarkerHover, alt);
     },
     [
+      flyTo,
       handleCarrierSelect,
       handleCivAircraftSelect,
       handleHtmlMarkerHover,
@@ -6551,6 +6592,7 @@ export function GlobeDashboard({
       handleNeptunThreatSelect,
       labelLanguage,
       openIntelFromCoords,
+      openSelection,
       usCarrierLabelOffsets,
     ],
   );
@@ -7032,6 +7074,25 @@ export function GlobeDashboard({
               htmlLng={(point: HtmlOverlayMarker) => point.lng}
               htmlAltitude={() => 0.004}
               htmlElement={createHtmlOverlayElement}
+              htmlRotation={(point: HtmlOverlayMarker) => {
+                if (point.displayKind === "mil-html" || point.displayKind === "civ-html") {
+                  return milAircraftMarkerRotationDeg(point);
+                }
+                if (point.displayKind === "ais-html") {
+                  return aisVesselHeadingDeg(point) ?? 0;
+                }
+                return 0;
+              }}
+              htmlRotationAlignment={(point: HtmlOverlayMarker) => {
+                if (
+                  point.displayKind === "mil-html" ||
+                  point.displayKind === "civ-html" ||
+                  point.displayKind === "ais-html"
+                ) {
+                  return "map";
+                }
+                return "viewport";
+              }}
               htmlElementVisibilityModifier={(el: HTMLElement, isVisible: boolean) => {
                 el.style.opacity = isVisible ? "1" : "0";
                 applyHtmlOverlayPointerEvents(el, isVisible);

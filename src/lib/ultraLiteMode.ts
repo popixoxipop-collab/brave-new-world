@@ -61,27 +61,14 @@ export const ULTRA_LITE_HEAVY_RENDER_KEYS = new Set<keyof LayerPrefs>([
 export function isUltraLiteHeavyRenderKey(key: keyof LayerPrefs | undefined): boolean {
   return Boolean(key && ULTRA_LITE_HEAVY_RENDER_KEYS.has(key));
 }
-function shouldPersistPerfPrefs(): boolean {
-  return process.env.NODE_ENV === "production";
-}
-
 export function loadPerfPrefs(): PerfPrefs {
   if (typeof window === "undefined") return DEFAULT_PERF_PREFS;
-  if (!shouldPersistPerfPrefs()) {
-    // local stub/dev: sessionStorage로만 유지 (새로고침 유지, 배포 키와 분리)
-    try {
-      const raw = sessionStorage.getItem(PERF_PREFS_KEY);
-      if (!raw) return DEFAULT_PERF_PREFS;
-      const parsed = JSON.parse(raw) as Partial<PerfPrefs>;
-      return { ultraLite: Boolean(parsed.ultraLite) };
-    } catch {
-      return DEFAULT_PERF_PREFS;
-    }
-  }
   try {
     const raw = localStorage.getItem(PERF_PREFS_KEY);
-    if (!raw) return DEFAULT_PERF_PREFS;
-    const parsed = JSON.parse(raw) as Partial<PerfPrefs>;
+    // 이전 개발 세션 값도 한 번 승계한다.
+    const legacyRaw = raw ?? sessionStorage.getItem(PERF_PREFS_KEY);
+    if (!legacyRaw) return DEFAULT_PERF_PREFS;
+    const parsed = JSON.parse(legacyRaw) as Partial<PerfPrefs>;
     return { ultraLite: Boolean(parsed.ultraLite) };
   } catch {
     return DEFAULT_PERF_PREFS;
@@ -92,11 +79,9 @@ export function savePerfPrefs(prefs: PerfPrefs): void {
   if (typeof window === "undefined") return;
   const payload = JSON.stringify(prefs);
   try {
-    if (shouldPersistPerfPrefs()) {
-      localStorage.setItem(PERF_PREFS_KEY, payload);
-    } else {
-      sessionStorage.setItem(PERF_PREFS_KEY, payload);
-    }
+    // 개발·배포 모두 브라우저 재시작 뒤에도 Ultra-Lite 선택을 유지한다.
+    localStorage.setItem(PERF_PREFS_KEY, payload);
+    sessionStorage.removeItem(PERF_PREFS_KEY);
   } catch {
     /* ignore quota */
   }

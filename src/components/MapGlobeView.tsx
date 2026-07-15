@@ -192,6 +192,11 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
   const htmlLat = asFn<unknown, number>(props.htmlLat, () => 0);
   const htmlLng = asFn<unknown, number>(props.htmlLng, () => 0);
   const htmlElement = props.htmlElement as ((item: unknown) => HTMLElement) | undefined;
+  const htmlRotation = asFn<unknown, number>(props.htmlRotation, () => 0);
+  const htmlRotationAlignment = asFn<unknown, "map" | "viewport" | "auto">(
+    props.htmlRotationAlignment,
+    () => "viewport",
+  );
 
   const onPointClick = props.onPointClick as ((item: unknown) => void) | undefined;
   const onPointHover = props.onPointHover as ((item: unknown | null) => void) | undefined;
@@ -790,12 +795,19 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
                 (item as { markerId?: string; id?: string }).markerId ??
                 (item as { id?: string }).id ??
                 index;
+              const rotation = htmlRotation(item);
+              const alignment = htmlRotationAlignment(item);
+              const rotKey =
+                alignment === "map" ? Math.round((((rotation % 360) + 360) % 360) / 5) * 5 : 0;
               return (
               <Marker
-                key={`html-marker-${id}`}
+                key={`html-marker-${id}-r${rotKey}`}
                 longitude={htmlLng(item)}
                 latitude={htmlLat(item)}
                 anchor="center"
+                rotation={rotation}
+                rotationAlignment={alignment}
+                pitchAlignment="viewport"
               >
                 <div
                   ref={(node) => {
