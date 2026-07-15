@@ -8,6 +8,7 @@ import {
   parseFirmsCsv,
 } from "@/lib/firmsParse";
 import { readFirmsFromD1, readFirmsFromIngestWorker } from "@/lib/d1LiveSnapshots";
+import { firmsFiresQuerySchema, parseSearchParams } from "@/lib/apiQuerySchemas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,27 +17,24 @@ const TTL_MS = 3 * 60 * 1000;
 /** 클라이언트 firmsLiveFetchMax와 맞춤 — query max 무시 상한 */
 const FIRMS_SERVER_HARD_CAP = 900;
 
-function parseBBox(searchParams: URLSearchParams) {
-  const west = Number(searchParams.get("west"));
-  const south = Number(searchParams.get("south"));
-  const east = Number(searchParams.get("east"));
-  const north = Number(searchParams.get("north"));
-  if ([west, south, east, north].every(Number.isFinite)) {
-    return clampBbox(west, south, east, north);
-  }
-  return clampBbox(-180, -90, 180, 90);
-}
-
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const bbox = parseBBox(searchParams);
-  const dayRange = Math.min(5, Math.max(1, Number(searchParams.get("days") || 1)));
-  const source = searchParams.get("source") || "VIIRS_SNPP_NRT";
-  const max = Math.min(
-    Number(searchParams.get("max") || FIRMS_SERVER_HARD_CAP),
-    FIRMS_SERVER_HARD_CAP,
-  );
-  const preferLive = searchParams.get("live") === "1";
+  const parsed = parseSearchParams(searchParams, firmsFiresQuerySchema);
+  if (!parsed.ok) {
+    return NextResponse.json(
+      { error: parsed.error, issues: parsed.issues, fires: [] },
+      { status: 400 },
+    );
+  }
+  const q = parsed.data;
+  const bbox =
+    q.west != null && q.south != null && q.east != null && q.north != null
+      ? clampBbox(q.west, q.south, q.east, q.north)
+      : clampBbox(-180, -90, 180, 90);
+  const dayRange = q.days;
+  const source = q.source;
+  const max = Math.min(q.max, FIRMS_SERVER_HARD_CAP);
+  const preferLive = Boolean(q.live);
 
   // Cron → D1 스냅샷 우선 (NASA 중복 호출·CSV 파싱 생략)
   if (!preferLive) {

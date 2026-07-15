@@ -3,6 +3,7 @@ import { fetchLatestGdeltEvents } from "@/lib/gdeltParse";
 import { fetchGdeltThemeCached, type GdeltTheme } from "@/lib/gdeltTheme";
 import { apiStubResponse } from "@/lib/apiStub";
 import { readGdeltPointsFromD1, readGdeltFromIngestWorker } from "@/lib/d1LiveSnapshots";
+import { gdeltQuerySchema, parseSearchParams } from "@/lib/apiQuerySchemas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,8 +15,15 @@ export async function GET(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url);
-    const theme = searchParams.get("theme") as GdeltTheme | null;
-    const preferLive = searchParams.get("live") === "1";
+    const parsed = parseSearchParams(searchParams, gdeltQuerySchema);
+    if (!parsed.ok) {
+      return NextResponse.json(
+        { error: parsed.error, issues: parsed.issues, events: [] },
+        { status: 400 },
+      );
+    }
+    const theme = (parsed.data.theme ?? null) as GdeltTheme | null;
+    const preferLive = Boolean(parsed.data.live);
 
     if (theme === "cyber" || theme === "election") {
       // Theme Geo는 D1 미적재 — 기본은 빈 응답, ?live=1 만 외부 호출
@@ -93,8 +101,7 @@ export async function GET(request: Request) {
       });
     }
 
-    const sliceParam = searchParams.get("slices");
-    const sliceCount = sliceParam ? Number.parseInt(sliceParam, 10) : undefined;
+    const sliceCount = parsed.data.slices;
 
     const payload = await fetchLatestGdeltEvents(
       sliceCount && sliceCount > 0 ? { sliceCount } : undefined,

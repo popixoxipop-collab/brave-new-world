@@ -9,6 +9,7 @@ import {
   combineBootProgress,
 } from "@/lib/bootLoadingProgress";
 import { GlobeLoadingScreen } from "@/components/GlobeLoadingScreen";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { prefetchUkraineControl } from "@/lib/viinaPrefetch";
 import { prefetchDisputeHatchPaths } from "@/lib/disputeHatchPrefetch";
 import { prefetchNeptun } from "@/lib/neptunPrefetch";
@@ -209,7 +210,7 @@ export function GlobeBootLoader({
   const mountDashboard = pickerDone && Dashboard !== null;
 
   return (
-    <>
+    <ErrorBoundary name="globe-boot">
       {mountDashboard ? (
         <Dashboard
           viinaMeta={viinaMeta}
@@ -224,6 +225,6 @@ export function GlobeBootLoader({
       {showLoadingOverlay ? (
         <GlobeLoadingScreen progress={displayProgress} fading={fading} />
       ) : null}
-    </>
+    </ErrorBoundary>
   );
 }

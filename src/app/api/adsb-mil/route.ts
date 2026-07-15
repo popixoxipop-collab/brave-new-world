@@ -3,6 +3,7 @@ import { apiStubResponse } from "@/lib/apiStub";
 import { fetchAdsbMilitary } from "@/lib/adsbWarmFetch";
 import { getAdsbApiKey } from "@/lib/adsbClient";
 import { readAdsbFromD1, readAdsbFromIngestWorker } from "@/lib/d1MaritimeAir";
+import { adsbMilQuerySchema, parseSearchParams } from "@/lib/apiQuerySchemas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,8 +17,15 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const max = Math.min(Number(searchParams.get("max") || 400), 1000);
-  const preferLive = searchParams.get("live") === "1";
+  const parsed = parseSearchParams(searchParams, adsbMilQuerySchema);
+  if (!parsed.ok) {
+    return NextResponse.json(
+      { error: parsed.error, issues: parsed.issues, aircraft: [] },
+      { status: 400 },
+    );
+  }
+  const max = parsed.data.max;
+  const preferLive = Boolean(parsed.data.live);
 
   if (!preferLive) {
     const fromD1 = await readAdsbFromD1({ mode: "mil", max });

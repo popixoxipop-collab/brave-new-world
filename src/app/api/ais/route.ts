@@ -13,6 +13,7 @@ import {
   fetchMarineTrafficCommercial,
   getMarineTrafficApiKey,
 } from "@/lib/marineTrafficFetch";
+import { aisQuerySchema, parseSearchParams } from "@/lib/apiQuerySchemas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -285,12 +286,19 @@ export async function GET(request: Request) {
   if (stub) return stub;
 
   const { searchParams } = new URL(request.url);
-  const maxVessels = Math.min(Number(searchParams.get("max") || 250), 1000);
-  const durationMs = Math.min(Number(searchParams.get("seconds") || 8) * 1000, 20000);
-  const debug = searchParams.get("debug") === "1";
-  const classFilter = parseAisClassFilter(searchParams.get("class"));
-  const provider = searchParams.get("provider"); // aisstream | marinetraffic | auto
-  const preferLive = searchParams.get("live") === "1";
+  const parsed = parseSearchParams(searchParams, aisQuerySchema);
+  if (!parsed.ok) {
+    return NextResponse.json(
+      { error: parsed.error, issues: parsed.issues, vessels: [] },
+      { status: 400 },
+    );
+  }
+  const maxVessels = parsed.data.max;
+  const durationMs = Math.min(parsed.data.seconds * 1000, 20000);
+  const debug = Boolean(parsed.data.debug);
+  const classFilter = parseAisClassFilter(parsed.data.class ?? null);
+  const provider = parsed.data.provider;
+  const preferLive = Boolean(parsed.data.live);
 
   // Cron → D1 스냅샷 우선 (유저 토글 시 클라우드 로그)
   if (!preferLive && provider !== "aisstream" && provider !== "marinetraffic") {

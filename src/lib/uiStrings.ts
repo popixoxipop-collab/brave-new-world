@@ -119,8 +119,8 @@ const UI = {
   hoverHelpOpenAria: { ko: "도움말 열기", en: "Open help" },
   hoverSources: { ko: "자료출처", en: "Sources" },
   hoverSourcesHint: {
-    ko: "GDELT, VIINA, FIRMS 등 데이터 라이선스·출처·면책 안내를 봅니다.",
-    en: "Licenses, sources, and disclaimers for GDELT, VIINA, FIRMS, and more.",
+    ko: "NASA FIRMS · ADS-B · MarineTraffic 및 GDELT, VIINA 등 데이터 라이선스·출처·면책 안내를 봅니다.",
+    en: "Licenses and attribution for NASA FIRMS, ADS-B, MarineTraffic, GDELT, VIINA, and more.",
   },
   hoverSourcesAria: { ko: "자료출처 및 라이선스", en: "Sources and licenses" },
   hoverUsCarrierTrack: { ko: "미 항공모함 추적", en: "US carrier tracking" },

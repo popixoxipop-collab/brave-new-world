@@ -11,6 +11,7 @@ import {
 } from "@/lib/adsbClient";
 import { distNmToBbox } from "@/lib/adsbWarmFetch";
 import { readAdsbFromD1, readAdsbFromIngestWorker } from "@/lib/d1MaritimeAir";
+import { adsbTrafficQuerySchema, parseSearchParams } from "@/lib/apiQuerySchemas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,15 +28,15 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const lat = Number(searchParams.get("lat"));
-  const lng = Number(searchParams.get("lng"));
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-    return NextResponse.json({ error: "lat/lng required", aircraft: [] }, { status: 400 });
+  const parsed = parseSearchParams(searchParams, adsbTrafficQuerySchema);
+  if (!parsed.ok) {
+    return NextResponse.json(
+      { error: parsed.error, issues: parsed.issues, aircraft: [] },
+      { status: 400 },
+    );
   }
-
-  const dist = Math.min(1500, Math.max(25, Number(searchParams.get("dist") || 250)));
-  const max = Math.min(Number(searchParams.get("max") || 350), 800);
-  const preferLive = searchParams.get("live") === "1";
+  const { lat, lng, dist, max, live } = parsed.data;
+  const preferLive = Boolean(live);
   const bbox = distNmToBbox(lat, lng, dist);
 
   if (!preferLive) {

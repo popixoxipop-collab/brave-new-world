@@ -9,6 +9,50 @@ export interface NewsLayerSourceNote {
   ingest: "static-build" | "cached-api" | "live-poll" | "mapped-existing";
 }
 
+/** 주요 실시간 출처 — 자료출처 패널 상단·도움말에 고정 표기 */
+export type PrimaryLiveSource = {
+  id: "nasa-firms" | "adsb" | "marinetraffic";
+  nameKo: string;
+  nameEn: string;
+  product: string;
+  url: string;
+  layers: string;
+  noteKo: string;
+};
+
+export const PRIMARY_LIVE_SOURCES: PrimaryLiveSource[] = [
+  {
+    id: "nasa-firms",
+    nameKo: "NASA FIRMS",
+    nameEn: "NASA Fire Information for Resource Management System",
+    product: "VIIRS NRT (NOAA-20 / SNPP)",
+    url: "https://firms.modaps.eosdis.nasa.gov/",
+    layers: "위성 화재·폭격 추정 (/api/firms-fires)",
+    noteKo:
+      "근실시간 위성 열원 탐지. Cron → D1 → 공개 /firms 폴백. 지도 표기: NASA FIRMS.",
+  },
+  {
+    id: "adsb",
+    nameKo: "ADS-B",
+    nameEn: "Automatic Dependent Surveillance–Broadcast",
+    product: "adsb.lol · airplanes.live · ADSBexchange / adsb.fi",
+    url: "https://www.adsbexchange.com/",
+    layers: "군용기·민간 항적 (/api/adsb-mil, /api/adsb-traffic)",
+    noteKo:
+      "ADS-B 항적. 워커는 Worker IP 호환 소스(adsb.lol 등) 우선, 키 있으면 ADSBexchange. 지도 표기: ADS-B.",
+  },
+  {
+    id: "marinetraffic",
+    nameKo: "MarineTraffic",
+    nameEn: "MarineTraffic AIS",
+    product: "exportvessels · aisstream.io 폴백",
+    url: "https://www.marinetraffic.com/",
+    layers: "선박 AIS (/api/ais)",
+    noteKo:
+      "민간 화물·탱커·여객 등. MarineTraffic 키 실패 시 AISstream 폴백. 지도 표기: MarineTraffic · AIS.",
+  },
+];
+
 /**
  * Conflict-view adapted source catalog.
  * URLs map to `/data/{profile}/*.json` static assets or `/api/*` routes in this app.
@@ -39,34 +83,34 @@ export const NEWS_LAYER_SOURCE_CATALOG: NewsLayerSourceNote[] = [
   },
   {
     layerId: "military-activity",
-    source: "ADSBexchange / adsb.fi → D1",
+    source: "ADS-B (군용기)",
     url: "/api/adsb-mil",
     cadence: "Cron warm ~10m · toggle on-demand D1",
-    attribution: "ADSBexchange (x-api-key) or adsb.fi fallback",
+    attribution: "ADS-B · adsb.lol / airplanes.live / ADSBexchange / adsb.fi",
     notes:
-      "Military aircraft. Cron POST /api/adsb/warm → D1 `adsb_aircraft` (mode=mil). User toggle reads D1 first; ?live=1 forces upstream.",
+      "Military aircraft via ADS-B. Cron → D1 `adsb_aircraft` (mode=mil). User toggle reads D1 first; ?live=1 forces upstream.",
     status: "shipped",
     ingest: "cached-api",
   },
   {
     layerId: "air-traffic",
-    source: "ADSBexchange / adsb.fi → D1",
+    source: "ADS-B (민간 항적)",
     url: "/api/adsb-traffic",
     cadence: "Cron hub warm ~10m · toggle on-demand D1",
-    attribution: "ADSBexchange or adsb.fi",
+    attribution: "ADS-B · adsb.lol / airplanes.live / ADSBexchange / adsb.fi",
     notes:
-      "Civilian traffic (exclude dbFlags&1). Cron warms hub grids into D1; viewport query prefers D1 bbox then live.",
+      "Civilian ADS-B traffic (exclude dbFlags&1). Cron warms hub grids into D1; viewport query prefers D1 bbox then live.",
     status: "shipped",
     ingest: "cached-api",
   },
   {
     layerId: "ais",
-    source: "MarineTraffic / aisstream → D1",
+    source: "MarineTraffic (AIS)",
     url: "/api/ais",
-    cadence: "Cron MT warm ~10m · toggle on-demand D1",
+    cadence: "Cron ~10m · toggle on-demand D1",
     attribution: "MarineTraffic · aisstream.io",
     notes:
-      "Commercial AIS via MarineTraffic warm → D1 `ais_vessels`. Toggle reads D1 first; military still uses aisstream live fallback.",
+      "Commercial AIS via MarineTraffic → D1 `ais_vessels`. Toggle reads D1 first; AISstream live fallback when MT unavailable.",
     status: "shipped",
     ingest: "cached-api",
   },
@@ -85,10 +129,10 @@ export const NEWS_LAYER_SOURCE_CATALOG: NewsLayerSourceNote[] = [
     layerId: "firms-fires",
     source: "NASA FIRMS (VIIRS NRT)",
     url: "/api/firms-fires",
-    cadence: "3 min (TTL) · viewport bbox",
+    cadence: "Cron ~10m · viewport bbox",
     attribution: "NASA FIRMS",
     notes:
-      "Near-real-time satellite fire detections (VIIRS SNPP NRT). Queries current map viewport bounding box.",
+      "Near-real-time satellite fire detections (VIIRS NOAA-20 / SNPP NRT). Cron → D1 → /api/firms-fires. Map attribution: NASA FIRMS.",
     status: "shipped",
     ingest: "cached-api",
   },

@@ -28,7 +28,10 @@ import {
   TELEGRAM_OSINT_ABSOLUTE_RULE_KO,
   TELEGRAM_OSINT_CHECKLIST,
 } from "@/lib/licensing/telegramOsintPolicy";
-import { NEWS_LAYER_SOURCE_CATALOG } from "@/data/sourceCatalog";
+import {
+  NEWS_LAYER_SOURCE_CATALOG,
+  PRIMARY_LIVE_SOURCES,
+} from "@/data/sourceCatalog";
 
 type MethodologySourcesPanelProps = {
   open: boolean;
@@ -78,6 +81,38 @@ export function MethodologySourcesPanel({ open, onClose }: MethodologySourcesPan
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
+          <section className="rounded-xl border border-emerald-800/40 bg-emerald-950/20 p-3">
+            <h3 className="text-sm font-medium text-emerald-100">주요 출처</h3>
+            <p className="mt-1.5 text-[11px] leading-5 text-sky-100/65">
+              실시간 관측 레이어의 1차 출처입니다. 지도·패널에 NASA FIRMS · ADS-B ·
+              MarineTraffic을 명시합니다.
+            </p>
+            <ul className="mt-3 space-y-3">
+              {PRIMARY_LIVE_SOURCES.map((src) => (
+                <li
+                  key={src.id}
+                  className="rounded-lg border border-emerald-800/30 bg-black/20 px-2.5 py-2"
+                >
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                    <span className="text-[12px] font-semibold text-emerald-50">{src.nameKo}</span>
+                    <span className="text-[10px] text-emerald-200/55">{src.product}</span>
+                  </div>
+                  <p className="mt-1 text-[10px] italic text-sky-100/50">{src.nameEn}</p>
+                  <p className="mt-1.5 text-[11px] leading-5 text-sky-100/75">{src.noteKo}</p>
+                  <p className="mt-1 text-[10px] text-sky-100/45">{src.layers}</p>
+                  <a
+                    href={src.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1.5 inline-block text-[10px] text-emerald-200/80 underline decoration-emerald-400/35 underline-offset-2 hover:text-emerald-100"
+                  >
+                    {src.url.replace(/^https?:\/\//, "")}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+
           <section className="rounded-xl border border-amber-900/35 bg-amber-950/15 p-3">
             <h3 className="text-sm font-medium text-amber-100">VIINA — 렌더링 전용 (ODbL)</h3>
             <p className="mt-2 text-[12px] leading-5 text-sky-100/80">{VIINA_ATTRIBUTION_KO}</p>
