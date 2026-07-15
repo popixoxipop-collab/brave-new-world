@@ -177,7 +177,7 @@ export const FRICTION_EPISODES: readonly FrictionEpisode[] = [
     pitch: 45,
     bearing: 0,
     historicalYear: 1969,
-    locationName: "백두산(장백산) 일대 국경",
+    locationName: "백두산 일대 국경",
     parties: ["PRK", "CHN"],
     radiusScale: 1.5,
     note: "개별 교전의 시·공간 세부는 공개 1차 자료가 제한적이다. 중소 분열·문화대혁명기 조중 관계 악화와 국경 긴장 보도·연구를 반영한다.",

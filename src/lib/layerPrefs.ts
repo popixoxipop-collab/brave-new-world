@@ -211,6 +211,29 @@ function shouldPersistLayerPrefs(): boolean {
   return process.env.NODE_ENV === "production";
 }
 
+/**
+ * 저장된 prefs가 없는 신규 방문자용 기본 언어 추정.
+ * - Reddit에서 유입 → en (r/geopolitics 등 영어권 커뮤니티 타겟)
+ * - 브라우저 언어가 한국어 → ko
+ * - 그 외 → en
+ * 실패 시 DEFAULT_LAYER_PREFS.labelLanguage("ko")로 안전하게 폴백.
+ */
+function detectDefaultLabelLanguage(): LabelLanguage {
+  try {
+    const referrer = document.referrer || "";
+    if (/reddit\.com/i.test(referrer)) return "en";
+
+    const navLangs =
+      typeof navigator.languages !== "undefined" && navigator.languages.length > 0
+        ? navigator.languages
+        : [navigator.language];
+    const primary = (navLangs[0] || "").toLowerCase();
+    return primary.startsWith("ko") ? "ko" : "en";
+  } catch {
+    return DEFAULT_LAYER_PREFS.labelLanguage;
+  }
+}
+
 export function loadLayerPrefs(): LayerPrefs {
   if (typeof window === "undefined") return DEFAULT_LAYER_PREFS;
   if (!shouldPersistLayerPrefs()) return DEFAULT_LAYER_PREFS;
@@ -235,7 +258,8 @@ export function loadLayerPrefs(): LayerPrefs {
       return migrated;
     }
 
-    return DEFAULT_LAYER_PREFS;
+    // 첫 방문(저장된 prefs 없음) — 리퍼러/브라우저 언어로 기본 표시 언어만 추정
+    return { ...DEFAULT_LAYER_PREFS, labelLanguage: detectDefaultLabelLanguage() };
   } catch {
     return DEFAULT_LAYER_PREFS;
   }

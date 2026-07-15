@@ -512,15 +512,17 @@ main[data-viewer="economy"] .font-en,
   animation: intel-stack-focus-flash-keyframes 0.9s ease-out;
 }
 
-/* 하단 뉴스 도크: 지구본 상단은 남기고 아래에서 올라옴 */
+/* 하단 뉴스 도크: 지정학·지경학 공통 — 열리면 화면 가득 */
 .intel-news-sheet {
-  height: min(52vh, 560px);
-  max-height: min(52vh, 560px);
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100vh;
+  max-height: 100dvh;
   transform: translateY(110%);
   visibility: hidden;
   pointer-events: none;
-  border-top-left-radius: 1.25rem;
-  border-top-right-radius: 1.25rem;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
   border-top: 1px solid rgba(125, 211, 252, 0.16);
   background: rgba(5, 11, 20, 0.94);
   box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.45);
@@ -529,13 +531,6 @@ main[data-viewer="economy"] .font-en,
   transition:
     transform 0.38s cubic-bezier(0.32, 0, 0.17, 1),
     visibility 0.38s step-end;
-}
-
-@media (max-width: 640px) {
-  .intel-news-sheet {
-    height: min(58vh, 620px);
-    max-height: min(58vh, 620px);
-  }
 }
 
 .intel-news-sheet--open {
