@@ -20,6 +20,7 @@
     "coastlines:build": "node scripts/build-coastlines.js full",
     "borders:build": "node scripts/build-country-borders.js full",
     "bri:build": "node scripts/build-bri-trade.js",
+    "dfc:build": "node scripts/build-us-dfc-supply-chain.js",
     "static:build": "node scripts/build-static-extras.js full",
     "gem:build": "node scripts/build-gem-layers.js",
     "gem:build:lite": "node scripts/build-data-profile.js lite && node scripts/build-gem-layers.js",

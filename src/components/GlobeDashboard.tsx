@@ -239,6 +239,10 @@ import {
 } from "@/lib/eastAsiaAdiz";
 import { axisNetworkToPaths } from "@/lib/axisNetworkPaths";
 import { briTradePathsToTransport, briTradeStrokeWidth } from "@/lib/briTradePaths";
+import {
+  usDfcSupplyPathsToTransport,
+  usDfcSupplyStrokeWidth,
+} from "@/lib/usDfcSupplyPaths";
 import { buildAxisHubCountriesGeoJson } from "@/lib/axisHubCountryPolygons";
 import {
   armsPairsToPaths,
@@ -428,6 +432,7 @@ import {
   type MapFlyTarget,
 } from "@/lib/news/theaterMap";
 import { UsCarrierFixedToggle } from "@/components/UsCarrierFixedToggle";
+import { EconomySupplyChainFixedToggle } from "@/components/EconomySupplyChainFixedToggle";
 import { carrierLabelOffsets, createUsCarrierBadge, CARRIER_MARKER_ROOT_CLASS, filterVisibleCarriers, isOperationalCarrier } from "@/lib/usCarrierMarkers";
 import { mergeCarriersWithAisPositions } from "@/lib/aisCarrierMatch";
 import { classifyMilAircraft, milAircraftRoleLabel } from "@/lib/milAircraftKind";
@@ -1099,6 +1104,7 @@ const FLOW_PATH_KINDS = new Set([
   "neptun-projection",
   "axis-link",
   "bri-trade",
+  "us-dfc-supply",
 ]);
 const HEATMAP_MEANINGFUL_DELTA = 28;
 const LABEL_MEANINGFUL_DELTA = 56;
@@ -1717,6 +1723,7 @@ export function GlobeDashboard({
     showEastAsiaAdiz,
     showAxisNetwork,
     showBriTradeConnectivity,
+    showUsDfcSupplyChain,
     labelLanguage,
   } = layerPrefs;
 
@@ -1851,6 +1858,7 @@ export function GlobeDashboard({
   const setShowEastAsiaAdiz = (v: boolean) => togglePref("showEastAsiaAdiz", v);
   const setShowAxisNetwork = (v: boolean) => togglePref("showAxisNetwork", v);
   const setShowBriTradeConnectivity = (v: boolean) => togglePref("showBriTradeConnectivity", v);
+  const setShowUsDfcSupplyChain = (v: boolean) => togglePref("showUsDfcSupplyChain", v);
 
   const showGdeltLayers =
     viewerChromePreset.fetchGdelt &&
@@ -2751,6 +2759,11 @@ export function GlobeDashboard({
     return briTradePathsToTransport(labelLanguage);
   }, [showBriTradeConnectivity, labelLanguage]);
 
+  const usDfcSupplyPaths = useMemo<TransportPath[]>(() => {
+    if (!showUsDfcSupplyChain) return [];
+    return usDfcSupplyPathsToTransport(labelLanguage);
+  }, [showUsDfcSupplyChain, labelLanguage]);
+
   const hubHighlightIsos = useMemo(() => {
     if (!activeHubId) return null;
     const hub = hubById(activeHubId);
@@ -2852,6 +2865,7 @@ export function GlobeDashboard({
       ...eastAsiaAdizPaths,
       ...axisNetworkPaths,
       ...briTradePaths,
+      ...usDfcSupplyPaths,
       ...visibleShipping,
       ...visibleCables,
       ...visibleOilPipelines,
@@ -2863,6 +2877,7 @@ export function GlobeDashboard({
       armsEmbargoFramePaths,
       axisNetworkPaths,
       briTradePaths,
+      usDfcSupplyPaths,
       disputeZonePaths,
       eastAsiaAdizPaths,
       frictionWarZonePaths,
@@ -5113,6 +5128,16 @@ export function GlobeDashboard({
           ...(isEconomyViewer
             ? ([
                 {
+                  id: "us-dfc-supply",
+                  label: "미국 DFC 개발금융망",
+                  detail: showUsDfcSupplyChain
+                    ? `호 ${usDfcSupplyPaths.length.toLocaleString()} · DFC Active Projects`
+                    : "꺼짐 · 미국 개발금융 투자 대상국",
+                  checked: layerPrefs.showUsDfcSupplyChain,
+                  onChange: setShowUsDfcSupplyChain,
+                  accent: "blue",
+                },
+                {
                   id: "bri-trade",
                   label: "일대일로 무역 연결",
                   detail: showBriTradeConnectivity
@@ -5204,7 +5229,12 @@ export function GlobeDashboard({
         onToggleAll: (enabled) =>
           toggleCategoryPrefs({
             showShippingLanes: enabled,
-            ...(isEconomyViewer ? { showBriTradeConnectivity: enabled } : {}),
+            ...(isEconomyViewer
+              ? {
+                  showBriTradeConnectivity: enabled,
+                  showUsDfcSupplyChain: enabled,
+                }
+              : {}),
             showSubmarineCables: enabled,
             showSubmarineTunnels: enabled,
             showAirports: enabled,
@@ -5447,6 +5477,7 @@ export function GlobeDashboard({
     lpg(showEastAsiaAdiz, false),
     lpg(showAxisNetwork, false),
     lpg(showBriTradeConnectivity, false),
+    lpg(showUsDfcSupplyChain, false),
     lpg(showWarZones, false),
     lpg(showEconomicCenters, false),
     lpg(showElectionEvents, false),
@@ -7476,6 +7507,7 @@ export function GlobeDashboard({
                 if (path.kind === "neptun-projection") return 1.05;
                 if (path.kind === "axis-link") return 1.35;
                 if (path.kind === "bri-trade") return briTradeStrokeWidth(path);
+                if (path.kind === "us-dfc-supply") return usDfcSupplyStrokeWidth(path);
                 if (path.kind === "coastline") return 0.38;
                 if (path.kind === "country-border") {
                   return globeTextures.vectorBase
@@ -7649,16 +7681,25 @@ export function GlobeDashboard({
                 : "상세"
           }
         />
-        {!isEconomyViewer ? (
         <div className="pointer-events-none absolute left-[4.5rem] top-3 z-[55]">
-          <UsCarrierFixedToggle
-            checked={showUsCarriers}
-            onChange={setShowUsCarriers}
-            carrierCount={usCarriers.length}
-            deployedCount={deployedCarrierCount}
-          />
+          {!isEconomyViewer ? (
+            <UsCarrierFixedToggle
+              checked={showUsCarriers}
+              onChange={setShowUsCarriers}
+              carrierCount={usCarriers.length}
+              deployedCount={deployedCarrierCount}
+            />
+          ) : (
+            <EconomySupplyChainFixedToggle
+              showUsDfc={showUsDfcSupplyChain}
+              showChinaBri={showBriTradeConnectivity}
+              onUsDfcChange={setShowUsDfcSupplyChain}
+              onChinaBriChange={setShowBriTradeConnectivity}
+              usLinkCount={usDfcSupplyPaths.length}
+              chinaLinkCount={briTradePaths.length}
+            />
+          )}
         </div>
-        ) : null}
         <DisputeZoneLegend
           open={
             !isEconomyViewer &&

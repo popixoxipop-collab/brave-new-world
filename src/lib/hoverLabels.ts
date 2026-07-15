@@ -45,6 +45,7 @@ const PATH_KIND: Partial<Record<TransportPath["kind"], Bi>> = {
   "conflict-hatch": { ko: "분쟁 구역 빗금", en: "Conflict zone hatch" },
   "axis-link": { ko: "축 관계망", en: "Axis relationship link" },
   "bri-trade": { ko: "일대일로 무역 연결", en: "BRI trade connectivity" },
+  "us-dfc-supply": { ko: "미국 DFC 개발금융망", en: "U.S. DFC network" },
   "ua-axis": { ko: "UA 작전 축", en: "UA axis of advance" },
   "ru-axis": { ko: "RU 방어선", en: "RU defensive line" },
   "ua-advance": { ko: "UA 진격 방향", en: "UA advance" },

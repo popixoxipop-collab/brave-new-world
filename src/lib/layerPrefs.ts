@@ -63,6 +63,8 @@ export type LayerPrefs = {
   showAxisNetwork: boolean;
   /** World Bank BRI 무역·운송 연결성 (중국→참여국) */
   showBriTradeConnectivity: boolean;
+  /** 미국 DFC 활성 프로젝트 기반 개발금융 공급망 */
+  showUsDfcSupplyChain: boolean;
   labelLanguage: LabelLanguage;
 };
 
@@ -117,6 +119,7 @@ export const DEFAULT_LAYER_PREFS: LayerPrefs = {
   showEastAsiaAdiz: false,
   showAxisNetwork: false,
   showBriTradeConnectivity: false,
+  showUsDfcSupplyChain: false,
   labelLanguage: "ko",
 };
 

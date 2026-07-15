@@ -142,7 +142,9 @@ export type TransportPath = {
     /** IRN–CHN–RUS–PRK 축·스포크 관계망 호 */
     | "axis-link"
     /** World Bank BRI 무역·운송 연결성 (chn→국가·도시) */
-    | "bri-trade";
+    | "bri-trade"
+    /** 미국 DFC 활성 프로젝트 기반 개발금융 공급망 */
+    | "us-dfc-supply";
   name: string | null;
   scalerank: number;
   lengthKm: number | null;
