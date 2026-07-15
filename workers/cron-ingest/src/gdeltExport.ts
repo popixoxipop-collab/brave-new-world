@@ -170,6 +170,37 @@ function latestExportUrl(lastUpdateText: string): string | null {
   return line?.trim().split(/\s+/)[2] || null;
 }
 
+/**
+ * 최신 export URL의 타임스탬프를 15분씩 뒤로 물려 후보 URL을 만든다.
+ * GDELT는 lastupdate.txt에 올라온 직후 파일이 잠시 404가 나므로,
+ * 최신 것이 실패하면 직전 슬라이스로 폴백한다.
+ */
+function buildExportUrlCandidates(latestUrl: string, count: number): string[] {
+  const match = latestUrl.match(/\/(\d{14})\.export\.CSV\.zip$/);
+  if (!match) return [latestUrl];
+  const ts = match[1];
+  const year = Number(ts.slice(0, 4));
+  const month = Number(ts.slice(4, 6));
+  const day = Number(ts.slice(6, 8));
+  const hour = Number(ts.slice(8, 10));
+  const minute = Number(ts.slice(10, 12));
+  let time = Date.UTC(year, month - 1, day, hour, minute, 0);
+
+  const urls: string[] = [];
+  for (let i = 0; i < count; i += 1) {
+    const d = new Date(time);
+    const stamp =
+      `${d.getUTCFullYear()}` +
+      `${String(d.getUTCMonth() + 1).padStart(2, "0")}` +
+      `${String(d.getUTCDate()).padStart(2, "0")}` +
+      `${String(d.getUTCHours()).padStart(2, "0")}` +
+      `${String(d.getUTCMinutes()).padStart(2, "0")}00`;
+    urls.push(`http://data.gdeltproject.org/gdeltv2/${stamp}.export.CSV.zip`);
+    time -= 15 * 60 * 1000;
+  }
+  return urls;
+}
+
 function unzipFirstText(buffer: ArrayBuffer): string {
   const entries = unzipSync(new Uint8Array(buffer));
   const first = Object.values(entries)[0];
@@ -253,18 +284,27 @@ export async function fetchGdeltTensionPoints(options: {
       return { points: [], errors: ["lastupdate: export URL missing"] };
     }
 
-    const exportResponse = await fetch(exportUrl);
-    if (!exportResponse.ok) {
-      return {
-        points: [],
-        errors: [`export: HTTP ${exportResponse.status}`],
-      };
+    const candidates = buildExportUrlCandidates(exportUrl, 4);
+    const errors: string[] = [];
+    for (const url of candidates) {
+      try {
+        const exportResponse = await fetch(url);
+        if (!exportResponse.ok) {
+          errors.push(`export: HTTP ${exportResponse.status}`);
+          continue;
+        }
+        const tsv = unzipFirstText(await exportResponse.arrayBuffer());
+        return {
+          points: parseTensionRows(tsv, Math.max(80, options.maxPoints)),
+          errors: [],
+        };
+      } catch (error) {
+        errors.push(
+          `export: ${error instanceof Error ? error.message : "fetch failed"}`,
+        );
+      }
     }
-    const tsv = unzipFirstText(await exportResponse.arrayBuffer());
-    return {
-      points: parseTensionRows(tsv, Math.max(80, options.maxPoints)),
-      errors: [],
-    };
+    return { points: [], errors };
   } catch (error) {
     return {
       points: [],

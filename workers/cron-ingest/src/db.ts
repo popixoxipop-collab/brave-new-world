@@ -126,6 +126,33 @@ export async function upsertTelegramAlerts(db: D1Database, alerts: TelegramAlert
   return written;
 }
 
+export async function readFirmsFires(
+  db: D1Database,
+  opts: { west: number; south: number; east: number; north: number; limit: number },
+) {
+  const rows = await db
+    .prepare(
+      `SELECT id, lat, lng, frp, brightness, confidence, acq_date, acq_time, satellite, daynight, source, theater
+       FROM firms_fires
+       WHERE lat >= ? AND lat <= ? AND lng >= ? AND lng <= ?
+       ORDER BY ingested_at DESC LIMIT ?`,
+    )
+    .bind(opts.south, opts.north, opts.west, opts.east, opts.limit)
+    .all<Record<string, unknown>>();
+  return rows.results ?? [];
+}
+
+export async function readGdeltPoints(db: D1Database, limit = 1200) {
+  const rows = await db
+    .prepare(
+      `SELECT id, lat, lng, name, url, mention_count, query_tag
+       FROM gdelt_points ORDER BY ingested_at DESC LIMIT ?`,
+    )
+    .bind(limit)
+    .all<Record<string, unknown>>();
+  return rows.results ?? [];
+}
+
 export async function readTelegramAlerts(db: D1Database, limit = 200) {
   const rows = await db
     .prepare(

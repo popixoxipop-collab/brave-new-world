@@ -7,7 +7,7 @@ import {
   isFirmsLiveEnabled,
   parseFirmsCsv,
 } from "@/lib/firmsParse";
-import { readFirmsFromD1 } from "@/lib/d1LiveSnapshots";
+import { readFirmsFromD1, readFirmsFromIngestWorker } from "@/lib/d1LiveSnapshots";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,6 +50,19 @@ export async function GET(request: Request) {
         source: "d1",
         bbox,
         attribution: "NASA FIRMS (via Cloudflare D1 cron ingest)",
+      });
+    }
+    // D1 바인딩이 없으면(Vercel 등) cron 워커 공개 엔드포인트로 폴백
+    const fromWorker = await readFirmsFromIngestWorker({ ...bbox, max });
+    if (fromWorker && fromWorker.count > 0) {
+      return NextResponse.json({
+        receivedAt: fromWorker.receivedAt,
+        cached: true,
+        count: fromWorker.count,
+        fires: fromWorker.fires,
+        source: "ingest-worker",
+        bbox,
+        attribution: "NASA FIRMS (via Cloudflare cron worker)",
       });
     }
     // D1 비면 NASA 직접 호출 금지 — cron 채움 또는 ?live=1

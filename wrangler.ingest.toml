@@ -18,8 +18,8 @@ workers_dev = true
 compatibility_flags = []
 
 [vars]
-# Theater FIRMS day window (1–5). Keep small for Cron CPU limits.
-FIRMS_DAY_RANGE = "1"
+# Theater FIRMS day window (1–5). SNPP+NOAA20+NOAA21 병합이라 2일이면 충분.
+FIRMS_DAY_RANGE = "2"
 # Cap per FIRMS theater bbox insert
 FIRMS_MAX_PER_THEATER = "400"
 # GDELT Geo API — 키워드 범위는 넓히되 총량 캡 (쿼리당·전체 하드캡은 gdelt.ts)

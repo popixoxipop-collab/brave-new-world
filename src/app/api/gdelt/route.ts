@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { fetchLatestGdeltEvents } from "@/lib/gdeltParse";
 import { fetchGdeltThemeCached, type GdeltTheme } from "@/lib/gdeltTheme";
 import { apiStubResponse } from "@/lib/apiStub";
-import { readGdeltPointsFromD1 } from "@/lib/d1LiveSnapshots";
+import { readGdeltPointsFromD1, readGdeltFromIngestWorker } from "@/lib/d1LiveSnapshots";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,25 +41,46 @@ export async function GET(request: Request) {
 
     // Cron Geo 스냅샷 우선 — ZIP/CSV는 ?live=1 일 때만
     if (!preferLive) {
+      const mapPoint = (point: {
+        id: string;
+        lat: number;
+        lng: number;
+        name: string | null;
+        url: string | null;
+        mentionCount: number | null;
+        queryTag: string | null;
+      }) => ({
+        id: point.id,
+        kind: "gdelt-geo",
+        name: point.name || point.queryTag || "GDELT",
+        lat: point.lat,
+        lng: point.lng,
+        url: point.url,
+        mentionCount: point.mentionCount,
+        queryTag: point.queryTag,
+        severity: 2,
+        eventTier: "diplomatic" as const,
+      });
+
       const fromD1 = await readGdeltPointsFromD1(1200);
       if (fromD1 && fromD1.count > 0) {
         return NextResponse.json({
           fetchedAt: fromD1.fetchedAt,
           cached: true,
           source: "d1",
-          events: fromD1.events.map((point) => ({
-            id: point.id,
-            kind: "gdelt-geo",
-            name: point.name || point.queryTag || "GDELT",
-            lat: point.lat,
-            lng: point.lng,
-            url: point.url,
-            mentionCount: point.mentionCount,
-            queryTag: point.queryTag,
-            severity: 2,
-            eventTier: "diplomatic" as const,
-          })),
+          events: fromD1.events.map(mapPoint),
           attribution: "GDELT Project (via Cloudflare D1 cron ingest)",
+        });
+      }
+      // D1 바인딩이 없으면(Vercel 등) cron 워커 공개 엔드포인트로 폴백
+      const fromWorker = await readGdeltFromIngestWorker(1200);
+      if (fromWorker && fromWorker.count > 0) {
+        return NextResponse.json({
+          fetchedAt: fromWorker.fetchedAt,
+          cached: true,
+          source: "ingest-worker",
+          events: fromWorker.events.map(mapPoint),
+          attribution: "GDELT Project (via Cloudflare cron worker)",
         });
       }
       return NextResponse.json({

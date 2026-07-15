@@ -2,6 +2,8 @@ import type { IngestEnv } from "./env";
 import {
   getFirmsMapKey,
   pruneOldRows,
+  readFirmsFires,
+  readGdeltPoints,
   readIntVar,
   readTelegramAlerts,
   recordIngestRun,
@@ -225,6 +227,16 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
   }
 }
 
+function jsonPublic(body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "access-control-allow-origin": "*",
+      "cache-control": "public, max-age=60",
+    },
+  });
+}
+
 function authorizeManual(request: Request, env: IngestEnv): boolean {
   const secret = env.INGEST_CRON_SECRET?.trim();
   if (!secret) return true; // open in local/dev when secret unset
@@ -265,7 +277,72 @@ const worker = {
           run: "POST /run (optional Bearer INGEST_CRON_SECRET)",
           latest: "GET /latest",
           telegram: "GET /telegram?limit=200 (public read of D1 alerts)",
+          firms: "GET /firms?west&south&east&north&max (public read of D1 fires)",
+          gdelt: "GET /gdelt?limit=1200 (public read of D1 tension points)",
         },
+      });
+    }
+
+    if (url.pathname === "/firms") {
+      const num = (k: string, d: number) => {
+        const v = Number(url.searchParams.get(k));
+        return Number.isFinite(v) ? v : d;
+      };
+      const west = num("west", -180);
+      const south = num("south", -90);
+      const east = num("east", 180);
+      const north = num("north", 90);
+      const max = Math.min(2000, Math.max(1, Math.floor(num("max", 900))));
+      let fires: Array<Record<string, unknown>> = [];
+      try {
+        const rows = await readFirmsFires(env.DB, { west, south, east, north, limit: max });
+        fires = rows.map((row) => ({
+          id: row.id,
+          lat: row.lat,
+          lng: row.lng,
+          frp: row.frp,
+          brightness: row.brightness,
+          confidence: row.confidence,
+          acqDate: row.acq_date,
+          acqTime: row.acq_time,
+          satellite: row.satellite,
+          daynight: row.daynight,
+        }));
+      } catch {
+        fires = [];
+      }
+      return jsonPublic({
+        receivedAt: new Date().toISOString(),
+        source: "d1-cron",
+        count: fires.length,
+        bbox: { west, south, east, north },
+        fires,
+      });
+    }
+
+    if (url.pathname === "/gdelt") {
+      const limitRaw = Number.parseInt(url.searchParams.get("limit") || "1200", 10);
+      const limit = Math.min(2000, Math.max(1, Number.isFinite(limitRaw) ? limitRaw : 1200));
+      let events: Array<Record<string, unknown>> = [];
+      try {
+        const rows = await readGdeltPoints(env.DB, limit);
+        events = rows.map((row) => ({
+          id: row.id,
+          lat: row.lat,
+          lng: row.lng,
+          name: row.name,
+          url: row.url,
+          mentionCount: row.mention_count,
+          queryTag: row.query_tag,
+        }));
+      } catch {
+        events = [];
+      }
+      return jsonPublic({
+        fetchedAt: new Date().toISOString(),
+        source: "d1-cron",
+        count: events.length,
+        events,
       });
     }
 
@@ -289,21 +366,12 @@ const worker = {
       } catch {
         alerts = [];
       }
-      return new Response(
-        JSON.stringify({
-          fetchedAt: fetchedAt ?? new Date().toISOString(),
-          live: alerts.length > 0,
-          source: "d1-cron",
-          alerts,
-        }),
-        {
-          headers: {
-            "content-type": "application/json; charset=utf-8",
-            "access-control-allow-origin": "*",
-            "cache-control": "public, max-age=60",
-          },
-        },
-      );
+      return jsonPublic({
+        fetchedAt: fetchedAt ?? new Date().toISOString(),
+        live: alerts.length > 0,
+        source: "d1-cron",
+        alerts,
+      });
     }
 
     if (url.pathname === "/latest") {

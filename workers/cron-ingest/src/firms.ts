@@ -2,6 +2,12 @@ import type { FirmsFireRow } from "./env";
 
 const DEFAULT_SOURCE = "VIIRS_SNPP_NRT";
 
+/**
+ * 여러 위성 소스를 병합해 커버리지 공백을 없앤다.
+ * SNPP NRT가 비는 구간이 있어 NOAA-20/21을 함께 조회한다.
+ */
+const FIRMS_SOURCES = ["VIIRS_NOAA20_NRT", "VIIRS_SNPP_NRT", "VIIRS_NOAA21_NRT"];
+
 /** Conflict theaters — keep small for Worker CPU/time limits */
 export const FIRMS_THEATERS: {
   id: string;
@@ -107,39 +113,56 @@ export async function fetchFirmsForTheaters(options: {
   mapKey: string;
   dayRange: number;
   maxPerTheater: number;
+  /** 지정 시 이 소스만, 없으면 SNPP+NOAA20+NOAA21 병합 */
   source?: string;
 }): Promise<{ fires: FirmsFireRow[]; errors: string[] }> {
-  const source = options.source ?? DEFAULT_SOURCE;
+  const sources = options.source ? [options.source] : FIRMS_SOURCES;
   const fires: FirmsFireRow[] = [];
   const errors: string[] = [];
+  // 같은 화재를 여러 위성이 잡을 수 있어 좌표·시각 근사로 중복 제거
+  const seen = new Set<string>();
 
   for (const theater of FIRMS_THEATERS) {
-    try {
-      const url = buildFirmsAreaUrl({
-        mapKey: options.mapKey,
-        ...theater,
-        dayRange: options.dayRange,
-        source,
-      });
-      const response = await fetch(url, {
-        headers: { Accept: "text/csv" },
-      });
-      const csv = await response.text();
-      if (!response.ok) {
-        errors.push(`${theater.id}: HTTP ${response.status}`);
-        continue;
+    // theater별 소스 합산 상한
+    let remaining = options.maxPerTheater;
+    for (const source of sources) {
+      if (remaining <= 0) break;
+      try {
+        const url = buildFirmsAreaUrl({
+          mapKey: options.mapKey,
+          ...theater,
+          dayRange: options.dayRange,
+          source,
+        });
+        const response = await fetch(url, {
+          headers: { Accept: "text/csv" },
+        });
+        const csv = await response.text();
+        if (!response.ok) {
+          errors.push(`${theater.id}/${source}: HTTP ${response.status}`);
+          continue;
+        }
+        if (isFirmsErrorBody(csv)) {
+          // 헤더만 오는(빈) 응답은 정상 — 에러로 취급하지 않음
+          if (!csv.trim().toLowerCase().includes("latitude")) {
+            errors.push(`${theater.id}/${source}: unexpected body`);
+          }
+          continue;
+        }
+        const parsed = parseFirmsCsv(csv, theater.id, source, remaining);
+        for (const fire of parsed) {
+          const dedupeKey = `${theater.id}|${fire.lat.toFixed(3)}|${fire.lng.toFixed(3)}|${fire.acq_date || ""}|${fire.acq_time || ""}`;
+          if (seen.has(dedupeKey)) continue;
+          seen.add(dedupeKey);
+          fires.push(fire);
+          remaining -= 1;
+          if (remaining <= 0) break;
+        }
+      } catch (error) {
+        errors.push(
+          `${theater.id}/${source}: ${error instanceof Error ? error.message : "fetch failed"}`,
+        );
       }
-      if (isFirmsErrorBody(csv)) {
-        errors.push(`${theater.id}: unexpected body`);
-        continue;
-      }
-      fires.push(
-        ...parseFirmsCsv(csv, theater.id, source, options.maxPerTheater),
-      );
-    } catch (error) {
-      errors.push(
-        `${theater.id}: ${error instanceof Error ? error.message : "fetch failed"}`,
-      );
     }
   }
 

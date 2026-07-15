@@ -105,6 +105,99 @@ export async function readGdeltPointsFromD1(max = 1200): Promise<D1GdeltSnapshot
   }
 }
 
+const DEFAULT_INGEST_URL = "https://conflict-view-ingest.kangps7675.workers.dev";
+
+/** cron 워커 공개 엔드포인트 베이스 URL (Vercel 등 D1 바인딩 없는 호스팅용) */
+export function ingestWorkerBase(): string | null {
+  const raw = (
+    process.env.TELEGRAM_INGEST_URL ||
+    process.env.INGEST_WORKER_URL ||
+    DEFAULT_INGEST_URL
+  )
+    .trim()
+    .replace(/\/$/, "");
+  return raw || null;
+}
+
+/** Vercel 등에서 D1 바인딩 대신 cron 워커 /firms 로 산불을 읽는다. */
+export async function readFirmsFromIngestWorker(options: {
+  west: number;
+  south: number;
+  east: number;
+  north: number;
+  max: number;
+}): Promise<D1FirmsSnapshot | null> {
+  const base = ingestWorkerBase();
+  if (!base) return null;
+  try {
+    const qs = new URLSearchParams({
+      west: String(options.west),
+      south: String(options.south),
+      east: String(options.east),
+      north: String(options.north),
+      max: String(options.max),
+    });
+    const res = await fetch(`${base}/firms?${qs.toString()}`, {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    const payload = (await res.json()) as { fires?: FirmsFire[] };
+    if (!Array.isArray(payload.fires) || payload.fires.length === 0) return null;
+    return {
+      source: "d1",
+      receivedAt: new Date().toISOString(),
+      count: payload.fires.length,
+      fires: payload.fires,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Vercel 등에서 D1 바인딩 대신 cron 워커 /gdelt 로 긴장 포인트를 읽는다. */
+export async function readGdeltFromIngestWorker(max = 1200): Promise<D1GdeltSnapshot | null> {
+  const base = ingestWorkerBase();
+  if (!base) return null;
+  try {
+    const res = await fetch(`${base}/gdelt?limit=${max}`, {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    const payload = (await res.json()) as {
+      events?: Array<{
+        id: string;
+        lat: number;
+        lng: number;
+        name: string | null;
+        url: string | null;
+        mentionCount: number | null;
+        queryTag: string | null;
+      }>;
+    };
+    if (!Array.isArray(payload.events) || payload.events.length === 0) return null;
+    return {
+      source: "d1",
+      fetchedAt: new Date().toISOString(),
+      count: payload.events.length,
+      events: payload.events.map((e) => ({
+        id: e.id,
+        lat: e.lat,
+        lng: e.lng,
+        name: e.name,
+        url: e.url,
+        mentionCount: e.mentionCount,
+        queryTag: e.queryTag,
+      })),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export type D1TelegramSnapshot = {
   alerts: TelegramAlert[];
   count: number;
