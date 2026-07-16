@@ -11,6 +11,7 @@ import type { ViewerMode } from "@/lib/viewPackages";
  * - 재방문: 로컬 자정 기준 그날 아직 안 봤으면 모드별 양피지
  * - seen 키 = `daily-YYYY-MM-DD-{conflict|economy}`
  * - 본문 = (지경학) SOTW market-lamp → D1 집계 → 큐레이션 폴백
+ * - 스토리텔링 뼈대 = 육하원칙(누가·언제·어디서·무엇을·왜·어떻게)
  */
 
 export type BriefingTier = "monthly" | "weekly" | "daily";
@@ -145,6 +146,10 @@ const LAMP_TITLE_ECON = {
   },
 } as const;
 
+/**
+ * 등불 스토리텔링 — 육하원칙(누가·언제·어디서·무엇을·왜·어떻게)을 뼈대로 하되
+ * 라벨 나열이 아니라 한 편의 짧은 이야기로 이어 쓴다.
+ */
 function looksMostlyKorean(text: string): boolean {
   const ko = (text.match(/[\uac00-\ud7a3]/g) ?? []).length;
   const latin = (text.match(/[A-Za-z]/g) ?? []).length;
@@ -155,6 +160,11 @@ function pickKoreanLines(lines: string[], limit = 2): string[] {
   return lines.filter(looksMostlyKorean).slice(0, limit);
 }
 
+function partyLabel(parties: string[]): string {
+  if (parties.length === 0) return "관련 세력";
+  return parties.join("·");
+}
+
 function buildGeoFallback(tier: BriefingTier, dayKey: string, lang: LabelLanguage): PeriodicBriefing | null {
   if (FRICTION_EPISODES.length === 0) return null;
   const ko = lang !== "en";
@@ -163,6 +173,7 @@ function buildGeoFallback(tier: BriefingTier, dayKey: string, lang: LabelLanguag
   const yearText = episode.yearEnd
     ? `${episode.historicalYear}–${episode.yearEnd}`
     : `${episode.historicalYear}`;
+  const who = partyLabel(episode.parties);
 
   return {
     tier,
@@ -170,14 +181,17 @@ function buildGeoFallback(tier: BriefingTier, dayKey: string, lang: LabelLanguag
     title: `${kicker}\n${episode.title}`,
     paragraphs: ko
       ? [
-          `오늘 등불을 ${episode.locationName} 쪽에 잠시 세워 봅니다. ${yearText}의 그 자리에서 시작된 이야기는 아직도 지도 위에 남아 있습니다.`,
+          // 언제 · 어디서 · 누가
+          `${yearText}, ${episode.locationName}에서 ${who}이(가) 맞붙었습니다. 오늘 등불은 그 자리로 돌아갑니다.`,
+          // 무엇을 · 왜
           episode.briefing,
-          "라이브 집계가 비어 있어도, 과거 충돌의 결은 오늘의 긴장을 읽는 렌즈가 됩니다. 지도 허브 「반서방국 충돌사」에서 이어서 읽어 보세요. 이 등불은 자정에 다시 켜집니다.",
+          // 어떻게
+          "라이브 집계가 비어 있어도, 이 과거는 오늘의 긴장을 읽는 렌즈가 됩니다. 지도 허브 「반서방국 충돌사」에서 이어서 읽고, 이 등불은 자정에 다시 켜집니다.",
         ]
       : [
-          `Tonight we rest the lamp on ${episode.locationName} (${yearText}).`,
+          `When ${yearText}, at ${episode.locationName}, ${who} collided. Tonight the lamp returns there.`,
           episode.briefing,
-          "Live aggregates are empty — a curated episode stands in. Continue in Frictions. This lamp relights at local midnight.",
+          "Even without live aggregates, this past is a lens on today's tension. Continue in Frictions. The lamp relights at local midnight.",
         ],
   };
 }
@@ -191,20 +205,24 @@ function buildEconFallback(tier: BriefingTier, dayKey: string, lang: LabelLangua
 
   if (ko) {
     const koLines = pickKoreanLines(brief.paragraphs, 2);
-    const body =
+    const whatWhy =
       koLines.length > 0
         ? koLines
         : [
-            `${brief.titleKo}은(는) 물자와 가격이 지나가는 병목입니다. 긴장이 번지면 에너지·물류·물가 경로로 파급됩니다.`,
+            `${brief.titleKo}은(는) 물자와 가격이 지나가는 병목입니다.`,
+            "긴장이 번지면 에너지·물류·물가 경로로 파급됩니다. 그래서 오늘 시장 등불이 이곳을 고릅니다.",
           ];
     return {
       tier,
       key: dayKey,
       title: `${kicker}\n${brief.titleKo}`,
       paragraphs: [
-        `오늘 시장 등불은 ${brief.titleKo}을(를) 골라 들었습니다. 숫자 표가 아니라, 한 줄기의 흐름으로 읽어 봅니다.`,
-        ...body,
-        "수치는 시리즈마다 시점이 다를 수 있습니다. 이 등불은 매일 자정에 다시 켜집니다.",
+        // 누가 · 언제 · 어디서
+        `누가 보나 — 시장과 물류를 읽는 눈. 언제 — 오늘. 어디서 — ${brief.titleKo}.`,
+        // 무엇을 · 왜
+        ...whatWhy.slice(0, 2),
+        // 어떻게
+        "표로 외우지 말고, 육하원칙으로 한 장면만 가져가세요. 수치는 시리즈마다 시점이 다를 수 있습니다. 이 등불은 자정에 다시 켜집니다.",
       ],
     };
   }
@@ -213,7 +231,12 @@ function buildEconFallback(tier: BriefingTier, dayKey: string, lang: LabelLangua
     tier,
     key: dayKey,
     title: `${kicker}\n${brief.titleEn}`,
-    paragraphs: [brief.impactLine, ...brief.paragraphs.slice(0, 3)],
+    paragraphs: [
+      `Who watches markets; when is today; where is ${brief.titleEn}.`,
+      brief.impactLine,
+      ...brief.paragraphs.slice(0, 2),
+      "Read it as 5W1H, not a ledger. The lamp relights at local midnight.",
+    ],
   };
 }
 
@@ -242,117 +265,121 @@ export function buildBriefingFromStats(
       ? LAMP_TITLE.ko[tier]
       : LAMP_TITLE.en[tier];
 
-  const hot =
-    stats.topGdeltTag || stats.topTelegramRegion
-      ? [stats.topGdeltTag, stats.topTelegramRegion].filter(Boolean).join(ko ? "과 " : " / ")
-      : null;
+  const hotTag = stats.topGdeltTag || null;
+  const hotRegion = stats.topTelegramRegion || null;
+  const hot = [hotTag, hotRegion].filter(Boolean).join(ko ? "·" : " / ") || null;
+
+  const gdeltSamples = stats.detail?.gdeltSamples?.slice(0, 3) ?? [];
+  const placeNames = (() => {
+    const koPlaces = gdeltSamples
+      .map((s) => s.name)
+      .filter((n) => looksMostlyKorean(n) || /[가-힣]/.test(n));
+    if (koPlaces.length > 0) return koPlaces.slice(0, 3).join(" · ");
+    return gdeltSamples
+      .map((s) => s.name)
+      .slice(0, 2)
+      .join(" · ");
+  })();
+
+  const tgSamples = stats.detail?.telegramSamples?.slice(0, 3) ?? [];
+  const koTg = tgSamples.filter((s) => looksMostlyKorean(s.text));
+  const tgRegions = [...new Set(tgSamples.map((s) => s.region).filter(Boolean))].slice(0, 2);
 
   const titleLine = hot
     ? ko
-      ? `${hot} 쪽에서 바람이 셉니다`
-      : `Wind rising around ${hot}`
+      ? `${hot} — 육하원칙으로 읽기`
+      : `${hot} — in 5W1H`
     : ko
       ? econ
-        ? "시장이 잠든 사이, 지도는 깨어 있습니다"
-        : "오늘 밤, 전선이 속삭이는 소리"
+        ? "시장 창을 육하원칙으로"
+        : "전선을 육하원칙으로"
       : econ
-        ? "While markets sleep, the map stays awake"
-        : "Tonight the front whispers";
+        ? "Markets in 5W1H"
+        : "The front in 5W1H";
 
   const paragraphs: string[] = [];
 
   if (ko) {
-    const sceneBits: string[] = [];
+    // 언제 · 어디서
+    const whenWhere = hot
+      ? `언제 — 오늘 같은 관측 창. 어디서 — ${hot}${placeNames ? ` (가까이 ${placeNames})` : ""}.`
+      : placeNames
+        ? `언제 — 오늘 같은 관측 창. 어디서 — ${placeNames} 일대.`
+        : "언제 — 오늘 같은 관측 창. 어디서 — 지도 전역에서 깜빡인 신호들.";
+    paragraphs.push(whenWhere);
+
+    // 누가 · 무엇을
+    const actors: string[] = [];
     if (stats.gdeltCount > 0) {
-      sceneBits.push(`긴장 신호가 ${stats.gdeltCount.toLocaleString()}곳에서 깜빡였고`);
+      actors.push(`긴장 관측 ${stats.gdeltCount.toLocaleString()}곳`);
     }
     if (stats.firmsCount > 0) {
-      sceneBits.push(`열원 ${stats.firmsCount.toLocaleString()}점이 밤하늘을 찍어 두었으며`);
+      actors.push(`열원 ${stats.firmsCount.toLocaleString()}점`);
     }
     if (stats.telegramCount > 0) {
-      sceneBits.push(`현장 채널 ${stats.telegramCount.toLocaleString()}건이 짧은 전언을 남겼습니다`);
+      actors.push(`현장 채널 ${stats.telegramCount.toLocaleString()}건`);
     } else if (stats.newsItemCount > 0) {
-      sceneBits.push(`뉴스 흐름 ${stats.newsItemCount.toLocaleString()}건이 같은 창을 스쳐 갔습니다`);
+      actors.push(`뉴스 흐름 ${stats.newsItemCount.toLocaleString()}건`);
     }
-    if (sceneBits.length > 0) {
-      const joined = sceneBits.join(" ");
+    if (actors.length > 0) {
       paragraphs.push(
-        hot
-          ? `등불을 켜자 ${hot} 방향이 먼저 밝아집니다. ${joined}`
-          : `등불을 켜자 지도가 천천히 숨을 고릅니다. ${joined}`,
+        `누가·무엇을 — ${actors.join(", ")}이(가) 같은 창에 남긴 흔적입니다.${
+          econ ? " 시장은 잠들어도 지도는 깨어 있습니다." : ""
+        }`,
       );
     }
 
-    const gdeltSamples = stats.detail?.gdeltSamples?.slice(0, 3) ?? [];
-    const koPlaces = gdeltSamples
-      .map((s) => s.name)
-      .filter((n) => looksMostlyKorean(n) || /[가-힣]/.test(n));
-    const placeNames =
-      koPlaces.length > 0
-        ? koPlaces.slice(0, 3).join(" · ")
-        : gdeltSamples
-            .map((s) => s.name)
-            .slice(0, 2)
-            .join(" · ");
-    if (placeNames) {
-      paragraphs.push(
-        `시선을 낮추면 ${placeNames} 일대가 오늘 이야기의 무대입니다. 이름만으로도 전선의 결이 느껴집니다.`,
-      );
-    }
-
-    const tgSamples = stats.detail?.telegramSamples?.slice(0, 3) ?? [];
-    const koTg = tgSamples.filter((s) => looksMostlyKorean(s.text));
+    // 왜
     if (koTg.length > 0) {
       const s = koTg[0]!;
       paragraphs.push(
-        `${s.region} 쪽에서 이런 말이 흘러나왔습니다. 「${s.text.slice(0, 140)}${s.text.length > 140 ? "…" : ""}」`,
+        `왜 지금이냐면 — ${s.region} 쪽에서 「${s.text.slice(0, 120)}${s.text.length > 120 ? "…" : ""}」라는 전언이 온도를 올렸기 때문입니다.`,
       );
-    } else if (tgSamples.length > 0) {
-      const regions = [...new Set(tgSamples.map((s) => s.region).filter(Boolean))].slice(0, 2);
+    } else if (tgRegions.length > 0) {
       paragraphs.push(
-        regions.length > 0
-          ? `현장 채널은 ${regions.join("·")} 일대를 가리킵니다. 원문은 외국어 섞임이 많아, 위치와 온도만 남기고 읽습니다.`
-          : "현장 채널의 원문은 외국어 섞임이 많아, 위치와 온도만 남기고 읽습니다.",
+        `왜 지금이냐면 — ${tgRegions.join("·")} 일대 채널이 위치를 가리키고, 전선의 결이 그쪽으로 기울었기 때문입니다. (원문은 외국어 섞임이 많아 위치만 남깁니다.)`,
+      );
+    } else if (hot || placeNames) {
+      paragraphs.push(
+        `왜 지금이냐면 — ${hot || placeNames}이(가) 오늘 창에서 가장 먼저 밝아졌기 때문입니다.`,
       );
     }
 
-    if (paragraphs.length === 0) return null;
-
+    // 어떻게
     paragraphs.push(
       econ
-        ? "숫자의 나열이 아니라, 오늘 시장이 숨을 고르는 한 장면으로 받아 주세요. 이 등불은 자정에 다시 켜집니다."
-        : "정보 목록이 아니라, 오늘 전장이 남긴 한 장면으로 받아 주세요. 이 등불은 자정에 다시 켜집니다.",
+        ? "어떻게 읽나 — 숫자 표가 아니라 누가·언제·어디서·무엇을·왜·어떻게, 여섯 칸만 챙기세요. 이 등불은 자정에 다시 켜집니다."
+        : "어떻게 읽나 — 목록이 아니라 육하원칙 한 장면으로. 누가·언제·어디서·무엇을·왜·어떻게. 이 등불은 자정에 다시 켜집니다.",
     );
   } else {
-    const countParts: string[] = [];
-    if (stats.gdeltCount > 0) countParts.push(`${stats.gdeltCount.toLocaleString()} GDELT sparks`);
-    if (stats.firmsCount > 0) countParts.push(`${stats.firmsCount.toLocaleString()} FIRMS embers`);
-    if (stats.telegramCount > 0) {
-      countParts.push(`${stats.telegramCount.toLocaleString()} field notes`);
+    paragraphs.push(
+      hot
+        ? `When — this live window. Where — ${hot}${placeNames ? ` (near ${placeNames})` : ""}.`
+        : placeNames
+          ? `When — this live window. Where — ${placeNames}.`
+          : "When — this live window. Where — sparks across the map.",
+    );
+    const actors: string[] = [];
+    if (stats.gdeltCount > 0) actors.push(`${stats.gdeltCount.toLocaleString()} GDELT sparks`);
+    if (stats.firmsCount > 0) actors.push(`${stats.firmsCount.toLocaleString()} FIRMS embers`);
+    if (stats.telegramCount > 0) actors.push(`${stats.telegramCount.toLocaleString()} field notes`);
+    if (actors.length > 0) {
+      paragraphs.push(`Who & what — ${actors.join("; ")} left traces in the same frame.`);
     }
-    if (stats.newsItemCount > 0 && countParts.length < 2) {
-      countParts.push(`${stats.newsItemCount.toLocaleString()} headlines`);
-    }
-    if (countParts.length > 0) {
+    if (tgSamples[0]) {
+      const s = tgSamples[0];
       paragraphs.push(
-        hot
-          ? `The lamp finds ${hot} first. Across the window: ${countParts.join(", ")}.`
-          : `The lamp warms the map. Across the window: ${countParts.join(", ")}.`,
+        `Why now — from ${s.region}: “${s.text.slice(0, 120)}${s.text.length > 120 ? "…" : ""}”.`,
       );
+    } else if (hot || placeNames) {
+      paragraphs.push(`Why now — ${hot || placeNames} lit up first in tonight's window.`);
     }
-    const gdeltSamples = stats.detail?.gdeltSamples?.slice(0, 3) ?? [];
-    if (gdeltSamples.length > 0) {
-      paragraphs.push(
-        `Stage lights fall on ${gdeltSamples.map((s) => s.name).join(", ")}.`,
-      );
-    }
-    const tgSamples = stats.detail?.telegramSamples?.slice(0, 2) ?? [];
-    for (const s of tgSamples) {
-      paragraphs.push(`[${s.region}] ${s.text.slice(0, 160)}${s.text.length > 160 ? "…" : ""}`);
-    }
-    if (paragraphs.length === 0) return null;
-    paragraphs.push("Not a checklist — a scene. This lamp relights at local midnight.");
+    paragraphs.push(
+      "How to read — as 5W1H, not a checklist. This lamp relights at local midnight.",
+    );
   }
+
+  if (paragraphs.length < 2) return null;
 
   return {
     tier,

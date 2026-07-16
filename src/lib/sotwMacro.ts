@@ -505,7 +505,7 @@ export function narrativeForLang(macro: SotwMacroDeep, lang: LabelLanguage): str
   return lang === "en" ? macro.narrativeEn : macro.narrativeKo;
 }
 
-/** 시장 등불용 — 지표 나열이 아니라 짧은 스토리 문단 */
+/** 시장 등불용 — 육하원칙 뼈대의 짧은 스토리 */
 export function composeMarketLampParagraphs(
   macros: SotwMacroDeep[],
   lang: LabelLanguage,
@@ -514,41 +514,77 @@ export function composeMarketLampParagraphs(
   if (macros.length === 0 && !(opts?.koreanExtras?.length)) return [];
   const out: string[] = [];
   const ko = lang !== "en";
+  const names = macros.map((m) => m.name ?? m.id).filter(Boolean) as string[];
+  const primary = macros[0];
+  const yearHint =
+    primary?.yearHints?.inflation ??
+    primary?.yearHints?.growth ??
+    primary?.shocks?.inflation?.latestYear ??
+    primary?.shocks?.growth?.latestYear ??
+    null;
 
   if (ko) {
-    const names = macros.map((m) => m.name ?? m.id).filter(Boolean);
-    if (opts?.focusTitle) {
-      out.push(
-        `오늘 시장 등불은 「${opts.focusTitle}」을(를) 무대에 올립니다.${
-          names.length > 0 ? ` 그 곁에 ${names.join("·")}의 거시 숨결을 겹칩니다.` : ""
-        }`,
-      );
-    } else if (names.length > 0) {
-      out.push(`오늘 시장 등불은 ${names.join("과 ")}의 이야기를 천천히 읽어 줍니다.`);
-    }
+    // 누가 · 언제 · 어디서
+    const where = opts?.focusTitle || names[0] || "세계 시장";
+    const who = names.length > 0 ? names.join("·") : "시장 참여자";
+    const when = yearHint ? `${yearHint}년 전후 거시 창` : "오늘 시장 등불이 고른 창";
+    out.push(`누가 — ${who}. 언제 — ${when}. 어디서 — ${where}.`);
+
+    // 무엇을 · 왜
     for (const extra of (opts?.koreanExtras ?? []).slice(0, 2)) {
       out.push(extra);
     }
-    for (const m of macros.slice(0, 2)) {
-      const lines = narrativeForLang(m, "ko").filter(
-        (line) => !line.startsWith("이 장면의 숫자는") && !line.startsWith("수치 출처"),
+    if (primary) {
+      const infl = primary.inflationPct;
+      const growth = primary.gdpGrowthPct;
+      const whatBits: string[] = [];
+      if (infl != null) whatBits.push(`물가 ${infl.toFixed(1)}%`);
+      if (growth != null) whatBits.push(`성장 ${growth.toFixed(1)}%`);
+      if (whatBits.length > 0) {
+        out.push(
+          `무엇을 — ${(primary.name ?? where)}의 ${whatBits.join("·")}가 오늘의 기온입니다.`,
+        );
+      }
+      const peer = primary.peers?.[0];
+      if (peer && infl != null && peer.inflationPct != null) {
+        const d = infl - peer.inflationPct;
+        const why =
+          Math.abs(d) < 0.4
+            ? `${peer.name}과 물가 온도가 비슷해, 같은 방의 이야기로 읽힙니다.`
+            : d > 0
+              ? `${peer.name}보다 물가가 ${Math.abs(d).toFixed(1)}%p 높아, 긴장의 이유를 가격에서 먼저 찾습니다.`
+              : `${peer.name}보다 물가가 ${Math.abs(d).toFixed(1)}%p 낮아, 성장·외부 축을 더 봅니다.`;
+        out.push(`왜 — ${why}`);
+      } else if (opts?.focusTitle) {
+        out.push(
+          `왜 — 「${opts.focusTitle}」이(가) 물자와 가격이 지나가는 병목이라, 시장 등불이 이곳을 고릅니다.`,
+        );
+      }
+    } else if (opts?.focusTitle) {
+      out.push(
+        `무엇을·왜 — 「${opts.focusTitle}」 긴장이 에너지·물류·물가로 번질 수 있어 오늘 무대로 올렸습니다.`,
       );
-      // 스냅샷 1 + 물가/성장 중 1
-      out.push(...lines.slice(0, 2));
     }
+
+    // 어떻게
     out.push(
-      "표로 외우지 말고, 오늘 시장이 어떤 기온인지 한 장면으로 받아 주세요. 수치는 Statistics of the World 기준이며 시리즈마다 시점이 다를 수 있습니다.",
+      "어떻게 — 육하원칙 여섯 칸만 챙기고 표는 내려놓으세요. 수치는 Statistics of the World 기준이며 시리즈마다 시점이 다를 수 있습니다.",
     );
     return out;
   }
 
-  const names = macros.map((m) => m.name ?? m.id).filter(Boolean);
-  if (opts?.focusTitle) {
-    out.push(`Tonight's market lamp rests on “${opts.focusTitle}”${names.length ? `, with ${names.join(" & ")} in the wings` : ""}.`);
+  const where = opts?.focusTitle || names[0] || "global markets";
+  const who = names.length > 0 ? names.join(" & ") : "market actors";
+  const when = yearHint ? `around ${yearHint}` : "tonight's macro window";
+  out.push(`Who — ${who}. When — ${when}. Where — ${where}.`);
+  if (primary) {
+    const bits: string[] = [];
+    if (primary.inflationPct != null) bits.push(`inflation ${primary.inflationPct.toFixed(1)}%`);
+    if (primary.gdpGrowthPct != null) bits.push(`growth ${primary.gdpGrowthPct.toFixed(1)}%`);
+    if (bits.length) out.push(`What — ${(primary.name ?? where)} prints ${bits.join(" / ")}.`);
   }
-  for (const m of macros.slice(0, 2)) {
-    out.push(...narrativeForLang(m, "en").slice(0, 2));
-  }
-  out.push("Not a spreadsheet — a scene. Figures via Statistics of the World; vintages vary.");
+  out.push(
+    "Why & how — read as 5W1H, not a spreadsheet. Figures via Statistics of the World; vintages vary.",
+  );
   return out;
 }
