@@ -13,7 +13,7 @@ const COPY = {
 } as const;
 
 /**
- * 네비·햄버거 옆 고정 슬롯 — 양피지 천조각 꿀팁, 호버·포커스 시 짧은 드롭다운.
+ * 우상단 고정 슬롯 — 양피지 천조각 꿀팁, 호버·포커스 시 짧은 드롭다운 (데스크톱만).
  */
 export function ParchmentProTipChip({ lang }: ParchmentProTipChipProps) {
   const copy = COPY[lang] ?? COPY.ko;
@@ -62,7 +62,7 @@ export function ParchmentProTipChip({ lang }: ParchmentProTipChipProps) {
       <div
         id={menuId}
         role="tooltip"
-        className={`parchment-pro-tip-drop econ-insight-parchment pointer-events-none absolute left-0 top-[calc(100%+0.45rem)] z-[90] min-w-[11.5rem] max-w-[min(72vw,16rem)] px-3 py-2.5 text-[0.72rem] leading-snug tracking-[0.02em] text-[#4a3418] shadow-[0_10px_28px_rgba(0,0,0,0.42)] transition-all duration-150 ${
+        className={`parchment-pro-tip-drop econ-insight-parchment pointer-events-none absolute right-0 top-[calc(100%+0.45rem)] z-[90] min-w-[11.5rem] max-w-[min(72vw,16rem)] px-3 py-2.5 text-[0.72rem] leading-snug tracking-[0.02em] text-[#4a3418] shadow-[0_10px_28px_rgba(0,0,0,0.42)] transition-all duration-150 ${
           open
             ? "translate-y-0 scale-100 opacity-100"
             : "translate-y-1 scale-[0.98] opacity-0 group-hover/protip:translate-y-0 group-hover/protip:scale-100 group-hover/protip:opacity-100 group-focus-within/protip:translate-y-0 group-focus-within/protip:scale-100 group-focus-within/protip:opacity-100"

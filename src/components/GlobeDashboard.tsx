@@ -8273,25 +8273,6 @@ export function GlobeDashboard({
                 : "상세"
           }
         />
-        <div className="pointer-events-none absolute left-[4.5rem] top-3 z-[55]">
-          {!isEconomyViewer ? (
-            <UsCarrierFixedToggle
-              checked={showUsCarriers}
-              onChange={setShowUsCarriers}
-              carrierCount={usCarriers.length}
-              deployedCount={deployedCarrierCount}
-            />
-          ) : (
-            <EconomySupplyChainFixedToggle
-              showUsDfc={showUsDfcSupplyChain}
-              showChinaBri={showBriTradeConnectivity}
-              onUsDfcChange={setShowUsDfcSupplyChain}
-              onChinaBriChange={setShowBriTradeConnectivity}
-              usLinkCount={usDfcSupplyPaths.length}
-              chinaLinkCount={briTradePaths.length}
-            />
-          )}
-        </div>
         <DisputeZoneLegend
           open={
             !isEconomyViewer &&
@@ -8490,10 +8471,24 @@ export function GlobeDashboard({
               <HamburgerIcon open={showLeftPanel} />
             </button>
           </HoverHint>
-          {entryGate === null && !showModePicker ? (
-            <ParchmentProTipChip lang={labelLanguage} />
-          ) : null}
         </div>
+        {!isEconomyViewer ? (
+          <UsCarrierFixedToggle
+            checked={showUsCarriers}
+            onChange={setShowUsCarriers}
+            carrierCount={usCarriers.length}
+            deployedCount={deployedCarrierCount}
+          />
+        ) : (
+          <EconomySupplyChainFixedToggle
+            showUsDfc={showUsDfcSupplyChain}
+            showChinaBri={showBriTradeConnectivity}
+            onUsDfcChange={setShowUsDfcSupplyChain}
+            onChinaBriChange={setShowBriTradeConnectivity}
+            usLinkCount={usDfcSupplyPaths.length}
+            chinaLinkCount={briTradePaths.length}
+          />
+        )}
         {isCompactUi && !showLeftPanel ? (
           <CompactPresetChips
             mode={viewerMode}
@@ -8568,6 +8563,9 @@ export function GlobeDashboard({
           <div className="cv-desktop-only pointer-events-auto flex shrink-0 items-center gap-2">
             {!isEconomyViewer ? (
               <SourcesLinkButton onClick={() => setShowSourcesPanel(true)} />
+            ) : null}
+            {entryGate === null && !showModePicker ? (
+              <ParchmentProTipChip lang={labelLanguage} />
             ) : null}
             <ShareViewButton getCanvas={() => globeRef.current?.renderer().domElement ?? null} />
             <FeatureGuideButton viewerMode={viewerMode} onClick={() => setShowFeatureGuide(true)} />
