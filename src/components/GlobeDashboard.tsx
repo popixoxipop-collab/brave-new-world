@@ -26,6 +26,7 @@ import { CompactPresetChips } from "@/components/CompactPresetChips";
 import { MapGlobeView } from "@/components/MapGlobeView";
 import { HoverNav } from "@/components/HoverNav";
 import { HoverHint } from "@/components/HoverHint";
+import { ParchmentProTipChip } from "@/components/ParchmentProTipChip";
 import { useCompactUi } from "@/hooks/useCompactUi";
 import {
   buildCompactPrefs,
@@ -8483,6 +8484,9 @@ export function GlobeDashboard({
               <HamburgerIcon open={showLeftPanel} />
             </button>
           </HoverHint>
+          {entryGate === null && !showModePicker ? (
+            <ParchmentProTipChip lang={labelLanguage} />
+          ) : null}
         </div>
         {isCompactUi && !showLeftPanel ? (
           <CompactPresetChips
