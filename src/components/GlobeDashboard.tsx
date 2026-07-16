@@ -1922,6 +1922,9 @@ export function GlobeDashboard({
   const setShowGdeltAlliance = (v: boolean) => togglePref("showGdeltAlliance", v);
   const setShowGdeltProtests = (v: boolean) => togglePref("showGdeltProtests", v);
   const setShowTelegramOsint = (v: boolean) => togglePref("showTelegramOsint", v);
+  const closeTelegramOsintLayer = useCallback(() => {
+    togglePref("showTelegramOsint", false);
+  }, [togglePref]);
   const setShowTzevaAdom = (v: boolean) => togglePref("showTzevaAdom", v);
   const setShowNewfeedsIranAttacks = (v: boolean) => togglePref("showNewfeedsIranAttacks", v);
 
@@ -8327,6 +8330,8 @@ export function GlobeDashboard({
             sessionExists={telegramSessionExists}
             embedMode={telegramEmbedMode}
             channelCount={TELEGRAM_CHANNEL_COUNT}
+            onClose={closeTelegramOsintLayer}
+            compactUi={isCompactUi}
           />
         )}
         {!isEconomyViewer && !isUkraineTheaterFocus && !selected && !regionNavSelection && bottomAlertPanel === "gdelt" && (
@@ -8396,7 +8401,7 @@ export function GlobeDashboard({
           onClose={() => setIntelSheetOpen(false)}
           onOpen={() => setIntelSheetOpen(true)}
           onFlyToMap={handleIntelFlyTo}
-          showTelegram={!isEconomyViewer}
+          showTelegram={!isEconomyViewer && showTelegramOsint}
           telegramAlerts={telegramAlerts}
           telegramLive={telegramLive}
           telegramStatus={telegramStatus}
@@ -8404,6 +8409,7 @@ export function GlobeDashboard({
           telegramSessionExists={telegramSessionExists}
           telegramEmbedMode={telegramEmbedMode}
           telegramChannelCount={TELEGRAM_CHANNEL_COUNT}
+          onCloseTelegramLayer={closeTelegramOsintLayer}
           showViina={!isEconomyViewer && showUkraineControl}
           viinaEvents={viinaFrontEvents}
           viinaControlDate={ukraineControlDate}

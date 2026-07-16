@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { HoverHint } from "@/components/HoverHint";
 import {
   TELEGRAM_CATALOG_NOTE,
   TELEGRAM_REGION_LABELS,
@@ -21,7 +22,35 @@ type TelegramIntelFeedProps = {
   /** Intel 시트 full-page 레이아웃 */
   fullPage?: boolean;
   regionFilter?: TelegramAlertRegion | "all";
+  /** 닫기 → 레이어 체크박스 OFF (GlobeDashboard) */
+  onClose?: () => void;
+  /** 모바일 — 더 큰 탭 타겟 */
+  compactUi?: boolean;
 };
+
+function TelegramCloseButton({
+  onClick,
+  compactUi = false,
+}: {
+  onClick: () => void;
+  compactUi?: boolean;
+}) {
+  const { t } = useLocale();
+  const size = compactUi ? "h-10 w-10 text-lg" : "h-9 w-9 text-base";
+  return (
+    <HoverHint placement="bottom" title={t("closeTelegramOsint")} detail={t("closeTelegramOsintHint")}>
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={t("closeTelegramOsint")}
+        title={t("closeTelegramOsint")}
+        className={`tap-target flex shrink-0 items-center justify-center rounded-full border border-red-400/50 bg-red-950/80 font-bold leading-none text-red-50 shadow-[0_4px_14px_rgba(127,29,29,0.35)] transition hover:border-red-300/75 hover:bg-red-900/90 hover:text-white active:scale-95 ${size}`}
+      >
+        ✕
+      </button>
+    </HoverHint>
+  );
+}
 
 function formatTime(iso: string) {
   try {
@@ -45,6 +74,8 @@ export function TelegramIntelFeed({
   channelCount = 0,
   fullPage = false,
   regionFilter = "all",
+  onClose,
+  compactUi = false,
 }: TelegramIntelFeedProps) {
   const { lang } = useLocale();
   const filtered =
@@ -66,7 +97,7 @@ export function TelegramIntelFeed({
     <div className={shellClass}>
       {!fullPage ? (
         <div className="flex items-center justify-between gap-3 border-b border-sky-300/15 px-3 py-2.5">
-          <div>
+          <div className="min-w-0 flex-1">
             <p className="text-[10px] uppercase tracking-[0.24em] text-sky-200/75">Telegram OSINT</p>
             <p className="mt-0.5 text-xs text-sky-50/90">
               {embedMode
@@ -74,13 +105,19 @@ export function TelegramIntelFeed({
                 : "분쟁 지역 실시간 속보"}
             </p>
           </div>
-          <LiveBadge live={live} liveStatus={liveStatus} embedMode={embedMode} />
+          <div className="flex shrink-0 items-center gap-2">
+            <LiveBadge live={live} liveStatus={liveStatus} embedMode={embedMode} />
+            {onClose ? <TelegramCloseButton onClick={onClose} compactUi={compactUi} /> : null}
+          </div>
         </div>
       ) : (
         <div className="mx-4 mt-3 shrink-0 rounded-xl border border-cyan-400/25 bg-cyan-950/15 px-3 py-2.5">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold text-cyan-100">Telegram OSINT · Raw 피드</p>
-            <LiveBadge live={live} liveStatus={liveStatus} embedMode={embedMode} />
+            <p className="min-w-0 text-xs font-semibold text-cyan-100">Telegram OSINT · Raw 피드</p>
+            <div className="flex shrink-0 items-center gap-2">
+              <LiveBadge live={live} liveStatus={liveStatus} embedMode={embedMode} />
+              {onClose ? <TelegramCloseButton onClick={onClose} compactUi={compactUi} /> : null}
+            </div>
           </div>
           <p className="mt-1 text-[11px] leading-5 text-cyan-200/60">
             RSS/GDELT 뉴스·AI 요약과 분리 · {embedMode ? `공개 임베드 ${channelCount || "—"}채널` : "수집기"}

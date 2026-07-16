@@ -22,6 +22,11 @@ const UI = {
   backToMap: { ko: "접기", en: "Collapse" },
   closeNewsDock: { ko: "뉴스 닫기 · 지구본만 보기", en: "Close news · map only" },
   closeNewsGlobeOnlyAria: { ko: "뉴스 닫기 · 지구본만 보기", en: "Close news · map only" },
+  closeTelegramOsint: { ko: "텔레그램 OSINT 닫기", en: "Close Telegram OSINT" },
+  closeTelegramOsintHint: {
+    ko: "창을 닫으면 레이어 체크박스에서도 꺼집니다.",
+    en: "Closing also turns off the layer checkbox.",
+  },
   intelDragDismissTitle: { ko: "뉴스 창 내리기", en: "Pull down to close" },
   intelDragDismissBody: {
     ko: "위 핸들을 아래로 끌면 뉴스 창이 닫히고 지구본만 볼 수 있습니다.",

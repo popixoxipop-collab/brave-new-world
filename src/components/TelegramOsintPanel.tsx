@@ -14,6 +14,8 @@ type TelegramOsintPanelProps = {
   sessionExists?: boolean;
   embedMode?: boolean;
   channelCount?: number;
+  onClose: () => void;
+  compactUi?: boolean;
 };
 
 export function TelegramOsintPanel({
@@ -24,9 +26,17 @@ export function TelegramOsintPanel({
   sessionExists,
   embedMode = true,
   channelCount = TELEGRAM_CHANNEL_COUNT,
+  onClose,
+  compactUi = false,
 }: TelegramOsintPanelProps) {
   return (
-    <div className="pointer-events-auto absolute bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] left-4 z-20 w-[min(88vw,280px)]">
+    <div
+      className={`pointer-events-auto absolute z-20 ${
+        compactUi
+          ? "bottom-[calc(var(--bottom-intel-stack-clearance)+0.5rem+env(safe-area-inset-bottom,0px))] left-3 w-[min(calc(100vw-1.5rem),320px)]"
+          : "bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] left-4 w-[min(88vw,280px)]"
+      }`}
+    >
       <TelegramIntelFeed
         alerts={alerts}
         live={live}
@@ -35,6 +45,8 @@ export function TelegramOsintPanel({
         sessionExists={sessionExists}
         embedMode={embedMode}
         channelCount={channelCount}
+        onClose={onClose}
+        compactUi={compactUi}
       />
     </div>
   );

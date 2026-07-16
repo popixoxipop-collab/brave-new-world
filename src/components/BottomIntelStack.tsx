@@ -1177,6 +1177,7 @@ type IntelNewsSheetProps = {
   onViinaFlyTo?: (event: ViinaFrontEvent) => void;
   initialIntelTab?: IntelSheetTab;
   autoOpenOnMount?: boolean;
+  onCloseTelegramLayer?: () => void;
 };
 
 export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetProps>(
@@ -1202,6 +1203,7 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
       onViinaFlyTo,
       initialIntelTab = "news",
       autoOpenOnMount = false,
+      onCloseTelegramLayer,
     },
     ref,
   ) {
@@ -1226,6 +1228,15 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
     const sheetDragRef = useRef<{ startY: number; dragging: boolean } | null>(null);
     const [sheetDragY, setSheetDragY] = useState(0);
     const [sheetDragging, setSheetDragging] = useState(false);
+
+    const handleCloseTelegramLayer = useCallback(() => {
+      setSheetTab("news");
+      onCloseTelegramLayer?.();
+    }, [onCloseTelegramLayer]);
+
+    useEffect(() => {
+      if (sheetTab === "telegram" && !showTelegram) setSheetTab("news");
+    }, [sheetTab, showTelegram]);
 
     const openNewsPanel = useCallback(
       (theater: IntelTheaterFilter = "all", tab: IntelSheetTab = "news") => {
@@ -1645,6 +1656,8 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
             embedMode={telegramEmbedMode}
             channelCount={telegramChannelCount}
             fullPage
+            compactUi
+            onClose={onCloseTelegramLayer ? handleCloseTelegramLayer : undefined}
             regionFilter={
               theaterFilter === "russia-ukraine"
                 ? "ukraine"
