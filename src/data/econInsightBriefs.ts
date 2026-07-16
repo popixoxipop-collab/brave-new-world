@@ -539,6 +539,11 @@ export function allEconInsightBriefs(): EconInsightBrief[] {
   return Object.values(LOCAL);
 }
 
+/** navId → countryHint (SOTW macro / 구역 패널) */
+export function countryHintForEconNav(navId: string): string | null {
+  return LOCAL[navId]?.countryHint ?? null;
+}
+
 export function insightRiskToCss(level: InsightRiskLevel): string {
   if (level === "CRITICAL") return "border-rose-500/60 bg-rose-950/80 text-rose-100";
   if (level === "HIGH") return "border-amber-400/55 bg-amber-950/70 text-amber-100";

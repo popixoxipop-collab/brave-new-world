@@ -18,6 +18,7 @@ export const LAYER_ITEM_PREF_KEYS: Partial<Record<string, keyof LayerPrefs>> = {
   "gdelt-protest": "showGdeltProtests",
   "telegram-osint": "showTelegramOsint",
   "tzeva-adom": "showTzevaAdom",
+  "newfeeds-iran": "showNewfeedsIranAttacks",
   "oil-pipelines": "showOilPipelines",
   "gas-pipelines": "showGasPipelines",
   "lng-terminals": "showLngTerminals",

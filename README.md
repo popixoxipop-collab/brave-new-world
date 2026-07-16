@@ -209,7 +209,7 @@ Cron ingest: `npm run cf:ingest:deploy` · [`docs/cloudflare-deploy.md`](docs/cl
 | `TELEGRAM_OSINT_ENABLED` | `true` | 텔레그램 OSINT |
 | `FREESOUND_API_KEY` | — | 앰비언트·경제·UI 사운드 프록시 |
 | `FIRMS_MAP_KEY` | — | NASA FIRMS (있으면 라이브) |
-| `STATSOFTHEWORLD_API_KEY` | — | 양피지 GDP·인구 보조 카드 |
+| `STATSOFTHEWORLD_API_KEY` | — | SOTW API Pro. 지경학 양피지·구역 패널·시장 등불에 GDP/인플레/성장 충격·피어 비교 (`/api/world-stats/macro`, `/market-lamp`). [docs](https://statisticsoftheworld.com/api-docs) |
 | `SYNC_POLL_MS` | `300000` | `/api/data-sync` 폴링 |
 | `NEWS_TRANSLATE_KO` / `TELEGRAM_TRANSLATE_KO` | `true` | 자동 한국어 번역 |
 

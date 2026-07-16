@@ -65,6 +65,7 @@ import {
   buildBriefingFromStats,
   buildPeriodicBriefing,
   hasSeenPeriod,
+  lampSeenKey,
   markPeriodSeen,
   resolveLampPeriod,
   type PeriodicBriefing,
@@ -141,15 +142,26 @@ import {
   liveTelegramPollMs,
   liveTelegramSyncPollMs,
   liveTzevaPollMs,
+  liveNewfeedsPollMs,
   liveUsCarriersPollMs,
   shouldDeferLiveNetworkRefresh,
 } from "@/lib/liveRenderGuard";
+import {
+  NewFeedsIranPanel,
+} from "@/components/NewFeedsIranPanel";
 import {
   TELEGRAM_CHANNEL_COUNT,
   type TelegramAlert,
   type TelegramAlertsPayload,
 } from "@/lib/telegramAlerts";
 import type { TzevaAdomAlert, TzevaAdomPayload } from "@/lib/tzevaAdom";
+import {
+  NEWFEEDS_ATTRIBUTION_SHORT,
+  NEWFEEDS_REPO_URL,
+  severityColor,
+  type NewfeedsAttackPoint,
+  type NewfeedsAttacksPayload,
+} from "@/lib/newfeeds";
 import {
   formatNeptunLocation,
   getNeptunTypeLabel,
@@ -400,6 +412,17 @@ import {
   resolveActiveWarTheaterAt,
   resolveCombatTheaterAt,
 } from "@/lib/theaterCombat";
+import {
+  CASUALTY_ELEGY_LINES,
+  MEDIAZONA_CASUALTY_SEED,
+  MEDIAZONA_FRONT_MARKER,
+  type MediazonaCasualtySnapshot,
+} from "@/lib/mediazonaCasualties";
+import {
+  createWarCasualtyOverlayElement,
+  getCasualtyOverlayScale,
+  WOUNDED_FIXED_NOTE,
+} from "@/lib/warCasualtyOverlay";
 import type {
   AisVessel,
   AppData,
@@ -563,6 +586,11 @@ type TzevaAdomGlobePoint = TzevaAdomAlert & {
   displayKind: "tzeva-adom";
 };
 
+type NewfeedsAttackGlobePoint = NewfeedsAttackPoint & {
+  markerId: string;
+  displayKind: "newfeeds-attack";
+};
+
 type NeptunImpactHtmlMarker = NeptunImpactFlash & {
   markerId: string;
   displayKind: "neptun-impact";
@@ -592,7 +620,8 @@ type GlobeDisplayPoint =
   | AisGlobePoint
   | FirmsFireGlobePoint
   | ConflictClusterPoint
-  | TzevaAdomGlobePoint;
+  | TzevaAdomGlobePoint
+  | NewfeedsAttackGlobePoint;
 
 type GlobeLabel =
   | (SearchPlace & { labelKind: "place" });
@@ -629,6 +658,23 @@ type FrictionStageHtmlMarker = {
   active: boolean;
 };
 
+type CasualtySkullHtmlMarker = {
+  markerId: string;
+  displayKind: "casualty-skull";
+  id: string;
+  theaterId: string;
+  lat: number;
+  lng: number;
+  killed: number;
+  wounded: number;
+  killedLabel: string;
+  woundedLabel: string;
+  asOf: string;
+  sourceHint: string;
+  elegyLines: readonly [string, string];
+  woundedNote?: string;
+};
+
 type HtmlOverlayMarker =
   | StaticGlobePoint
   | GlobePoint
@@ -641,7 +687,8 @@ type HtmlOverlayMarker =
   | NeptunHtmlMarker
   | NeptunImpactHtmlMarker
   | FrictionPinHtmlMarker
-  | FrictionStageHtmlMarker;
+  | FrictionStageHtmlMarker
+  | CasualtySkullHtmlMarker;
 
 type HoverCard =
   | {
@@ -938,6 +985,25 @@ function createSituationCalloutBadge(callout: SituationCalloutMarker): HTMLEleme
     callout.title,
   )}</div><div style="opacity:0.92">${escapeHtml(callout.body)}</div>`;
   return el;
+}
+
+/** 지정학 — 전장 공통 사상자 오버레이 (호버 타입라이터 포함) */
+function createCasualtySkullBadge(
+  marker: CasualtySkullHtmlMarker,
+  altitude = 1.8,
+): HTMLElement {
+  return createWarCasualtyOverlayElement({
+    theaterId: marker.theaterId,
+    lat: marker.lat,
+    lng: marker.lng,
+    killed: marker.killed,
+    wounded: marker.wounded,
+    killedLabel: marker.killedLabel,
+    woundedLabel: marker.woundedLabel,
+    elegyLines: marker.elegyLines,
+    woundedNote: marker.woundedNote,
+    altitude,
+  });
 }
 
 const EMPTY_OVERLAY_POLYGONS: PolygonLayerFeature[] = [];
@@ -1470,6 +1536,11 @@ export function GlobeDashboard({
   const [tzevaAdomStatus, setTzevaAdomStatus] = useState<
     "idle" | "loading" | "ok" | "error" | "stub" | "geo-blocked"
   >("idle");
+  const [newfeedsAttacks, setNewfeedsAttacks] = useState<NewfeedsAttackPoint[]>([]);
+  const [newfeedsThreatLabel, setNewfeedsThreatLabel] = useState<string | null>(null);
+  const [newfeedsLive, setNewfeedsLive] = useState(false);
+  const [newfeedsError, setNewfeedsError] = useState<string | null>(null);
+  const [newfeedsStatus, setNewfeedsStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
   /** 공습사이렌 포커스 — 사각 틀 없이 해당 지역 빗금만 */
   const [airRaidFocusPaths, setAirRaidFocusPaths] = useState<TransportPath[]>([]);
   const airRaidFocusClearRef = useRef<number | null>(null);
@@ -1514,6 +1585,8 @@ export function GlobeDashboard({
   const [ukraineControlStatus, setUkraineControlStatus] = useState<
     "idle" | "loading" | "ok" | "error"
   >(() => (viinaMeta?.available ? "idle" : "error"));
+  const [mediazonaCasualties, setMediazonaCasualties] =
+    useState<MediazonaCasualtySnapshot>(MEDIAZONA_CASUALTY_SEED);
   const ukraineSettlementsLoadedRef = useRef(false);
   const ukraineSettlementsSourceRef = useRef<UkraineSettlement[]>([]);
   const ukraineFetchStartedRef = useRef(false);
@@ -1538,7 +1611,9 @@ export function GlobeDashboard({
   const enterTheaterFocusRef = useRef<
     (selection: NavSelection, tab?: TheaterSidebarTab) => void
   >(() => {});
-  const enterEconomyRegionFocusRef = useRef<(selection: NavSelection) => void>(() => {});
+  const enterEconomyRegionFocusRef = useRef<
+    (selection: NavSelection, opts?: { openInsight?: boolean }) => void
+  >(() => {});
   const [hoverPointer, setHoverPointer] = useState<{ x: number; y: number } | null>(null);
   const [hoverGlobeCoords, setHoverGlobeCoords] = useState<{ lat: number; lng: number } | null>(
     null,
@@ -1717,6 +1792,7 @@ export function GlobeDashboard({
     showGdeltProtests,
     showTelegramOsint,
     showTzevaAdom,
+    showNewfeedsIranAttacks,
     showNeptun,
     showNeptunPreviousTrails,
     showEastAsiaAdiz,
@@ -1835,6 +1911,7 @@ export function GlobeDashboard({
   const setShowGdeltProtests = (v: boolean) => togglePref("showGdeltProtests", v);
   const setShowTelegramOsint = (v: boolean) => togglePref("showTelegramOsint", v);
   const setShowTzevaAdom = (v: boolean) => togglePref("showTzevaAdom", v);
+  const setShowNewfeedsIranAttacks = (v: boolean) => togglePref("showNewfeedsIranAttacks", v);
 
   const setShowNeptun = (v: boolean) => {
     if (v) {
@@ -2164,6 +2241,25 @@ export function GlobeDashboard({
     onBootProgress,
     onBootReady,
   ]);
+
+  useEffect(() => {
+    if (isEconomyViewer) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/mediazona-casualties", { cache: "no-store" });
+        if (!res.ok) return;
+        const payload = (await res.json()) as MediazonaCasualtySnapshot;
+        if (cancelled || !payload?.confirmedNamedDeaths) return;
+        setMediazonaCasualties({ ...MEDIAZONA_CASUALTY_SEED, ...payload });
+      } catch {
+        /* seed 유지 */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isEconomyViewer]);
 
   useEffect(() => {
     const syncStamp =
@@ -3301,6 +3397,15 @@ export function GlobeDashboard({
     }));
   }, [showTzevaAdom, tzevaAdomActive, tzevaAdomHistory]);
 
+  const newfeedsAttackDisplayPoints = useMemo<NewfeedsAttackGlobePoint[]>(() => {
+    if (!showNewfeedsIranAttacks) return [];
+    return newfeedsAttacks.map((attack) => ({
+      ...attack,
+      markerId: `newfeeds-${attack.id}`,
+      displayKind: "newfeeds-attack" as const,
+    }));
+  }, [newfeedsAttacks, showNewfeedsIranAttacks]);
+
   const neptunHtmlMarkers = useMemo<NeptunHtmlMarker[]>(() => {
     if (!showNeptun || !neptunShowsMarkers(neptunRenderMode)) return [];
     return visibleNeptunThreats.map((threat) => ({
@@ -3568,11 +3673,13 @@ export function GlobeDashboard({
       ...firmsDisplayPoints,
       ...conflictClusterPoints,
       ...tzevaAdomDisplayPoints,
+      ...newfeedsAttackDisplayPoints,
     ];
     return points;
   }, [
       conflictClusterPoints,
       firmsDisplayPoints,
+      newfeedsAttackDisplayPoints,
       staticGlobePoints,
       tzevaAdomDisplayPoints,
   ]);
@@ -3687,9 +3794,10 @@ export function GlobeDashboard({
       theater === "middle-east" ||
       showWarZones ||
       showDiplomaticTension ||
-      showTzevaAdom
+      showTzevaAdom ||
+      showNewfeedsIranAttacks
     ) {
-      if (theater === "middle-east" || showWarZones || showTzevaAdom) {
+      if (theater === "middle-east" || showWarZones || showTzevaAdom || showNewfeedsIranAttacks) {
         seeds.push(...MIDDLE_EAST_SITUATION_CALLOUTS);
       }
     }
@@ -3719,9 +3827,48 @@ export function GlobeDashboard({
     isEconomyViewer,
     showDiplomaticTension,
     showMilitaryActivity,
+    showNewfeedsIranAttacks,
     showTzevaAdom,
     showUkraineControl,
     showWarZones,
+  ]);
+
+  /** Mediazona 사망 + CSIS 부상 — 지정학 전용, 체크박스 없음. 전역에서도 우크라 바라보면 표시 */
+  const casualtySkullMarkers = useMemo<CasualtySkullHtmlMarker[]>(() => {
+    if (isEconomyViewer) return [];
+    const theater = resolveCombatTheaterAt(filterCenter.lat, filterCenter.lng);
+    if (theater !== "russia-ukraine" && !showUkraineControl) return [];
+    const snap = mediazonaCasualties;
+    const en = labelLanguage === "en";
+    return [
+      {
+        markerId: "casualty-skull-ru-ua",
+        displayKind: "casualty-skull" as const,
+        id: "mediazona-ru-confirmed",
+        theaterId: "russia-ukraine",
+        lat: snap.marker?.lat ?? MEDIAZONA_FRONT_MARKER.lat,
+        lng: snap.marker?.lng ?? MEDIAZONA_FRONT_MARKER.lng,
+        killed: snap.confirmedNamedDeaths,
+        wounded: snap.estimatedWounded ?? MEDIAZONA_CASUALTY_SEED.estimatedWounded,
+        killedLabel: en
+          ? (snap.marker?.killedLabelEn ?? "KIA")
+          : (snap.marker?.killedLabelKo ?? "사망"),
+        woundedLabel: en
+          ? (snap.marker?.woundedLabelEn ?? "WIA")
+          : (snap.marker?.woundedLabelKo ?? "부상"),
+        asOf: snap.confirmedNamedDeathsAsOf,
+        sourceHint: "Mediazona × BBC · CSIS WIA est.",
+        elegyLines: en ? CASUALTY_ELEGY_LINES.en : CASUALTY_ELEGY_LINES.ko,
+        woundedNote: en ? WOUNDED_FIXED_NOTE.en : WOUNDED_FIXED_NOTE.ko,
+      },
+    ];
+  }, [
+    filterCenter.lat,
+    filterCenter.lng,
+    isEconomyViewer,
+    labelLanguage,
+    mediazonaCasualties,
+    showUkraineControl,
   ]);
 
   const ukraineSettlementHtmlMarkers = useMemo<UkraineSettlementHtmlMarker[]>(() => {
@@ -3764,6 +3911,7 @@ export function GlobeDashboard({
       ...globePoints,
       ...airportPortHtmlMarkers,
       ...situationCalloutMarkers,
+      ...casualtySkullMarkers,
       ...ukraineSettlementHtmlMarkers,
       ...usCarrierHtmlMarkers,
       ...milHtmlMarkers,
@@ -3779,6 +3927,7 @@ export function GlobeDashboard({
   }, [
       aisHtmlMarkers,
       airportPortHtmlMarkers,
+      casualtySkullMarkers,
       frictionPinMarkers,
       frictionStageMarkers,
       gdeltTagHtmlMarkers,
@@ -4111,6 +4260,21 @@ export function GlobeDashboard({
           title: translateOrefTitle(hoveredPoint.title || hoveredPoint.region, labelLanguage),
           detail: tzevaUi("brand", labelLanguage),
           meta: hoveredPoint.active ? HOVER.active(lang) : hoveredPoint.alertDate,
+        };
+      }
+      if (hoveredPoint.displayKind === "newfeeds-attack") {
+        return {
+          kind: "event",
+          title: hoveredPoint.title,
+          detail: [
+            hoveredPoint.category,
+            hoveredPoint.severity,
+            hoveredPoint.location,
+          ]
+            .filter(Boolean)
+            .join(" · "),
+          meta: `${hoveredPoint.sourceName} · ${NEWFEEDS_ATTRIBUTION_SHORT}`,
+          hint: NEWFEEDS_REPO_URL,
         };
       }
       if (hoveredPoint.displayKind === "gdelt-tag-html") {
@@ -4743,6 +4907,42 @@ export function GlobeDashboard({
     return () => window.clearInterval(timer);
   }, [refreshTzevaAdom, showTzevaAdom]);
 
+  const refreshNewfeedsIran = useCallback(async () => {
+    if (shouldDeferLiveNetworkRefresh(isCameraMovingRef.current)) return;
+    setNewfeedsStatus((prev) => (prev === "idle" ? "loading" : prev));
+    try {
+      const attacksRes = await fetch("/api/newfeeds-attacks?iran=1", { cache: "no-store" });
+      if (!attacksRes.ok) throw new Error(`attacks HTTP ${attacksRes.status}`);
+      const attacksPayload = (await attacksRes.json()) as NewfeedsAttacksPayload;
+      setNewfeedsAttacks(attacksPayload.attacks ?? []);
+      setNewfeedsThreatLabel(attacksPayload.threatLabel ?? null);
+      setNewfeedsLive(Boolean(attacksPayload.live));
+      setNewfeedsError(attacksPayload.error ?? null);
+      setNewfeedsStatus("ok");
+    } catch (err) {
+      setNewfeedsStatus("error");
+      setNewfeedsLive(false);
+      setNewfeedsError(err instanceof Error ? err.message : "newfeeds fetch failed");
+    }
+  }, []);
+
+  /** NewFeeds 이란 지도 공격 — 레이어 ON일 때만 폴링 (국영뉴스는 하단 뉴스 스트림) */
+  useEffect(() => {
+    if (!showNewfeedsIranAttacks) {
+      setNewfeedsAttacks([]);
+      setNewfeedsThreatLabel(null);
+      setNewfeedsLive(false);
+      setNewfeedsError(null);
+      setNewfeedsStatus("idle");
+      return;
+    }
+    void refreshNewfeedsIran();
+    const timer = window.setInterval(() => {
+      void refreshNewfeedsIran();
+    }, liveNewfeedsPollMs());
+    return () => window.clearInterval(timer);
+  }, [refreshNewfeedsIran, showNewfeedsIranAttacks]);
+
   useEffect(() => {
     if (!showFirmsFires) {
       setFirmsFires([]);
@@ -5032,6 +5232,22 @@ export function GlobeDashboard({
             checked: layerPrefs.showTzevaAdom,
             onChange: setShowTzevaAdom,
             accent: "red",
+          },
+          {
+            id: "newfeeds-iran",
+            label: "NewFeeds 이란·공격",
+            detail: showNewfeedsIranAttacks
+              ? newfeedsStatus === "loading"
+                ? "불러오는 중…"
+                : newfeedsStatus === "error"
+                  ? "피드 오류"
+                  : newfeedsThreatLabel
+                    ? `${newfeedsThreatLabel} · 지도 ${newfeedsAttacks.length}건`
+                    : `지도 ${newfeedsAttacks.length}건`
+              : "꺼짐 · NewFeeds MIT",
+            checked: layerPrefs.showNewfeedsIranAttacks,
+            onChange: setShowNewfeedsIranAttacks,
+            accent: "orange",
           },
         ],
         footer: (
@@ -5545,6 +5761,7 @@ export function GlobeDashboard({
     lpg(showSubmarineTunnels, false),
     lpg(showTelegramOsint, false),
     lpg(showTzevaAdom, false),
+    lpg(showNewfeedsIranAttacks, false),
     lpg(showNeptun, false),
     lpg(showNeptunPreviousTrails, false),
     lpg(showUcdpEvents, false),
@@ -5562,6 +5779,10 @@ export function GlobeDashboard({
     lpg(tzevaAdomHistory.length, 0),
     lpg(tzevaAdomLive, false),
     lpg(tzevaAdomStatus, "idle"),
+    lpg(newfeedsAttacks.length, 0),
+    lpg(newfeedsLive, false),
+    lpg(newfeedsStatus, "idle"),
+    lpg(newfeedsThreatLabel, null),
     lpg(neptunThreats.length, 0),
     lpg(neptunArchivedThreats.length, 0),
     lpg(neptunAlertCount, 0),
@@ -5961,7 +6182,10 @@ export function GlobeDashboard({
     [computeRegionFitAltitude, flyTo],
   );
 
-  function enterEconomyRegionFocus(selection: NavSelection) {
+  function enterEconomyRegionFocus(
+    selection: NavSelection,
+    opts?: { openInsight?: boolean },
+  ) {
     closeLeftPanel();
     setSelected(null);
     setIntelSheetOpen(false);
@@ -5971,7 +6195,10 @@ export function GlobeDashboard({
     setEconNavSelection(selection);
     setEconNewsPanelReveal(false);
     flyToBounds(selection, 1100, "overview", { pitch: 55, bearing: -20 });
-    scheduleEconInsight({ navId: selection.id, compact: false });
+    // 양피지는 nav/허브 직접 선택일 때만 (인트로·패키지 autoEnter는 카메라만)
+    if (opts?.openInsight !== false) {
+      scheduleEconInsight({ navId: selection.id, compact: false });
+    }
 
     const conceptLayers = conceptLayersForEconomyNavId(selection.id);
     if (Object.keys(conceptLayers).length > 0) {
@@ -6065,7 +6292,8 @@ export function GlobeDashboard({
     if (typeof window !== "undefined") {
       sessionStorage.setItem(INTRO_SESSION_KEY, "1");
     }
-    enterEconomyRegionFocusRef.current(sel);
+    // 모드 피커에서 허브를 골라도 양피지는 열지 않음 — nav로 다시 눌러야 양피지
+    enterEconomyRegionFocusRef.current(sel, { openInsight: false });
   }, [
     entryGate,
     globeReady,
@@ -6274,7 +6502,13 @@ export function GlobeDashboard({
       } else if (introTarget?.kind === "exploration") {
         if (isEconomyViewer) {
           const sel = econNavSelectionFromId(introTarget.presetId);
-          if (sel) enterEconomyRegionFocusRef.current(sel);
+          if (sel) {
+            // 인트로: 핫 허브로 카메라만 — 양피지/강제 패널 포커스 금지
+            flyToBounds(sel, INTRO_CAMERA_DURATION_MS, "overview", {
+              pitch: 55,
+              bearing: -20,
+            });
+          }
         } else {
           const preset = EXPLORATION_PRESETS.find((item) => item.id === introTarget.presetId);
           if (preset) {
@@ -6296,6 +6530,7 @@ export function GlobeDashboard({
   }, [
     entryGate,
     flyTo,
+    flyToBounds,
     globeReady,
     initialViewConfig?.ui.autoEnterEconNavId,
     initialViewConfig?.ui.autoEnterTheaterNavId,
@@ -6409,10 +6644,7 @@ export function GlobeDashboard({
       window.clearTimeout(domainThenDetailTimerRef.current);
       domainThenDetailTimerRef.current = null;
     }
-
-    if (shouldOfferChromeCoach()) {
-      window.setTimeout(() => setChromeCoachStep("nav"), 1100);
-    }
+    // 크롬 코치는 일일 등불 양피지 이후 — 등불 effect / dismiss에서 점화
   }
 
   function handleModePickerCancel() {
@@ -6435,7 +6667,7 @@ export function GlobeDashboard({
     if (entryGate !== null || showModePicker) return;
     if (chromeCoachStep || showAirRaidCoach) return;
     if (shouldOfferChromeCoach()) return;
-    const airRaidVisible = Boolean(showNeptun || neptunAlertCount > 0 || showTzevaAdom);
+    const airRaidVisible = Boolean(showNeptun || neptunAlertCount > 0 || showTzevaAdom || showNewfeedsIranAttacks);
     if (!isEconomyViewer && airRaidVisible && shouldOfferAirRaidCoach()) return;
     if (!shouldShowQuickStart(viewerMode)) return;
     const timer = window.setTimeout(() => setShowQuickStart(true), 1200);
@@ -6451,6 +6683,7 @@ export function GlobeDashboard({
     showAirRaidCoach,
     showModePicker,
     showNeptun,
+    showNewfeedsIranAttacks,
     showTzevaAdom,
     viewerMode,
   ]);
@@ -6462,7 +6695,7 @@ export function GlobeDashboard({
     if (entryGate !== null || showModePicker || chromeCoachStep) return;
     if (shouldOfferChromeCoach()) return;
     if (!shouldOfferAirRaidCoach()) return;
-    const airRaidVisible = Boolean(showNeptun || neptunAlertCount > 0 || showTzevaAdom);
+    const airRaidVisible = Boolean(showNeptun || neptunAlertCount > 0 || showTzevaAdom || showNewfeedsIranAttacks);
     if (!airRaidVisible) return;
     const timer = window.setTimeout(() => setShowAirRaidCoach(true), 900);
     return () => window.clearTimeout(timer);
@@ -6476,48 +6709,95 @@ export function GlobeDashboard({
     neptunAlertCount,
     showModePicker,
     showNeptun,
+    showNewfeedsIranAttacks,
     showTzevaAdom,
   ]);
 
   /**
-   * 매일 등불 브리핑 — 첫입장(경고→편지→모드→세부)과 무관.
-   * 로컬 캘린더 일(dayKey)당 1회. 자정이 지나면 calendarDayKey가 바뀌어 다시 점화.
-   * 본문은 D1 집계/샘플 우선, 없으면 큐레이션 폴백.
+   * 매일 등불 브리핑 — 지정학·지경학 각각 하루 1회.
+   * 첫 방문: 입장 인트로(경고→편지→도메인)가 끝난 뒤에만.
+   * 재방문: 당일 해당 모드 미시청이면 점화. 코치/공습 안내보다 우선.
    */
   useEffect(() => {
     if (isLoading || loadError || !globeReady) return;
-    if (entryGate !== null || showModePicker || chromeCoachStep) return;
-    if (showAirRaidCoach || hubBriefOpen || frictionEpisodeBrief) return;
-    if (shouldOfferChromeCoach()) return;
-    if (!isEconomyViewer && shouldOfferAirRaidCoach()) return;
+    if (entryGate !== null || showModePicker) return;
+    if (chromeCoachStep || showAirRaidCoach) return;
+    if (hubBriefOpen || frictionEpisodeBrief || econInsightOpen) return;
 
     const { dayKey, tier } = resolveLampPeriod();
-    // 훅 dayKey와 동기 — 자정 직후 한 틱 어긋나면 훅 값 우선
-    const lampKey = calendarDayKey.startsWith("daily-") ? calendarDayKey : dayKey;
+    const dayPart = calendarDayKey.startsWith("daily-") ? calendarDayKey : dayKey;
+    const lampKey = lampSeenKey(dayPart, viewerMode);
 
     if (periodicBriefing?.key === lampKey) return;
-    if (hasSeenPeriod(lampKey)) return;
+    if (hasSeenPeriod(lampKey)) {
+      // 오늘 등불 이미 봄 → 첫 방문 크롬 코치만 이어서
+      if (shouldOfferChromeCoach() && !chromeCoachStep) {
+        const coachTimer = window.setTimeout(() => setChromeCoachStep("nav"), 900);
+        return () => window.clearTimeout(coachTimer);
+      }
+      return;
+    }
 
     let cancelled = false;
     const timer = window.setTimeout(() => {
       void (async () => {
         let content: PeriodicBriefing | null = null;
-        try {
-          const res = await fetch(`/api/briefing-stats?tier=${tier}`, { cache: "no-store" });
-          if (res.ok) {
-            const payload = (await res.json()) as {
-              stats?: BriefingPeriodStats | null;
-            };
-            content = buildBriefingFromStats(
-              payload.stats ?? null,
-              tier,
-              lampKey,
-              labelLanguage,
-              viewerMode,
+        if (viewerMode === "economy") {
+          try {
+            const lampRes = await fetch(
+              `/api/world-stats/market-lamp?dayKey=${encodeURIComponent(dayPart)}&lang=${labelLanguage === "en" ? "en" : "ko"}`,
+              { cache: "no-store" },
             );
+            if (lampRes.ok) {
+              const lamp = (await lampRes.json()) as {
+                disabled?: boolean;
+                focusTitle?: string;
+                paragraphs?: string[];
+              };
+              if (!lamp.disabled && lamp.paragraphs && lamp.paragraphs.length > 0) {
+                const kicker =
+                  labelLanguage === "en"
+                    ? tier === "monthly"
+                      ? "This month's market lamp"
+                      : tier === "weekly"
+                        ? "This week's market lamp"
+                        : "Today's market lamp"
+                    : tier === "monthly"
+                      ? "이번 달 시장 등불"
+                      : tier === "weekly"
+                        ? "이번 주 시장 등불"
+                        : "오늘의 시장 등불";
+                content = {
+                  tier,
+                  key: lampKey,
+                  title: `${kicker}\n${lamp.focusTitle ?? (labelLanguage === "en" ? "Macro pulse" : "거시 펄스")}`,
+                  paragraphs: lamp.paragraphs,
+                };
+              }
+            }
+          } catch {
+            // fall through
           }
-        } catch {
-          // fall through to curated
+        }
+        if (!content) {
+          try {
+            const res = await fetch(`/api/briefing-stats?tier=${tier}`, { cache: "no-store" });
+            if (res.ok) {
+              const payload = (await res.json()) as {
+                stats?: BriefingPeriodStats | null;
+              };
+              content = buildBriefingFromStats(
+                payload.stats ?? null,
+                tier,
+                dayPart,
+                labelLanguage,
+                viewerMode,
+              );
+              if (content) content = { ...content, key: lampKey };
+            }
+          } catch {
+            // fall through to curated
+          }
         }
         if (!content) {
           content = buildPeriodicBriefing(viewerMode, labelLanguage);
@@ -6534,11 +6814,11 @@ export function GlobeDashboard({
   }, [
     calendarDayKey,
     chromeCoachStep,
+    econInsightOpen,
     entryGate,
     frictionEpisodeBrief,
     globeReady,
     hubBriefOpen,
-    isEconomyViewer,
     isLoading,
     labelLanguage,
     loadError,
@@ -6547,6 +6827,11 @@ export function GlobeDashboard({
     showModePicker,
     viewerMode,
   ]);
+
+  // 모드 전환 시 다른 모드 등불을 위해 현재 양피지 상태 리셋
+  useEffect(() => {
+    setPeriodicBriefing(null);
+  }, [viewerMode]);
 
   const layerDebugPrevRef = useRef<{
     labels: number;
@@ -6837,6 +7122,9 @@ export function GlobeDashboard({
       if (item.displayKind === "situation-callout") {
         return createSituationCalloutBadge(item);
       }
+      if (item.displayKind === "casualty-skull") {
+        return createCasualtySkullBadge(item, alt);
+      }
       if (item.displayKind === "ua-settlement-html") {
         return createUkraineSettlementLabelElement(
           normalizeLabelText(item.name) || "마을",
@@ -6941,7 +7229,21 @@ export function GlobeDashboard({
       return;
     }
     if (point.displayKind === "tzeva-adom") {
-      flyTo(point.lat, point.lng, 0.75);
+      handleAirRaidFocus(
+        {
+          lat: point.lat,
+          lng: point.lng,
+          label: point.region || point.title,
+        },
+        "tzeva",
+      );
+      return;
+    }
+    if (point.displayKind === "newfeeds-attack") {
+      handleAirRaidFocus(
+        { lat: point.lat, lng: point.lng, label: point.location || point.title },
+        "newfeeds",
+      );
       return;
     }
     if (point.displayKind === "event") {
@@ -7191,6 +7493,9 @@ export function GlobeDashboard({
                 if (point.displayKind === "tzeva-adom") {
                   return TZEVA_ADOM_MARKER;
                 }
+                if (point.displayKind === "newfeeds-attack") {
+                  return severityColor(point.severity);
+                }
                 if (point.displayKind === "conflict-cluster") {
                   if (point.tension === "high") return "rgba(239, 68, 68, 0.92)";
                   if (point.tension === "medium") return "rgba(249, 115, 22, 0.9)";
@@ -7213,6 +7518,17 @@ export function GlobeDashboard({
                 }
                 if (point.displayKind === "tzeva-adom") {
                   return (point.active ? 0.42 : 0.28) * getZoomOutScale(alt);
+                }
+                if (point.displayKind === "newfeeds-attack") {
+                  const base =
+                    point.severity === "major"
+                      ? 0.4
+                      : point.severity === "high"
+                        ? 0.34
+                        : point.severity === "medium"
+                          ? 0.28
+                          : 0.22;
+                  return base * getZoomOutScale(alt);
                 }
                 if (point.displayKind === "conflict-cluster") {
                   const base = point.tension === "high" ? 0.55 : point.tension === "medium" ? 0.42 : 0.32;
@@ -7311,6 +7627,18 @@ export function GlobeDashboard({
                   </div>
                 `;
                 }
+                if (point.displayKind === "newfeeds-attack") {
+                  return `
+                  <div style="max-width: 300px">
+                    <strong>${escapeHtml(NEWFEEDS_ATTRIBUTION_SHORT)} · Iran</strong><br/>
+                    ${escapeHtml(point.title)}
+                    ${point.location ? `<br/>${escapeHtml(point.location)}` : ""}
+                    ${point.category || point.severity ? `<br/>${escapeHtml([point.category, point.severity].filter(Boolean).join(" · "))}` : ""}
+                    <br/><span style="opacity:.75">${escapeHtml(point.sourceName)} · ${escapeHtml(NEWFEEDS_ATTRIBUTION_SHORT)}</span>
+                    <br/><span style="opacity:.55;font-size:11px">${escapeHtml(NEWFEEDS_REPO_URL)}</span>
+                  </div>
+                `;
+                }
                 if (point.displayKind !== "event") return "";
 
                 const tier = point.eventTier ?? "war";
@@ -7403,6 +7731,15 @@ export function GlobeDashboard({
                   el.style.transform = isVisible
                     ? `translate(-50%, calc(-50% + ${stackY}px)) scale(1)`
                     : `translate(-50%, calc(-50% + ${stackY}px)) scale(0.86)`;
+                  return;
+                }
+                if (el.classList.contains("casualty-skull-marker")) {
+                  const scale = getCasualtyOverlayScale(layerAltitudeRef.current);
+                  const visScale = isVisible ? scale : scale * 0.86;
+                  el.style.transform = `translate(-50%, -100%) scale(${visScale})`;
+                  el.style.transformOrigin = "center bottom";
+                  // 호버 타입라이터용 — 보일 때만 포인터 허용
+                  el.style.pointerEvents = isVisible ? "auto" : "none";
                   return;
                 }
                 if (el.classList.contains("gdelt-news-alert-marker")) {
@@ -8078,7 +8415,7 @@ export function GlobeDashboard({
         }`}
         style={{ top: "max(0.75rem, env(safe-area-inset-top, 0px))" }}
       >
-        {!isCompactUi && !isEconomyViewer && (showNeptun || neptunAlertCount > 0 || showTzevaAdom) ? (
+        {!isCompactUi && !isEconomyViewer && (showNeptun || neptunAlertCount > 0 || showTzevaAdom || showNewfeedsIranAttacks) ? (
           <div id="air-raid-chrome" className="cv-desktop-only pointer-events-auto flex items-start gap-2">
             {showNeptun || neptunAlertCount > 0 ? (
               <UkraineAirRaidPanel
@@ -8100,6 +8437,17 @@ export function GlobeDashboard({
                 error={tzevaAdomError}
                 lang={labelLanguage}
                 onFocusRegion={(target) => handleAirRaidFocus(target, "tzeva")}
+              />
+            ) : null}
+            {showNewfeedsIranAttacks ? (
+              <NewFeedsIranPanel
+                attacks={newfeedsAttacks}
+                threatLabel={newfeedsThreatLabel}
+                live={newfeedsLive}
+                liveStatus={newfeedsStatus}
+                error={newfeedsError}
+                lang={labelLanguage}
+                onFocusAttack={(target) => handleAirRaidFocus(target, "newfeeds")}
               />
             ) : null}
           </div>
@@ -8157,7 +8505,7 @@ export function GlobeDashboard({
       </div>
 
       {/* 모바일: 공습 경보는 하단 아이콘 — 상단 허브·주요전장 메뉴를 가리지 않음 */}
-      {isCompactUi && !isEconomyViewer && (showNeptun || neptunAlertCount > 0 || showTzevaAdom) ? (
+      {isCompactUi && !isEconomyViewer && (showNeptun || neptunAlertCount > 0 || showTzevaAdom || showNewfeedsIranAttacks) ? (
         <div
           id="air-raid-chrome"
           className="cv-compact-only pointer-events-none absolute bottom-[calc(var(--bottom-intel-stack-clearance)+0.65rem+env(safe-area-inset-bottom,0px))] right-3 z-[55] flex flex-col items-end gap-2"
@@ -8187,6 +8535,20 @@ export function GlobeDashboard({
                 lang={labelLanguage}
                 compact
                 onFocusRegion={(target) => handleAirRaidFocus(target, "tzeva")}
+              />
+            </div>
+          ) : null}
+          {showNewfeedsIranAttacks ? (
+            <div className="pointer-events-auto">
+              <NewFeedsIranPanel
+                attacks={newfeedsAttacks}
+                threatLabel={newfeedsThreatLabel}
+                live={newfeedsLive}
+                liveStatus={newfeedsStatus}
+                error={newfeedsError}
+                lang={labelLanguage}
+                compact
+                onFocusAttack={(target) => handleAirRaidFocus(target, "newfeeds")}
               />
             </div>
           ) : null}
@@ -8670,6 +9032,9 @@ export function GlobeDashboard({
           onDismiss={() => {
             markPeriodSeen(periodicBriefing.key);
             setPeriodicBriefing(null);
+            if (shouldOfferChromeCoach()) {
+              window.setTimeout(() => setChromeCoachStep("nav"), 500);
+            }
           }}
         />
       ) : null}

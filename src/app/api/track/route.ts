@@ -18,7 +18,7 @@ const ALLOWED_EVENTS = new Set([
 
 const trackBodySchema = z.object({
   event: z.string().min(1).max(64),
-  meta: z.record(z.unknown()).optional(),
+  meta: z.record(z.string(), z.unknown()).optional(),
   viewerMode: z.string().max(32).optional(),
   lang: z.string().max(8).optional(),
 });

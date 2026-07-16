@@ -5,18 +5,19 @@ import type { LabelLanguage } from "@/lib/layerPrefs";
 import type { ViewerMode } from "@/lib/viewPackages";
 
 /**
- * 매일 등불 브리핑 — 첫입장(경고→편지→모드→세부)과 무관한 **캘린더 일 단위** 의식.
+ * 매일 등불 브리핑 — 지정학·지경학 각각 하루 1회.
  *
- * - seen 키 = 로컬 `daily-YYYY-MM-DD` (그날 1회만, 자정·다음날이면 다시 뜸)
- * - 본문 우선순위 = D1 라이브 집계/샘플 → 없으면 큐레이션 폴백
- * - 티어 카피(월말>주말>평일)는 제목·집계 조회용. 등불 주기는 항상 "하루"
+ * - 첫 방문: 입장 인트로(경고→편지→도메인)가 끝난 뒤에 점화
+ * - 재방문: 로컬 자정 기준 그날 아직 안 봤으면 모드별 양피지
+ * - seen 키 = `daily-YYYY-MM-DD-{conflict|economy}`
+ * - 본문 = (지경학) SOTW market-lamp → D1 집계 → 큐레이션 폴백
  */
 
 export type BriefingTier = "monthly" | "weekly" | "daily";
 
 export type PeriodicBriefing = {
   tier: BriefingTier;
-  /** 등불 seen 키 — 항상 로컬 캘린더 일 */
+  /** 등불 seen 키 — 캘린더 일 + 뷰어 모드 */
   key: string;
   title: string;
   paragraphs: string[];
@@ -84,6 +85,11 @@ export function resolveLampPeriod(now: Date = new Date()): {
 } {
   const { tier, key: statsKey } = resolvePeriodTier(now);
   return { dayKey: localCalendarDayKey(now), tier, statsKey };
+}
+
+/** 모드별 일일 등불 seen 키 — 지정학·지경학 각각 하루 1회 */
+export function lampSeenKey(dayKey: string, mode: ViewerMode): string {
+  return `${dayKey}-${mode}`;
 }
 
 export function hasSeenPeriod(key: string): boolean {
@@ -293,7 +299,8 @@ export function buildBriefingFromStats(
 }
 
 /**
- * 폴백만 — 라이브 집계 없을 때. dayKey를 seen 키로 씀.
+ * 폴백만 — 라이브 집계 없을 때.
+ * 호출부에서 key를 lampSeenKey(dayKey, mode)로 덮어쓴다.
  */
 export function buildPeriodicBriefing(
   viewerMode: ViewerMode,

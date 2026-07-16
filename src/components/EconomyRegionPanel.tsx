@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { NavSelection } from "@/data/navRegions";
 import {
   ECON_REGION_KEYWORDS,
   ECON_REGION_TICKERS,
 } from "@/data/econNavRegions";
+import { countryHintForEconNav } from "@/data/econInsightBriefs";
 import { useNewsStreamContext } from "@/components/BottomIntelStack";
 import { NewsArticleCard } from "@/components/NewsArticleCard";
 import { ECONOMY_TIER_LABELS } from "@/lib/news/mediaTiers";
@@ -20,9 +21,40 @@ type EconomyRegionPanelProps = {
   onFlyToMap?: (target: MapFlyTarget) => void;
 };
 
+type RegionMacro = {
+  disabled?: boolean;
+  name?: string;
+  gdpGrowthPct?: number | null;
+  inflationPct?: number | null;
+  unemploymentPct?: number | null;
+  gdpUsd?: number | null;
+  tradePctGdp?: number | null;
+  shocks?: {
+    inflation?: { rangePp?: number | null; deltaPp?: number | null } | null;
+    growth?: { rangePp?: number | null; deltaPp?: number | null } | null;
+  };
+  peers?: Array<{ name?: string; gdpGrowthPct?: number | null; inflationPct?: number | null }>;
+  narrativeKo?: string[];
+  narrativeEn?: string[];
+  attribution?: string;
+};
+
 function matchesRegionKeywords(text: string, keywords: string[]): boolean {
   const blob = text.toLowerCase();
   return keywords.some((kw) => blob.includes(kw.toLowerCase()));
+}
+
+function fmtPct(v: number | null | undefined): string {
+  if (v == null || !Number.isFinite(v)) return "—";
+  const sign = v > 0 ? "+" : "";
+  return `${sign}${v.toFixed(1)}%`;
+}
+
+function fmtUsd(v: number | null | undefined): string {
+  if (v == null || !Number.isFinite(v)) return "—";
+  if (Math.abs(v) >= 1e12) return `$${(v / 1e12).toFixed(1)}T`;
+  if (Math.abs(v) >= 1e9) return `$${(v / 1e9).toFixed(0)}B`;
+  return `$${v.toLocaleString()}`;
 }
 
 export function EconomyRegionPanel({
@@ -34,6 +66,32 @@ export function EconomyRegionPanel({
   const { lang } = useLocale();
   const { payload } = useNewsStreamContext();
   const tickers = ECON_REGION_TICKERS[selection.id];
+  const countryHint = countryHintForEconNav(selection.id);
+  const [macro, setMacro] = useState<RegionMacro | null>(null);
+
+  useEffect(() => {
+    if (!countryHint) {
+      setMacro(null);
+      return;
+    }
+    let cancelled = false;
+    void fetch(`/api/world-stats/macro?country=${encodeURIComponent(countryHint)}`)
+      .then((r) => r.json())
+      .then((data: RegionMacro) => {
+        if (cancelled) return;
+        if (data?.disabled) {
+          setMacro(null);
+          return;
+        }
+        setMacro(data);
+      })
+      .catch(() => {
+        if (!cancelled) setMacro(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [countryHint]);
 
   const articles = useMemo(() => {
     const keywords = ECON_REGION_KEYWORDS[selection.id] ?? [
@@ -64,6 +122,7 @@ export function EconomyRegionPanel({
     return entries;
   }, [articles]);
   const localizedMap = useLocalizedTextMap(koreanEntries, lang);
+  const macroLead = lang === "en" ? macro?.narrativeEn?.[0] : macro?.narrativeKo?.[0];
 
   const renderCard = (item: (typeof articles)[number], tier3Card?: boolean) => (
     <NewsArticleCard
@@ -106,6 +165,73 @@ export function EconomyRegionPanel({
         <div className="mt-3 rounded-xl border border-emerald-400/20 bg-emerald-950/25 px-3 py-2.5">
           <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-200/55">관련 시장</p>
           <p className="mt-1 text-sm font-medium text-emerald-50">{tickers}</p>
+        </div>
+      ) : null}
+
+      {macro && !macro.disabled ? (
+        <div className="mt-3 rounded-xl border border-emerald-400/25 bg-emerald-950/40 px-3 py-2.5">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-200/55">
+            {lang === "en" ? "Country macro" : "국가 거시"} · {macro.name ?? countryHint}
+          </p>
+          <div className="mt-1.5 flex flex-wrap gap-x-2.5 gap-y-1 text-[11px] text-emerald-50/90">
+            <span>GDP {fmtUsd(macro.gdpUsd)}</span>
+            <span>
+              {lang === "en" ? "Growth" : "성장"} {fmtPct(macro.gdpGrowthPct)}
+            </span>
+            <span>
+              {lang === "en" ? "CPI" : "인플레"} {fmtPct(macro.inflationPct)}
+            </span>
+            <span>
+              {lang === "en" ? "Unemp" : "실업"} {fmtPct(macro.unemploymentPct)}
+            </span>
+            {macro.tradePctGdp != null ? (
+              <span>
+                {lang === "en" ? "Trade" : "무역"} {macro.tradePctGdp.toFixed(0)}%
+              </span>
+            ) : null}
+          </div>
+          {macro.shocks?.inflation?.rangePp != null ? (
+            <p className="mt-1.5 text-[11px] leading-4 text-emerald-100/70">
+              {lang === "en"
+                ? `Inflation shook ${macro.shocks.inflation.rangePp.toFixed(1)}pp in the recent window`
+                : `인플레가 최근 창에서 ${macro.shocks.inflation.rangePp.toFixed(1)}%p 흔들림`}
+              {macro.shocks.inflation.deltaPp != null
+                ? lang === "en"
+                  ? ` · YoY ${fmtPct(macro.shocks.inflation.deltaPp)}p`
+                  : ` · 전년비 ${fmtPct(macro.shocks.inflation.deltaPp)}p`
+                : ""}
+            </p>
+          ) : null}
+          {macro.shocks?.growth?.rangePp != null ? (
+            <p className="mt-1 text-[11px] leading-4 text-emerald-100/70">
+              {lang === "en"
+                ? `Growth range ${macro.shocks.growth.rangePp.toFixed(1)}pp`
+                : `성장 범위 ${macro.shocks.growth.rangePp.toFixed(1)}%p`}
+              {macro.shocks.growth.deltaPp != null
+                ? lang === "en"
+                  ? ` · YoY ${fmtPct(macro.shocks.growth.deltaPp)}p`
+                  : ` · 전년비 ${fmtPct(macro.shocks.growth.deltaPp)}p`
+                : ""}
+            </p>
+          ) : null}
+          {macro.peers && macro.peers.length > 0 ? (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {macro.peers.map((p) => (
+                <span
+                  key={p.name}
+                  className="rounded-md border border-emerald-400/20 bg-emerald-900/40 px-1.5 py-0.5 text-[10px] text-emerald-100/80"
+                >
+                  {p.name} {fmtPct(p.gdpGrowthPct)}/{fmtPct(p.inflationPct)}
+                </span>
+              ))}
+            </div>
+          ) : null}
+          {macroLead ? (
+            <p className="mt-2 text-[11px] leading-4 text-emerald-100/65">{macroLead}</p>
+          ) : null}
+          <p className="mt-1 text-[9px] tracking-wide text-emerald-200/40">
+            {macro.attribution ?? "Statistics of the World"}
+          </p>
         </div>
       ) : null}
 

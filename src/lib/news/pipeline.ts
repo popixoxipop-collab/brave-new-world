@@ -10,6 +10,7 @@ import {
 } from "@/lib/news/feedCatalog";
 import { computeBreakingGrade } from "@/lib/news/breakingGrade";
 import { classifyMediaTier } from "@/lib/news/mediaTiers";
+import { fetchNewfeedsIranNewsItems } from "@/lib/news/newfeedsIranNews";
 import { fetchRssFeed } from "@/lib/news/rssParser";
 import type {
   HeroBreakingItem,
@@ -177,8 +178,11 @@ export async function buildNewsStream(
   options: BuildNewsStreamOptions = {},
 ): Promise<NewsStreamPayload> {
   const feeds = options.packages ? feedsForPackages(options.packages) : ALL_NEWS_FEEDS;
-  const results = await mapPool(feeds, fetchFeedItems, 10);
-  const merged = results.flat();
+  const [results, newfeedsIran] = await Promise.all([
+    mapPool(feeds, fetchFeedItems, 10),
+    fetchNewfeedsIranNewsItems(30),
+  ]);
+  const merged = [...results.flat(), ...newfeedsIran];
 
   const seen = new Set<string>();
   const deduped = merged.filter((item) => {

@@ -226,7 +226,7 @@ export function NewsStreamProvider({
   labelLanguage = "ko",
 }: NewsStreamProviderProps) {
   const [payload, setPayload] = useState<NewsStreamPayload | null>(null);
-  const [showTier3, setShowTier3] = useState(false);
+  const [showTier3, setShowTier3] = useState(true);
   const preferEconomyNews = isEconomyNewsMode(viewPackages);
   const packagesKey = viewPackages.join(",");
   const langKey = labelLanguage;

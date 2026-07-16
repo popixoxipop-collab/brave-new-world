@@ -148,6 +148,18 @@ export const NEWS_LAYER_SOURCE_CATALOG: NewsLayerSourceNote[] = [
     ingest: "live-poll",
   },
   {
+    layerId: "newfeeds-iran",
+    source: "NewFeeds (ktoetotam/NewFeeds)",
+    url: "/api/newfeeds-attacks?iran=1 · news via /api/news-stream",
+    cadence: "5 min cache · attacks map + iran.json → bottom breaking",
+    attribution:
+      "NewFeeds · https://github.com/ktoetotam/NewFeeds (MIT) — underlying outlets retained per article",
+    notes:
+      "Iran-related geocoded attack/military events on the map (layer toggle). Iran state/regional headlines merge into /api/news-stream as Tier-3 state media and compete for the bottom breaking hero. Always credit NewFeeds when displayed.",
+    status: "shipped",
+    ingest: "cached-api",
+  },
+  {
     layerId: "neptun",
     source: "NEPTUN (neptun.in.ua)",
     url: "/api/neptun",
@@ -307,6 +319,17 @@ export const NEWS_LAYER_SOURCE_CATALOG: NewsLayerSourceNote[] = [
     ingest: "cached-api",
   },
   {
+    layerId: "world-stats",
+    source: "Statistics of the World API",
+    url: "/api/world-stats/countries",
+    cadence: "1 hour cache (API Pro)",
+    attribution: "Statistics of the World · World Bank WDI / IMF (provider terms apply)",
+    notes:
+      "Country GDP·population·trade·defense·inflation·growth cards for econ insight parchment and region panel. History shock + peer compare. Proxied with STATSOFTHEWORLD_API_KEY. Routes: /macro, /market-lamp, /compare, /rankings, /history. Bulk CSV: statisticsoftheworld.com/data.",
+    status: "shipped",
+    ingest: "cached-api",
+  },
+  {
     layerId: "critical-minerals",
     source: "Static build (mapped to resources)",
     url: "/data/{profile}/resources.json",
@@ -410,6 +433,17 @@ export const NEWS_LAYER_SOURCE_CATALOG: NewsLayerSourceNote[] = [
     attribution: "VIINA · Open Database License (ODbL) v1.0",
     notes:
       "Ukraine control hatch precomputed (`ukraine:hatch:build`) into D1. Globe toggles fetch snapshot paths only — no client geometry hatch. VIINA raw stays private.",
+    status: "shipped",
+    ingest: "cached-api",
+  },
+  {
+    layerId: "mediazona-casualties",
+    source: "Mediazona × BBC (KIA) · CSIS estimate (WIA)",
+    url: "/api/mediazona-casualties",
+    cadence: "Homepage scrape · 1h cache · Kaggle panel seed fallback",
+    attribution: "Mediazona · BBC Russian Service · CSIS (WIA est.) · Meduza",
+    notes:
+      "Geopolitics-only globe overlay: skull + killed (named lower bound), wounded icon + CSIS-derived estimate. Screen-scaled by altitude. No layer checkbox. Cite originals, not the Kaggle compilation.",
     status: "shipped",
     ingest: "cached-api",
   },

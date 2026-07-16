@@ -11,9 +11,8 @@ type PeriodicBriefingParchmentProps = {
 };
 
 /**
- * 매일 전장 등불 — 첫입장 온보딩과 별개.
- * 확인하면 오늘 분만 닫히고, 로컬 자정·다음날 접속 시 다시 점화된다.
- * 타이핑·전보음·스킵은 ParchmentLetter 재사용.
+ * 매일 전장/시장 등불 — 첫입장 온보딩 이후, 지정학·지경학 각각 하루 1회.
+ * 확인하면 오늘(해당 모드) 분만 닫히고, 로컬 자정·다음날 또는 다른 모드에서 다시 점화.
  */
 export function PeriodicBriefingParchment({
   briefing,

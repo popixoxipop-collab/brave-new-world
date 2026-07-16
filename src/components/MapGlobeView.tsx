@@ -515,8 +515,9 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
         attributionControl={false}
         renderWorldCopies={false}
         /** 캔버스 공유/캡처(ShareViewButton)에서 toBlob·toDataURL로 실제 렌더링 결과를
-         *  읽어야 하므로 필요 — 없으면 브라우저가 프레임마다 버퍼를 비워 캡처가 빈 화면이 됨 */
-        preserveDrawingBuffer
+         *  읽어야 하므로 필요 — 없으면 브라우저가 프레임마다 버퍼를 비워 캡처가 빈 화면이 됨.
+         *  react-map-gl 타입에 없음 → MapLibre MapOptions로 전달 */
+        {...({ preserveDrawingBuffer: true } as Record<string, unknown>)}
         interactiveLayerIds={interactiveLayerIds}
         onLoad={handleLoad}
         onMove={handleMove}

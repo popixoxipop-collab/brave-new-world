@@ -129,6 +129,7 @@ export const VIEW_PACKAGES: ViewPackageDef[] = [
       showUkraineControl: false,
       showNeptun: false,
       showTzevaAdom: false,
+      showNewfeedsIranAttacks: false,
       showUsCarriers: false,
       showMilitaryActivity: false,
     },
@@ -160,6 +161,7 @@ export const VIEW_PACKAGES: ViewPackageDef[] = [
       showNeptun: true,
       showNeptunPreviousTrails: false,
       showTzevaAdom: true,
+      showNewfeedsIranAttacks: true,
       showTelegramOsint: true,
       showUsCarriers: true,
       showDiplomaticTension: true,
@@ -251,6 +253,7 @@ export const LAYER_PREF_LABELS: Partial<Record<BooleanLayerKey, string>> = {
   showNeptun: "드론·미사일 궤적",
   showNeptunPreviousTrails: "지나간 미사일 궤적",
   showTzevaAdom: "이스라엘 공습 경보",
+  showNewfeedsIranAttacks: "NewFeeds 이란·공격",
   showEastAsiaAdiz: "동아시아 ADIZ",
   showAxisNetwork: "축 관계망 (이란·중·러·북)",
   showBriTradeConnectivity: "일대일로 무역 연결",
@@ -595,7 +598,7 @@ export function previewModeSelection(
   } else if (economyHub !== "auto") {
     bullets.push(`시작 시 ${economyHubLabel(economyHub)} 허브로 카메라 이동`);
   } else {
-    bullets.push("시작 시 가장 핫한 지정학·투자 허브로 자동 이동");
+    bullets.push("시작 시 핫한 투자 허브로 카메라만 이동 (양피지는 nav에서 선택)");
   }
 
   return bullets.slice(0, 6);

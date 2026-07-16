@@ -32,6 +32,11 @@ export function liveTzevaPollMs(): number {
   return isClientApiStubMode() ? 3_000 : 15_000;
 }
 
+/** NewFeeds Iran attacks/news: upstream 5min cache → client 60s / 5min */
+export function liveNewfeedsPollMs(): number {
+  return isClientApiStubMode() ? 60_000 : 5 * 60_000;
+}
+
 /** Telegram alerts: 라이브 12s → 30s */
 export function liveTelegramPollMs(): number {
   return isClientApiStubMode() ? 12_000 : 30_000;

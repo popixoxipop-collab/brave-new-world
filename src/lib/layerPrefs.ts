@@ -53,6 +53,11 @@ export type LayerPrefs = {
   showTelegramOsint: boolean;
   /** 이스라엘 Tzeva Adom (Pikud HaOref) 실시간 경보 */
   showTzevaAdom: boolean;
+  /**
+   * NewFeeds 이란·지역 공격 이벤트 (지도 마커)
+   * @see https://github.com/ktoetotam/NewFeeds
+   */
+  showNewfeedsIranAttacks: boolean;
   /** NEPTUN — 우크라이나 드론·미사일·탄도미사일 실시간 궤적 (neptun.in.ua) */
   showNeptun: boolean;
   /** 사라진 드론·미사일의 지나간 이동 경로 */
@@ -118,6 +123,7 @@ export const DEFAULT_LAYER_PREFS: LayerPrefs = {
   showGdeltProtests: false,
   showTelegramOsint: true,
   showTzevaAdom: false,
+  showNewfeedsIranAttacks: false,
   showNeptun: true,
   showNeptunPreviousTrails: false,
   showEastAsiaAdiz: false,

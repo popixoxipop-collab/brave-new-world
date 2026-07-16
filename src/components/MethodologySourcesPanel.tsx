@@ -117,6 +117,39 @@ export function MethodologySourcesPanel({ open, onClose }: MethodologySourcesPan
             </p>
           </section>
 
+          <section className="rounded-xl border border-rose-800/40 bg-rose-950/20 p-3">
+            <h3 className="text-sm font-medium text-rose-100">
+              Mediazona — 러·우 사망·부상 (지정학)
+            </h3>
+            <p className="mt-2 text-[12px] leading-5 text-sky-100/80">
+              사망: Mediazona × BBC 명의 확인 전사(하한). 부상: CSIS 전투손실 추정에서
+              사망분을 제외한 추정치(명의 목록 없음). 지정학 탭에서 우크라 전선 위에
+              해골·부상자 아이콘 2줄로 표시합니다(레이어 체크 없음).
+            </p>
+            <p className="mt-2 text-[11px] leading-5 text-sky-100/65">
+              인용: Mediazona · BBC · CSIS · Meduza · (지역 패널) gogov.ru · Rosstat ·
+              GADM.
+            </p>
+            <p className="mt-2 text-[11px] leading-5 text-sky-100/65">
+              API:{" "}
+              <a
+                href="/api/mediazona-casualties"
+                className="underline decoration-rose-400/40 underline-offset-2 hover:text-sky-50"
+              >
+                /api/mediazona-casualties
+              </a>
+              {" · "}
+              <a
+                href="https://200.zona.media/"
+                target="_blank"
+                rel="noreferrer"
+                className="underline decoration-rose-400/40 underline-offset-2 hover:text-sky-50"
+              >
+                200.zona.media
+              </a>
+            </p>
+          </section>
+
           <section className="rounded-xl border border-emerald-800/40 bg-emerald-950/20 p-3">
             <h3 className="text-sm font-medium text-emerald-100">주요 출처</h3>
             <p className="mt-1.5 text-[11px] leading-5 text-sky-100/65">

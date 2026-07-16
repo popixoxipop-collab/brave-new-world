@@ -7,40 +7,48 @@ export const AIR_RAID_SIREN_MS = 10000;
 export const AIR_RAID_SIREN_VOLUME_SCALE = 1.45;
 /** fly 시작 후 사이렌 시작 지연 — 이동 직후 울리게 */
 export const AIR_RAID_SIREN_DELAY_MS = 650;
-/** 공습경보 버튼 fly — 뷰어 LOD ~2.0(전역)에서 지역이 보이게 */
-export const AIR_RAID_FLY_ALTITUDE = 2.0;
+/**
+ * 공습경보 포커스 — 국가 전체가 아니라 경보 발령 지역(시·군·구역) 스케일.
+ * ~0.72 ≈ 도시·권역이 읽히는 LOD (구 2.0 전역 줌 폐지).
+ */
+export const AIR_RAID_FLY_ALTITUDE = 0.72;
 export const AIR_RAID_FLY_MS = 900;
 /** 포커스 빗금·테두리 표시 시간 (사이렌 + 여유) */
 export const AIR_RAID_FOCUS_HATCH_MS = AIR_RAID_FLY_MS + AIR_RAID_SIREN_DELAY_MS + AIR_RAID_SIREN_MS;
 
-/** LOD 2.0에서도 읽히는 진한 공습경보 구역 테두리 */
+/** 지역 단위 공습경보 구역 테두리 */
 export const AIR_RAID_FOCUS_OUTLINE = "rgba(127, 29, 29, 1)";
 export const AIR_RAID_FOCUS_HATCH = "rgba(185, 28, 28, 0.82)";
 
-export type AirRaidSirenKind = "tzeva" | "neptun";
+/** UA / IL / IR(NewFeeds) 동일 지역 포커스 스타일 */
+export type AirRaidSirenKind = "tzeva" | "neptun" | "newfeeds";
 
-const SIREN_EVENT: Record<AirRaidSirenKind, AudioEventId> = {
+const SIREN_EVENT: Partial<Record<AirRaidSirenKind, AudioEventId>> = {
   tzeva: "tzeva-red-alert",
   neptun: "neptun-air-alert",
+  // newfeeds: 국영·OSINT 마커 — 사이렌 없이 시각 포커스만
 };
 
 /**
- * 경보 단위 대략 반경(도) — altitude 2.0(전역 LOD)에서도 구역이 보이도록
- * 근접 줌(0.85) 때보다 넓게
+ * 경보 단위 대략 반경(도) — 시·군·구역 스케일 (국가 박스 금지)
+ * tzeva ≈ 도시권, neptun ≈ raion, newfeeds ≈ 공격 지점 주변
  */
 const HATCH_HALF_SPAN_DEG: Record<AirRaidSirenKind, number> = {
-  tzeva: 1.85,
-  neptun: 3.4,
+  tzeva: 0.38,
+  neptun: 0.48,
+  newfeeds: 0.42,
 };
 
 export function isAirRaidFocusPath(path: TransportPath): boolean {
   return path.id.startsWith("air-raid-focus-");
 }
 
-/** 지역 이동 직후 짧게·약간 크게 공습경보음 (음소거 시 무시) */
+/** 지역 이동 직후 짧게·약간 크게 공습경보음 (음소거 시 무시). NewFeeds는 시각만. */
 export function playAirRaidSirenAfterFly(kind: AirRaidSirenKind, delayMs = AIR_RAID_SIREN_DELAY_MS) {
+  const eventId = SIREN_EVENT[kind];
+  if (!eventId) return;
   window.setTimeout(() => {
-    emitDashboardSound(SIREN_EVENT[kind], {
+    emitDashboardSound(eventId, {
       durationMs: AIR_RAID_SIREN_MS,
       volumeScale: AIR_RAID_SIREN_VOLUME_SCALE,
       force: true,
@@ -49,8 +57,8 @@ export function playAirRaidSirenAfterFly(kind: AirRaidSirenKind, delayMs = AIR_R
 }
 
 /**
- * 공습경보 포커스 — 진한 사각 테두리 + 빗금.
- * LOD 2.0에서도 테두리가 주 시그널.
+ * 공습경보 포커스 — 경보 지역 중심 진한 사각 테두리 + 빗금.
+ * 우크라·이스라엘·이란(NewFeeds) 동일 스타일.
  */
 export function buildAirRaidFocusHatchPaths(
   lat: number,

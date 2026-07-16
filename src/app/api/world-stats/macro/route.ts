@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { fetchSotwCountryCard, getSotwApiKey, SOTW_ATTRIBUTION } from "@/lib/sotw";
+import { getSotwApiKey, SOTW_ATTRIBUTION } from "@/lib/sotw";
+import { fetchSotwMacroDeep } from "@/lib/sotwMacro";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/world-stats/countries?country=Iran|USA|…
- * Proxies Statistics of the World with server-side X-API-Key.
- * @see https://statisticsoftheworld.com/api-docs
+ * GET /api/world-stats/macro?country=Iran|USA|…
+ * Deep macro: levels + inflation/growth history shock + peers + narrative paragraphs.
  */
 export async function GET(request: Request) {
   if (!getSotwApiKey()) {
@@ -25,19 +25,14 @@ export async function GET(request: Request) {
   }
 
   try {
-    const card = await fetchSotwCountryCard(country);
-    return NextResponse.json(card);
+    const macro = await fetchSotwMacroDeep(country);
+    return NextResponse.json(macro);
   } catch (error) {
     return NextResponse.json(
       {
         disabled: false,
         name: country,
-        error: error instanceof Error ? error.message : "world-stats failed",
-        gdpUsd: null,
-        gdpPerCapitaUsd: null,
-        tradePctGdp: null,
-        population: null,
-        milSpendPctGdp: null,
+        error: error instanceof Error ? error.message : "macro failed",
         attribution: SOTW_ATTRIBUTION,
       },
       { status: 502 },

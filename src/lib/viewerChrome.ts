@@ -105,6 +105,7 @@ const ECONOMY_FORCE_OFF: Partial<LayerPrefs> = {
   showNeptun: false,
   showNeptunPreviousTrails: false,
   showTzevaAdom: false,
+  showNewfeedsIranAttacks: false,
   showConflictZones: false,
   showUcdpEvents: false,
   showMilitaryBases: false,
