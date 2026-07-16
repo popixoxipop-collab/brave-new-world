@@ -3927,9 +3927,9 @@ export function GlobeDashboard({
     showWarZones,
   ]);
 
-  /** Mediazona 사망 + CSIS 부상 — 지정학 전용. 우크라 좌표에 고정(카메라 무관) */
+  /** Mediazona 사망 + CSIS 부상 — 지정학 전용. 우크라 좌표에 고정(카메라 무관) · 모바일 제외 */
   const casualtySkullMarkers = useMemo<CasualtySkullHtmlMarker[]>(() => {
-    if (isEconomyViewer) return [];
+    if (isEconomyViewer || isCompactUi) return [];
     const snap = mediazonaCasualties;
     const en = labelLanguage === "en";
     const theaterId = "russia-ukraine";
@@ -3956,7 +3956,7 @@ export function GlobeDashboard({
         territorySpanDeg: getCombatTheaterSpanDeg(theaterId),
       },
     ];
-  }, [isEconomyViewer, labelLanguage, mediazonaCasualties]);
+  }, [isCompactUi, isEconomyViewer, labelLanguage, mediazonaCasualties]);
 
   const ukraineSettlementHtmlMarkers = useMemo<UkraineSettlementHtmlMarker[]>(() => {
     if (!showUkraineControl) return [];
