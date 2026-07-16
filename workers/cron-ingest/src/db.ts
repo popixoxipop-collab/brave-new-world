@@ -471,6 +471,28 @@ export async function recordIngestRun(
     .run();
 }
 
+/**
+ * 경량 UI 이벤트 로그 적재 — Vercel(D1 바인딩 없음)에서 /track 경유로 전달받아 여기서 씀.
+ * 개인식별 정보 없음. 실패해도 호출 측에서 조용히 무시한다.
+ */
+export async function insertUiEvent(
+  db: D1Database,
+  row: {
+    event: string;
+    metaJson: string | null;
+    viewerMode: string | null;
+    lang: string | null;
+  },
+) {
+  await db
+    .prepare(
+      `INSERT INTO ui_events (event, meta_json, viewer_mode, lang)
+       VALUES (?, ?, ?, ?)`,
+    )
+    .bind(row.event, row.metaJson, row.viewerMode, row.lang)
+    .run();
+}
+
 export function readIntVar(env: IngestEnv, key: keyof IngestEnv, fallback: number) {
   const raw = env[key];
   if (typeof raw !== "string") return fallback;

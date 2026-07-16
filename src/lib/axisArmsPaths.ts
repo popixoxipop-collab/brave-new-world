@@ -2,6 +2,8 @@ import { AXIS_NODES } from "@/data/axisNetwork";
 import type { AxisHubId } from "@/data/axisNetwork";
 import { greatCircleArc } from "@/lib/axisNetworkPaths";
 import type { TransportPath } from "@/data/geoTypes";
+import type { LabelLanguage } from "@/lib/layerPrefs";
+import { armsCategoryLabel, armsCountryName } from "@/lib/axisArmsI18n";
 
 export type AxisArmsPair = {
   supplier: string;
@@ -38,17 +40,23 @@ export function filterArmsForHub(payload: AxisArmsPayload | null, hub: AxisHubId
   return { pairs, deals };
 }
 
-export function armsPairsToPaths(pairs: AxisArmsPair[]): TransportPath[] {
+export function armsPairsToPaths(
+  pairs: AxisArmsPair[],
+  lang: LabelLanguage = "ko",
+): TransportPath[] {
   const out: TransportPath[] = [];
   for (const p of pairs) {
     const na = AXIS_NODES[p.supplier];
     const nb = AXIS_NODES[p.recipient];
     if (!na || !nb) continue;
     const peakAlt = Math.min(0.18, 0.06 + Math.log10(Math.max(1, p.tiv)) * 0.04);
+    const from = armsCountryName(p.supplier, lang);
+    const to = armsCountryName(p.recipient, lang);
+    const category = armsCategoryLabel(p.topCategory, lang);
     out.push({
       id: `arms-${p.supplier}-${p.recipient}`,
       kind: "axis-link",
-      name: `${na.nameKo} → ${nb.nameKo} · ${p.topCategory} (TIV ${p.tiv})`,
+      name: `${from} → ${to} · ${category} (TIV ${p.tiv})`,
       scalerank: 1,
       lengthKm: null,
       accentColor: p.color,

@@ -1,6 +1,22 @@
 import type { StaticPoint } from "@/data/geoTypes";
 
 /**
+ * 글로우 링 반경(deg) — 각 해협·운하 해역 폭에 맞춤.
+ * ringMaxRadius ≈ 위도 도(°); 1° ≈ 111km. 최협부 폭의 절반 + 소폭 패딩.
+ */
+export const CHOKE_RING_RADIUS_DEG: Record<string, number> = {
+  "choke-hormuz": 0.38, // 호르무즈 최협 ~33–39km
+  "choke-suez": 0.28, // 운하 회랑(접근수로 포함)
+  "choke-bab-el-mandeb": 0.32, // 바브엘만데브 최협 ~26–32km
+  "choke-malacca": 0.42, // 말라카 남단 병목 해역
+  "choke-taiwan": 0.85, // 대만해협 최협 ~130km → 반경 ~0.6° + 패딩
+  "choke-panama": 0.22, // 파나마 운하 회랑
+  "choke-bosporus": 0.18, // 보스포루스 ~0.7–3.7km (가독 최소)
+  "choke-gibraltar": 0.26, // 지브롤터 최협 ~14km
+  "choke-good-hope": 0.55, // 희망봉 우회 해역(해협 아님)
+};
+
+/**
  * 글로벌 4대(+보조) 해상 초크포인트 — 좌표 [경도, 위도] 기준 시드.
  * 카메라 힌트(meta.cameraZoom / cameraPitch)는 nav fly 시 참고.
  */
@@ -198,5 +214,6 @@ export function chokeGlowRingSeed(points: StaticPoint[] = LOGISTICS_RISK_POINTS)
       lat: p.lat,
       lng: p.lng,
       glow: typeof p.meta?.glow === "number" ? p.meta.glow : p.tier === 1 ? 1 : 0.55,
+      radiusScale: CHOKE_RING_RADIUS_DEG[p.id] ?? 0.35,
     }));
 }

@@ -22,12 +22,15 @@ export type ApiStubRoute =
   | "economic-centers"
   | "conflict-zones"
   | "arms-embargo-zones"
-  | "sanctions-entities";
+  | "sanctions-entities"
+  | "briefing-stats";
 
 function stubBody(route: ApiStubRoute, request?: Request): Record<string, unknown> {
   const at = STUB_AT();
 
   switch (route) {
+    case "briefing-stats":
+      return { fetchedAt: at, source: "stub", stats: null };
     case "ais": {
       const classFilter = request
         ? new URL(request.url).searchParams.get("class") || "all"

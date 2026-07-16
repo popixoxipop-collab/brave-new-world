@@ -6,12 +6,21 @@ function asFn<T, R>(value: unknown, fallback: Accessor<T, R>): Accessor<T, R> {
   return typeof value === "function" ? (value as Accessor<T, R>) : fallback;
 }
 
+/**
+ * 두 함수 다 2^zoom 항이라 상한이 없었음 — 화면을 세게 줌인하면(이동 중이 아니라
+ * "실제로 도달한" 높은 zoom 값 자체로도) 값이 수백 px까지 커져서 점·선이 화면을
+ * 뒤덮는 문제가 있었다. 의도된 "확대하면 좀 더 굵게" 느낌은 유지하되 화면을
+ * 뒤덮는 사고는 나지 않도록 안전 상한을 둔다.
+ */
+const MAX_ANGULAR_POINT_RADIUS_PX = 48;
+const MAX_ANGULAR_LINE_WIDTH_PX = 26;
+
 function angularToPixelRadius(angular: number, zoom: number): number {
-  return Math.max(2, angular * Math.pow(2, zoom - 0.5) * 14);
+  return Math.min(MAX_ANGULAR_POINT_RADIUS_PX, Math.max(2, angular * Math.pow(2, zoom - 0.5) * 14));
 }
 
 function angularToLineWidth(angular: number, zoom: number): number {
-  return Math.max(0.35, angular * Math.pow(2, zoom - 2) * 5.5);
+  return Math.min(MAX_ANGULAR_LINE_WIDTH_PX, Math.max(0.35, angular * Math.pow(2, zoom - 2) * 5.5));
 }
 
 export function buildPointsGeoJson<T>(

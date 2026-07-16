@@ -44,6 +44,27 @@ export function isCenterInView(center: ViewPoint, view: ViewPoint, radiusDeg: nu
   return centerDistanceDeg(center, view) <= radiusDeg;
 }
 
+/**
+ * 뷰포인트와 bbox 최근접점 거리(도).
+ * 이란처럼 큰 박스는 중심이 화면 밖이어도 가장자리가 보이면 유지해야 함.
+ */
+export function distanceToBboxDeg(view: ViewPoint, bbox: Bbox): number {
+  const clampedLat = Math.min(Math.max(view.lat, bbox.minLat), bbox.maxLat);
+  // 경도 wrap이 없는 단순 bbox (분쟁 박스는 ±180 안) — 클램프
+  let clampedLng = view.lng;
+  if (view.lng < bbox.minLng || view.lng > bbox.maxLng) {
+    const dMin = longitudeDistance(view.lng, bbox.minLng);
+    const dMax = longitudeDistance(view.lng, bbox.maxLng);
+    clampedLng = dMin <= dMax ? bbox.minLng : bbox.maxLng;
+  }
+  return centerDistanceDeg({ lat: clampedLat, lng: clampedLng }, view);
+}
+
+export function isBboxNearView(bbox: Bbox, view: ViewPoint, radiusDeg: number): boolean {
+  if (radiusDeg <= 0) return true;
+  return distanceToBboxDeg(view, bbox) <= radiusDeg;
+}
+
 /** 카메라가 바라보는 반구 밖(지평선 너머·뒤편) 제외 — θ > 80° */
 export const VIEW_CONE_MAX_DEG = 80;
 

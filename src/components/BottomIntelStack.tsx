@@ -16,6 +16,7 @@ import {
 import { emitBreakingDispatchSound } from "@/components/SoundEffectsBridge";
 import { MapLegend } from "@/components/MapLegend";
 import { HoverHint } from "@/components/HoverHint";
+import { EventMarketReactionCard } from "@/components/EventMarketReactionCard";
 import { StockTickerStrip } from "@/components/StockTickerStrip";
 import { IntelRelatedMarketsPanel } from "@/components/IntelRelatedMarketsPanel";
 import { IntelSheetSearchBar, type IntelSearchResult } from "@/components/IntelSheetSearchBar";
@@ -414,6 +415,7 @@ function HeroHeadlineBanner({
           </span>
         </div>
       </button>
+      <EventMarketReactionCard theater={hero.theater} ageMinutes={hero.ageMinutes} />
       {hero.link ? (
         <div className="flex justify-end border-t border-white/8 px-2 py-1.5">
           <HoverHint placement="top" title={t("hoverOpenArticle")} detail={t("hoverOpenArticleHint")}>
@@ -574,7 +576,7 @@ export function DynamicIntelStack({
     return (
       <div
         id="bottom-intel-compact"
-        className="intel-stack intel-stack--fab-only pointer-events-none absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center"
+        className="intel-stack intel-stack--fab-only pointer-events-none absolute left-1/2 z-20 flex -translate-x-1/2 flex-col items-center"
       >
         <HoverHint
           placement="top"
@@ -585,7 +587,7 @@ export function DynamicIntelStack({
             type="button"
             onClick={() => onOpenSheet("all")}
             aria-label={isEconomy ? t("hoverEconomyFabOpenAria") : t("hoverIntelFabOpenAria")}
-            className={`intel-mini-fab pointer-events-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-sm shadow-lg backdrop-blur-md transition ${
+            className={`intel-mini-fab tap-target pointer-events-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border text-sm shadow-lg backdrop-blur-md transition ${
               isEconomy
                 ? "border-emerald-300/25 bg-emerald-950/85 text-emerald-100 hover:border-emerald-200/40 hover:bg-emerald-900/90"
                 : "border-sky-300/20 bg-[#0a1830]/85 text-sky-100 hover:border-sky-200/40 hover:bg-[#0c2040]/90"
@@ -602,7 +604,7 @@ export function DynamicIntelStack({
     return (
       <div
         id="bottom-intel-compact"
-        className="intel-stack intel-stack--collapsed pointer-events-none absolute bottom-3 left-1/2 z-20 flex w-[min(94vw,420px)] -translate-x-1/2 flex-col items-stretch"
+        className="intel-stack intel-stack--collapsed pointer-events-none absolute left-1/2 z-20 flex w-[min(94vw,420px)] -translate-x-1/2 flex-col items-stretch"
       >
         <div
           className={`intel-stack-panel pointer-events-auto flex items-center gap-2 rounded-2xl border px-3 py-2 shadow-2xl backdrop-blur-md ${
@@ -614,7 +616,7 @@ export function DynamicIntelStack({
           <button
             type="button"
             onClick={expandDock}
-            className="flex min-w-0 flex-1 items-center gap-2 text-left"
+            className="flex min-h-[44px] min-w-0 flex-1 items-center gap-2 text-left"
             aria-label={t("intelDockExpandAria")}
           >
             <span className="intel-news-sheet__handle shrink-0" aria-hidden />
@@ -639,7 +641,7 @@ export function DynamicIntelStack({
                 onOpenSheet("all");
               }}
               aria-label={isEconomy ? t("hoverEconomyFabOpenAria") : t("hoverIntelFabOpenAria")}
-              className={`intel-mini-fab flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-sm transition ${
+              className={`intel-mini-fab tap-target flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border text-sm transition ${
                 isEconomy
                   ? "border-emerald-300/25 bg-emerald-950/85 text-emerald-100"
                   : "border-sky-300/20 bg-[#0a1830]/85 text-sky-100"
@@ -656,7 +658,7 @@ export function DynamicIntelStack({
   return (
     <div
       id="bottom-intel-compact"
-      className={`intel-stack pointer-events-none absolute bottom-4 left-1/2 z-20 flex w-[min(96vw,720px)] -translate-x-1/2 flex-col items-stretch gap-2 ${
+      className={`intel-stack pointer-events-none absolute left-1/2 z-20 flex w-[min(96vw,720px)] -translate-x-1/2 flex-col items-stretch gap-2 ${
         isAlert ? "intel-stack--alert w-[min(96vw,860px)]" : "intel-stack--calm"
       }`}
       style={dockDragY > 0 ? { transform: `translateY(${dockDragY}px)` } : undefined}
@@ -682,7 +684,7 @@ export function DynamicIntelStack({
         }`}
       >
         <div
-          className="flex cursor-grab touch-none flex-col items-center gap-1 px-3 pb-1 pt-2 active:cursor-grabbing"
+          className="intel-drag-handle flex cursor-grab touch-none flex-col items-center gap-1 px-3 pb-1 pt-2 active:cursor-grabbing"
           onPointerDown={onDockHandlePointerDown}
           onPointerMove={onDockHandlePointerMove}
           onPointerUp={onDockHandlePointerUp}
@@ -748,7 +750,7 @@ export function DynamicIntelStack({
               type="button"
               onClick={() => onOpenSheet("all")}
               aria-label={isEconomy ? t("hoverEconomyFabOpenAria") : t("hoverIntelFabOpenAria")}
-              className={`intel-mini-fab pointer-events-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border text-sm shadow-lg backdrop-blur-md transition ${
+              className={`intel-mini-fab tap-target pointer-events-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border text-sm shadow-lg backdrop-blur-md transition ${
                 isEconomy
                   ? "border-emerald-300/25 bg-emerald-950/85 text-emerald-100 hover:border-emerald-200/40 hover:bg-emerald-900/90"
                   : "border-sky-300/20 bg-[#0a1830]/85 text-sky-100 hover:border-sky-200/40 hover:bg-[#0c2040]/90"
@@ -943,7 +945,7 @@ function IntelSheetTabBar({
   showTelegram,
   showViina,
   economyMode = false,
-  economyTab = "news",
+  economyTab = "markets",
   onEconomyTabChange,
 }: IntelSheetTabBarProps & {
   economyTab?: EconomyIntelTab;
@@ -953,6 +955,17 @@ function IntelSheetTabBar({
   if (economyMode) {
     return (
       <div className="flex shrink-0 gap-1 border-b border-emerald-400/15 px-4 py-2">
+        <button
+          type="button"
+          onClick={() => onEconomyTabChange?.("markets")}
+          className={`shrink-0 rounded-lg px-3 py-2 text-xs font-semibold transition ${
+            economyTab === "markets"
+              ? "bg-emerald-400/20 text-emerald-50 ring-1 ring-emerald-300/40"
+              : "text-emerald-100/65 hover:bg-white/5 hover:text-emerald-100"
+          }`}
+        >
+          증시
+        </button>
         <button
           type="button"
           onClick={() => onEconomyTabChange?.("news")}
@@ -977,17 +990,6 @@ function IntelSheetTabBar({
           }`}
         >
           {t("intelSheetVideoTab")}
-        </button>
-        <button
-          type="button"
-          onClick={() => onEconomyTabChange?.("markets")}
-          className={`shrink-0 rounded-lg px-3 py-2 text-xs font-semibold transition ${
-            economyTab === "markets"
-              ? "bg-emerald-400/20 text-emerald-50 ring-1 ring-emerald-300/40"
-              : "text-emerald-100/65 hover:bg-white/5 hover:text-emerald-100"
-          }`}
-        >
-          증시
         </button>
       </div>
     );
@@ -1126,7 +1128,7 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
     } = useNewsStreamContext();
     const { lang, t } = useLocale();
     const [sheetTab, setSheetTab] = useState<IntelSheetTab>(initialIntelTab);
-    const [economyTab, setEconomyTab] = useState<EconomyIntelTab>("news");
+    const [economyTab, setEconomyTab] = useState<EconomyIntelTab>("markets");
     const [economyGenre, setEconomyGenre] = useState<EconomyGenreFilter>("all");
     const [newsSearchQuery, setNewsSearchQuery] = useState("");
     const [marketsSearchQuery, setMarketsSearchQuery] = useState("");
@@ -1210,7 +1212,7 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
 
     useEffect(() => {
       if (!preferEconomyNews) return;
-      setEconomyTab("news");
+      setEconomyTab("markets");
       setEconomyGenre("all");
       setNewsSearchQuery("");
       setMarketsSearchQuery("");
@@ -1290,7 +1292,7 @@ export const IntelNewsSheet = forwardRef<BottomIntelStackHandle, IntelNewsSheetP
         }
       >
         <div
-          className="flex shrink-0 cursor-grab touch-none flex-col items-center gap-1 px-3 pb-1 pt-2 active:cursor-grabbing"
+          className="intel-drag-handle flex shrink-0 cursor-grab touch-none flex-col items-center gap-1 px-3 pb-1 pt-2 active:cursor-grabbing"
           onPointerDown={onSheetHandlePointerDown}
           onPointerMove={onSheetHandlePointerMove}
           onPointerUp={onSheetHandlePointerUp}

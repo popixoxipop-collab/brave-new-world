@@ -380,6 +380,57 @@ export const telegramAlerts = sqliteTable(
   }),
 );
 
+/**
+ * 일간/주간/월간 회고 브리핑용 집계 (LLM 없음).
+ * Cron이 매일 daily-* 스냅샷을 쌓고, weekly/monthly는 daily 합산.
+ */
+export const briefingPeriodStats = sqliteTable(
+  "briefing_period_stats",
+  {
+    /** daily-YYYY-MM-DD | weekly-YYYY-Www | monthly-YYYY-MM */
+    periodKey: text("period_key").primaryKey(),
+    tier: text("tier").notNull(),
+    gdeltCount: integer("gdelt_count").notNull().default(0),
+    firmsCount: integer("firms_count").notNull().default(0),
+    telegramCount: integer("telegram_count").notNull().default(0),
+    newsItemCount: integer("news_item_count").notNull().default(0),
+    topGdeltTag: text("top_gdelt_tag"),
+    topTelegramRegion: text("top_telegram_region"),
+    detailJson: text("detail_json"),
+    windowStart: text("window_start"),
+    windowEnd: text("window_end"),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => ({
+    tierIdx: index("idx_briefing_tier").on(t.tier),
+    updatedIdx: index("idx_briefing_updated").on(t.updatedAt),
+  }),
+);
+
+/**
+ * 경량 UI 이벤트 로그 — 공유 버튼 등 바이럴 기능이 실제로 눌리는지 확인용.
+ * 개인식별 정보 없음(세션/유저 식별자 저장 안 함). 순수 append-only 카운팅 목적.
+ */
+export const uiEvents = sqliteTable(
+  "ui_events",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    /** e.g. share_view_click | friction_card_share_success | mobile_home_view_toggle */
+    event: text("event").notNull(),
+    /** JSON: 부가 메타(예: {"to":"globe"}) — 없으면 null */
+    metaJson: text("meta_json"),
+    viewerMode: text("viewer_mode"),
+    lang: text("lang"),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (t) => ({
+    eventIdx: index("idx_ui_events_event").on(t.event),
+    createdIdx: index("idx_ui_events_created").on(t.createdAt),
+  }),
+);
+
 /** Cron / 빌드 실행 로그 */
 export const ingestRuns = sqliteTable("ingest_runs", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -407,3 +458,7 @@ export type DisputeHatchPathRow = typeof disputeHatchPaths.$inferSelect;
 export type NewDisputeHatchPathRow = typeof disputeHatchPaths.$inferInsert;
 export type TelegramAlertRow = typeof telegramAlerts.$inferSelect;
 export type NewTelegramAlertRow = typeof telegramAlerts.$inferInsert;
+export type BriefingPeriodStatsRow = typeof briefingPeriodStats.$inferSelect;
+export type NewBriefingPeriodStatsRow = typeof briefingPeriodStats.$inferInsert;
+export type UiEventRow = typeof uiEvents.$inferSelect;
+export type NewUiEventRow = typeof uiEvents.$inferInsert;

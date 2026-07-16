@@ -62,9 +62,9 @@ export const AUDIO_MANIFEST = {
     eventId: "neptun-impact",
     freesoundQuery: "distant missile explosion war",
     freesoundId: 741267,
-    volume: 0.48,
+    volume: 0.78,
     category: "conflict",
-    note: "FS#741267 Destruction of the missile · CC0 · 원거리 폭발",
+    note: "FS#741267 Destruction of the missile · CC0 · 원거리 폭발 · 전선 FPV 연쇄 크게",
   },
 
   /** Shahed/UAV — qubodup DJI 호버 (짧은 프로펠러) */
@@ -78,16 +78,16 @@ export const AUDIO_MANIFEST = {
   },
 
   /**
-   * 전선 FPV 드론 통과 — 아주 작게, 파도형 음량 후 하드컷→폭발
-   * https://freesound.org/s/854466/ · qubodup · CC0
+   * 전선 FPV/UAV 통과 — 파도형 음량 후 하드컷→폭발
+   * https://freesound.org/s/537598/ · PostProdDog · CC0
    */
   "frontline-fpv-drone": {
     eventId: "frontline-fpv-drone",
-    freesoundQuery: "FPV drone flight military UAV",
-    freesoundId: 854466,
-    volume: 0.07,
+    freesoundQuery: "uav unmanned surveillance drone propeller",
+    freesoundId: 537598,
+    volume: 0.12,
     category: "conflict",
-    note: "FS#854466 qubodup FPV Drone Flight 3 · CC0 · 전선 저음량 파도→컷→폭발",
+    note: "FS#537598 PostProdDog UAV unmanned surveillance drone 2 · CC0 · 풀볼륨 비행→하드스톱→즉시 폭발",
   },
 
   /**
@@ -98,9 +98,9 @@ export const AUDIO_MANIFEST = {
     eventId: "frontline-fpv-detonation",
     freesoundQuery: "mortar bomb fireworks bang echo",
     freesoundId: 840902,
-    volume: 0.52,
+    volume: 0.82,
     category: "conflict",
-    note: "FS#840902 klankbeeld mortar bomb · BY 4.0 · FPV 컷 직후 bang",
+    note: "FS#840902 klankbeeld mortar bomb · BY 4.0 · FPV 하드스톱 직후 bang · 크게",
   },
 
   /**

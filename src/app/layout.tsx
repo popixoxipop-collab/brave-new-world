@@ -1,6 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Cormorant_Garamond, IBM_Plex_Mono, IBM_Plex_Sans, Space_Grotesk } from "next/font/google";
 import localFont from "next/font/local";
+import { COMPACT_QUERY } from "@/hooks/compactQuery";
 import "./globals.css";
 
 const geistSans = localFont({
@@ -87,7 +89,29 @@ export const metadata: Metadata = {
   title: "멋진 신세계",
   description:
     "Aldous Huxley 《Brave New World》를 모티브로—전쟁과 이익이 같은 지도를 공유하는 3D 지구본 관측대",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "멋진 신세계",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#02040a" },
+    { media: "(prefers-color-scheme: light)", color: "#02040a" },
+  ],
+  colorScheme: "dark",
+};
+
+/** 하이드레이션 전 matchMedia → html[data-compact] (useCompactUi와 동일 쿼리) */
+const COMPACT_BOOT_SCRIPT = `(function(){try{var q=${JSON.stringify(COMPACT_QUERY)};if(window.matchMedia(q).matches){document.documentElement.setAttribute("data-compact","1");}else{document.documentElement.setAttribute("data-compact","0");}}catch(e){document.documentElement.setAttribute("data-compact","0");}})();`;
 
 export default function RootLayout({
   children,
@@ -100,9 +124,12 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${letterHand.variable} ${letterScript.variable} ${pretendard.variable} ${gmarket.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable} ${spaceGrotesk.variable} antialiased`}
         style={{
           background: "#02040a",
-          minHeight: "100vh",
+          minHeight: "100dvh",
         }}
       >
+        <Script id="cv-compact-boot" strategy="beforeInteractive">
+          {COMPACT_BOOT_SCRIPT}
+        </Script>
         {children}
       </body>
     </html>

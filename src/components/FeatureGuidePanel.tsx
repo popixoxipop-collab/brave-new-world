@@ -2,6 +2,8 @@
 
 import { HoverHint } from "@/components/HoverHint";
 import { useLocale } from "@/contexts/LocaleContext";
+import { GUEST_POLICY_COPY } from "@/lib/auth/guestPolicy";
+import { AUTH_SESSION_POLICY_COPY } from "@/lib/auth/sessionPolicy";
 import type { ViewerMode } from "@/lib/viewPackages";
 
 type FeatureGuidePanelProps = {
@@ -14,6 +16,18 @@ type GuideSection = {
   title: string;
   steps: string[];
 };
+
+const ACCOUNT_GUIDE_SECTIONS: GuideSection[] = [
+  {
+    title: GUEST_POLICY_COPY.ko.title,
+    steps: [...GUEST_POLICY_COPY.ko.steps],
+  },
+  {
+    title: AUTH_SESSION_POLICY_COPY.ko.title,
+    steps: [...AUTH_SESSION_POLICY_COPY.ko.steps],
+  },
+];
+
 
 const GUIDE_SECTIONS: GuideSection[] = [
   {
@@ -71,6 +85,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
       "우상단 ≡ : 레이어 패널 · 자료출처(NASA FIRMS · ADS-B · MarineTraffic) · 도움말 · 주요전선 탭",
     ],
   },
+  ...ACCOUNT_GUIDE_SECTIONS,
 ];
 
 const ECONOMY_GUIDE_SECTIONS: GuideSection[] = [
@@ -106,6 +121,7 @@ const ECONOMY_GUIDE_SECTIONS: GuideSection[] = [
       "모드 전환 시 레이어·nav·하단 Intel이 함께 바뀝니다.",
     ],
   },
+  ...ACCOUNT_GUIDE_SECTIONS,
 ];
 
 export function FeatureGuidePanel({ open, viewerMode = "conflict", onClose }: FeatureGuidePanelProps) {

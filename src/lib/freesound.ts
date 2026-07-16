@@ -4,7 +4,7 @@ import { AUDIO_MANIFEST, type AudioEventDef, type AudioEventId } from "@/data/au
 const FREESOUND_SEARCH = "https://freesound.org/apiv2/search/text/";
 const FREESOUND_SOUND = "https://freesound.org/apiv2/sounds";
 /** 캐시 버전 — 매니페스트 ID/쿼리 교체 시 구오매칭 캐시 무효화 */
-const CACHE_PREFIX = "freesound-preview-v5:";
+const CACHE_PREFIX = "freesound-preview-v6:";
 const SEARCH_TTL_MS = 6 * 60 * 60 * 1000; // 6h
 
 export type FreesoundPreview = {

@@ -359,6 +359,10 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
         window.clearTimeout(moveIdleTimerRef.current);
       }
       // GeoJSON zoom은 idle 후 1회 — notify는 idle 타이머 리셋용으로 매 프레임 유지(setState 없음)
+      // (이동 중 publishZoom을 매번 흘리는 시도를 했었으나, points/paths/rings/labels
+      //  GeoJSON을 mapZoom 변경마다 통째로 재계산하는 구조라 스크롤·핀치 줌 도중 계속
+      //  재빌드가 발생해 렌더링이 오히려 불안정(끊김)해짐 — 원복. 화면을 뒤덮는 문제는
+      //  mapGlobeLayers.ts의 angularToPixelRadius/angularToLineWidth 상한(clamp)으로 해결.)
       moveIdleTimerRef.current = window.setTimeout(() => {
         movingRef.current = false;
         publishZoom(mapZoomRef.current, true);
@@ -510,6 +514,9 @@ export const MapGlobeView = forwardRef<MapGlobeMethods, MapGlobeViewProps>(funct
         style={{ width: "100%", height: "100%" }}
         attributionControl={false}
         renderWorldCopies={false}
+        /** 캔버스 공유/캡처(ShareViewButton)에서 toBlob·toDataURL로 실제 렌더링 결과를
+         *  읽어야 하므로 필요 — 없으면 브라우저가 프레임마다 버퍼를 비워 캡처가 빈 화면이 됨 */
+        preserveDrawingBuffer
         interactiveLayerIds={interactiveLayerIds}
         onLoad={handleLoad}
         onMove={handleMove}

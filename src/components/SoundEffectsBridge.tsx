@@ -76,7 +76,8 @@ export function emitParchmentFoldSound() {
   });
 }
 
-type FrontlineSoundLod = "regional" | "near" | "village";
+/** regional = 멀리(포격) · close = near+village 통일(총성+포격+드론) */
+type FrontlineSoundLod = "regional" | "close";
 
 type WeightedPick = {
   id: AudioEventId;
@@ -93,17 +94,11 @@ const FRONTLINE_POOL_BY_LOD: Record<FrontlineSoundLod, WeightedPick[]> = {
     { id: "frontline-mlrs", weight: 1 },
     { id: "frontline-fpv-drone", weight: 1 },
   ],
-  /** 중간 — 포격 주력 + 총성(작게) + FPV */
-  near: [
-    { id: "frontline-artillery-shot", weight: 5 },
-    { id: "frontline-gunfire", weight: 2 },
-    { id: "frontline-gunfire-distant-auto", weight: 2 },
-    { id: "frontline-bombing", weight: 1 },
-    { id: "neptun-impact", weight: 1 },
-    { id: "frontline-fpv-drone", weight: 2 },
-  ],
-  /** 가까이 — 총성 2종 위주 + 포격 가끔 + FPV */
-  village: [
+  /**
+   * 가까이(near·village 동일) — 예전 village 풀:
+   * 총성 2종 + 포격·폭격·MLRS·FPV가 같이 들림. near 이탈(→ regional/상위)까지 연속.
+   */
+  close: [
     { id: "frontline-gunfire", weight: 4 },
     { id: "frontline-gunfire-distant-auto", weight: 3 },
     { id: "frontline-artillery-shot", weight: 2 },
@@ -119,8 +114,8 @@ const GUNFIRE_IDS = new Set<AudioEventId>([
 ]);
 
 function toFrontlineSoundLod(tier: GlobeLodTier | undefined): FrontlineSoundLod {
-  if (tier === "village") return "village";
-  if (tier === "near") return "near";
+  // near·village 통일 → close (고도 ≤ ~0.72)
+  if (tier === "near" || tier === "village") return "close";
   return "regional";
 }
 
@@ -138,32 +133,28 @@ function randBetween(min: number, max: number): number {
   return min + Math.random() * (max - min);
 }
 
-/** FPV: 아주 작게 → 파도형 음량 → 하드컷 → 폭발 연쇄 */
+/** FPV: 비행 풀볼륨 → 하드스톱(인지 불가) → 즉시 큰 폭발 */
 function playFrontlineFpvPass(
   play: (id: AudioEventId, opts?: PlaySoundOptions) => void | Promise<void>,
   lod: FrontlineSoundLod,
   cameraAltitude: number | undefined,
 ) {
   const volumeScale =
-    lod === "village" ? randBetween(0.85, 1.05) : lod === "near" ? randBetween(0.55, 0.75) : randBetween(0.35, 0.5);
+    lod === "close" ? randBetween(0.9, 1.1) : randBetween(0.4, 0.55);
   const boomId: AudioEventId = Math.random() < 0.55 ? "neptun-impact" : "frontline-fpv-detonation";
   void play("frontline-fpv-drone", {
     altitude: cameraAltitude,
     volumeScale,
     force: true,
     overlap: true,
+    /** 파도 페이드 없음 — 끊김을 느끼게 하지 않고 pause 후 즉시 boom */
     durationMs: Math.round(randBetween(6500, 10500)),
-    waveVolume: {
-      minFactor: 0.35,
-      maxFactor: 1,
-      periodMs: Math.round(randBetween(1700, 2600)),
-    },
     chain: {
       eventId: boomId,
       volumeScale:
         boomId === "frontline-fpv-detonation"
-          ? randBetween(1.15, 1.4)
-          : randBetween(0.95, 1.25),
+          ? randBetween(1.45, 1.7)
+          : randBetween(1.4, 1.65),
       durationMs:
         boomId === "frontline-fpv-detonation"
           ? Math.round(randBetween(3200, 4000))
@@ -189,7 +180,6 @@ function frontlineOneshotOpts(
     return { volumeScale: randBetween(0.85, 1.15), durationMs: 4500 };
   }
   if (GUNFIRE_IDS.has(id)) {
-    if (lod === "near") return { volumeScale: randBetween(0.42, 0.55), durationMs: id === "frontline-gunfire" ? 4000 : 3200 };
     return {
       volumeScale: randBetween(1.0, 1.15),
       durationMs: id === "frontline-gunfire" ? 4500 : 3500,
@@ -207,10 +197,9 @@ function frontlineOneshotOpts(
   return { volumeScale: 1.05 };
 }
 
-/** 전선 베드 — 멀리서 키우고, 가까이선 총성에 자리 양보 */
+/** 전선 베드 — 멀리서 키우고, 가까이선 총성·드론에 자리 양보 */
 function frontlineBedVolumeScale(lod: FrontlineSoundLod): number {
   if (lod === "regional") return 1.28;
-  if (lod === "near") return 1.0;
   return 0.68;
 }
 
@@ -239,7 +228,7 @@ type SoundEffectsBridgeProps = {
  * 사운드 규칙
  * - 공습경보: 칩/버튼 fly 시에만 (emitDashboardSound)
  * - 그 외: 카메라가 해당 지역·레이어 위에 있을 때 자동 재생 (클릭 없음)
- * - 전선: LOD별 원샷 풀 (regional=포격/짧은폭격, near=포격+작은총성, village=총성)
+ * - 전선: LOD별 원샷 풀 (regional=포격/짧은폭격, close=near+village 통일 · 총성+포격+드론 연속)
  */
 export function SoundEffectsBridge({
   viewerMode,
@@ -394,7 +383,8 @@ export function SoundEffectsBridge({
     viewerMode,
   ]);
 
-  // 실제 교전 전장 — LOD 가중 풀 · ~20초 버스트 / 6초 쉼
+  // 실제 교전 전장 — LOD 가중 풀
+  // close(near+village): 쉼 없이 연속 · regional: ~20초 버스트 / 6초 쉼
   useEffect(() => {
     if (!canPlay || !primedRef.current) return;
     if (viewerMode !== "conflict" || !frontlineAmbient) return;
@@ -402,8 +392,9 @@ export function SoundEffectsBridge({
     let cancelled = false;
     let burstTimer: number | null = null;
     let windowTimer: number | null = null;
-    const WINDOW_MS = 20_000;
-    const PAUSE_MS = 6_000;
+    const continuous = frontlineLod === "close";
+    const WINDOW_MS = continuous ? Number.POSITIVE_INFINITY : 20_000;
+    const PAUSE_MS = continuous ? 0 : 6_000;
     const pool = FRONTLINE_POOL_BY_LOD[frontlineLod];
 
     const fireOne = () => {
@@ -424,20 +415,18 @@ export function SoundEffectsBridge({
 
     const runWindow = () => {
       if (cancelled) return;
-      const windowEnd = Date.now() + WINDOW_MS;
+      const windowEnd = continuous ? Number.POSITIVE_INFINITY : Date.now() + WINDOW_MS;
 
       const tick = () => {
         if (cancelled) return;
-        if (Date.now() >= windowEnd) {
+        if (!continuous && Date.now() >= windowEnd) {
           windowTimer = window.setTimeout(runWindow, PAUSE_MS);
           return;
         }
         fireOne();
-        // 원거리는 폭격 스팅을 더 자주(짧게) 겹침
-        const delay =
-          frontlineLod === "regional"
-            ? 550 + Math.floor(Math.random() * 900)
-            : 700 + Math.floor(Math.random() * 1100);
+        const delay = continuous
+          ? 650 + Math.floor(Math.random() * 950)
+          : 550 + Math.floor(Math.random() * 900);
         burstTimer = window.setTimeout(tick, delay);
       };
 

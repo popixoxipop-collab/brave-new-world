@@ -18,7 +18,7 @@ import {
 import { isZoomScaledSound, scaledSoundVolume } from "@/lib/soundDistanceScale";
 
 /** 로컬/스트림 URL — 캐시 버스팅으로 예전 개짖음 MP3 무효화 */
-const AUDIO_URL_BUST = "v17-parchment-fold-140891";
+const AUDIO_URL_BUST = "v18-fpv-uav-537598";
 
 function audioUrlForEvent(eventId: AudioEventId, def: AudioEventDef): string {
   if (def.localSrc) {
@@ -182,7 +182,7 @@ export function useSoundStream(options?: UseSoundStreamOptions) {
 
       const volumeScale =
         typeof playOpts?.volumeScale === "number" && Number.isFinite(playOpts.volumeScale)
-          ? Math.min(1.6, Math.max(0.05, playOpts.volumeScale))
+          ? Math.min(1.85, Math.max(0.05, playOpts.volumeScale))
           : 1;
       const volume = Math.min(
         1,

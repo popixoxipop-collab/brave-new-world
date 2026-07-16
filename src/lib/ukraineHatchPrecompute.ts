@@ -141,10 +141,24 @@ export function filterHatchPathsByView(
 ): TransportPath[] {
   const scored = paths
     .map((path) => {
-      const cLat = (path.bbox.minLat + path.bbox.maxLat) / 2;
-      const cLng = (path.bbox.minLng + path.bbox.maxLng) / 2;
-      const dLat = Math.abs(cLat - view.lat);
-      const dLng = Math.min(Math.abs(cLng - view.lng), 360 - Math.abs(cLng - view.lng));
+      // 중심점만 보면 큰 Iran/ME 박스가 가장자리 줌에서 통째로 탈락함 → bbox 최근접점
+      const clampedLat = Math.min(
+        Math.max(view.lat, path.bbox.minLat),
+        path.bbox.maxLat,
+      );
+      let clampedLng = view.lng;
+      if (view.lng < path.bbox.minLng || view.lng > path.bbox.maxLng) {
+        const dMin = Math.abs(view.lng - path.bbox.minLng);
+        const dMax = Math.abs(view.lng - path.bbox.maxLng);
+        const wrapMin = Math.min(dMin, 360 - dMin);
+        const wrapMax = Math.min(dMax, 360 - dMax);
+        clampedLng = wrapMin <= wrapMax ? path.bbox.minLng : path.bbox.maxLng;
+      }
+      const dLat = Math.abs(clampedLat - view.lat);
+      const dLng = Math.min(
+        Math.abs(clampedLng - view.lng),
+        360 - Math.abs(clampedLng - view.lng),
+      );
       const dist = Math.sqrt(dLat * dLat + dLng * dLng);
       return { path, dist };
     })

@@ -123,6 +123,13 @@ const UI = {
     en: "Licenses and attribution for NASA FIRMS, ADS-B, MarineTraffic, GDELT, VIINA, and more.",
   },
   hoverSourcesAria: { ko: "자료출처 및 라이선스", en: "Sources and licenses" },
+  shareView: { ko: "공유", en: "Share" },
+  hoverShareView: { ko: "화면 공유", en: "Share view" },
+  hoverShareViewHint: {
+    ko: "지금 보이는 지도를 워터마크 박힌 이미지로 저장하거나 공유합니다.",
+    en: "Save or share the current map view as a watermarked image.",
+  },
+  hoverShareViewAria: { ko: "현재 화면 이미지로 공유", en: "Share current view as image" },
   hoverUsCarrierTrack: { ko: "미 항공모함 추적", en: "US carrier tracking" },
   hoverUsCarrierAll: {
     ko: "배치·항구 항모를 모두 표시합니다.",
@@ -304,8 +311,8 @@ const UI = {
   },
   entryCautionSoundWhenTitle: { ko: "언제 소리가 나나요", en: "When sound plays" },
   entryCautionSoundWhen: {
-    ko: "• 공습 사이렌: 경보 칩·버튼으로 fly 할 때만\n• S급 속보만 SOS 모스 (A급은 배너만 · Tier3 단독은 S 불가)\n• NEPTUN·FIRMS 폭격음: 해당 레이어 ON + 화면 안으로 들어올 때\n• 전선 교전음(우크라·중동): 줌 LOD — 멀리 포격/짧은폭격 · 중간 포격+작은총성 · 가까이 총성\n• 대만해협: 시계 틱 긴장음 · 한반도/고긴장: rumble\n• 항모 갑판: 미 항모가 화면 안에 있을 때\n• 경제 앰비언트: 파이프라인 > 데이터센터 > 항구 > 경제중심 레이어\n• 티커·모드 전환·일반 클릭으로는 소리가 나지 않습니다",
-    en: "• Air-raid siren: only when you fly via the alert chip/button\n• SOS Morse for S-grade breaking only (A = banner silent · Tier3 alone cannot be S)\n• NEPTUN / FIRMS combat: layer ON + event enters the viewport\n• Frontline (Ukraine / Middle East): LOD — far artillery/short blasts · mid artillery + quiet gunfire · close gunfire\n• Taiwan Strait: ticking tension · Korea / high-tension: rumble\n• Carrier deck: when a US carrier is in view\n• Economy ambient: pipeline > datacenter > port > economic hubs\n• Ticker, mode switch, and normal UI clicks stay silent",
+    ko: "• 공습 사이렌: 경보 칩·버튼으로 fly 할 때만\n• S급 속보만 SOS 모스 (A급은 배너만 · Tier3 단독은 S 불가)\n• NEPTUN·FIRMS 폭격음: 해당 레이어 ON + 화면 안으로 들어올 때\n• 전선 교전음(우크라·중동): 줌 LOD — 멀리 포격/짧은폭격 · near 이하 총성+포격+드론 연속(near 이탈까지)\n• 대만해협: 시계 틱 긴장음 · 한반도/고긴장: rumble\n• 항모 갑판: 미 항모가 화면 안에 있을 때\n• 경제 앰비언트: 파이프라인 > 데이터센터 > 항구 > 경제중심 레이어\n• 티커·모드 전환·일반 클릭으로는 소리가 나지 않습니다",
+    en: "• Air-raid siren: only when you fly via the alert chip/button\n• SOS Morse for S-grade breaking only (A = banner silent · Tier3 alone cannot be S)\n• NEPTUN / FIRMS combat: layer ON + event enters the viewport\n• Frontline (Ukraine / Middle East): LOD — far artillery/short blasts · at near-or-closer continuous gunfire+artillery+drone until you leave near\n• Taiwan Strait: ticking tension · Korea / high-tension: rumble\n• Carrier deck: when a US carrier is in view\n• Economy ambient: pipeline > datacenter > port > economic hubs\n• Ticker, mode switch, and normal UI clicks stay silent",
   },
   entryCautionCta: { ko: "확인했습니다 — 편지로", en: "Got it — continue to letter" },
   entryCautionSkip: { ko: "스킵하시겠습니까?", en: "Skip the intro?" },

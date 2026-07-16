@@ -33,6 +33,13 @@ const AMBIENT_ZOOM_IDS = new Set<AudioEventId>([
 ]);
 
 const ONE_SHOT_HARD_CAP = 0.55;
+/** 탄착·FPV 폭발 — 전장 가까이에서 더 크게 */
+const LOUD_ONESHOT_HARD_CAP = 0.92;
+const LOUD_ONESHOT_IDS = new Set<AudioEventId>([
+  "neptun-impact",
+  "frontline-fpv-detonation",
+  "firms-combat-burst",
+]);
 const AMBIENT_HARD_CAP = 0.22;
 
 /** altitude 높을수록(멀수록) 작음 · 줌인일수록 커짐 */
@@ -59,6 +66,10 @@ export function scaledSoundVolume(
   }
   const factor = zoomVolumeFactor(alt);
   const raw = baseVolume * factor;
-  const cap = AMBIENT_ZOOM_IDS.has(eventId) ? AMBIENT_HARD_CAP : ONE_SHOT_HARD_CAP;
+  const cap = AMBIENT_ZOOM_IDS.has(eventId)
+    ? AMBIENT_HARD_CAP
+    : LOUD_ONESHOT_IDS.has(eventId)
+      ? LOUD_ONESHOT_HARD_CAP
+      : ONE_SHOT_HARD_CAP;
   return Math.min(cap, Math.max(0, raw));
 }

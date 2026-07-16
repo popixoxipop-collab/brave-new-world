@@ -17,6 +17,11 @@ type HoverHintProps = {
   /** 툴팁이 버튼 위/아래 중 어디에 뜰지 */
   placement?: "top" | "bottom";
   className?: string;
+  /**
+   * true면 터치에서 탭으로 툴팁 pin.
+   * FAB·액션 버튼은 기본 false — 탭 한 번에 액션+툴팁이 겹치지 않게 함.
+   */
+  pinOnTouch?: boolean;
   children: ReactElement;
 };
 
@@ -25,6 +30,7 @@ export function HoverHint({
   detail,
   placement = "top",
   className = "",
+  pinOnTouch = false,
   children,
 }: HoverHintProps) {
   const { t } = useLocale();
@@ -66,7 +72,8 @@ export function HoverHint({
     },
     onPointerUp: (event: React.PointerEvent) => {
       children.props.onPointerUp?.(event);
-      if (event.pointerType === "touch") {
+      // 터치 기본: pin 스킵 — FAB 등 액션 버튼에서 탭=액션+툴팁 동시 발동 방지
+      if (pinOnTouch && event.pointerType === "touch") {
         setPinned((open) => !open);
       }
     },
@@ -84,7 +91,9 @@ export function HoverHint({
         {detail ? (
           <span className="mt-1 block text-[11px] leading-5 text-sky-100/78">{detail}</span>
         ) : null}
-        <span className="mt-1.5 block text-[10px] text-sky-200/45 sm:hidden">{t("hoverTapToPin")}</span>
+        {pinOnTouch ? (
+          <span className="mt-1.5 block text-[10px] text-sky-200/45 sm:hidden">{t("hoverTapToPin")}</span>
+        ) : null}
       </span>
     </span>
   );

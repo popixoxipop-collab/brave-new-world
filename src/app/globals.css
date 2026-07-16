@@ -12,6 +12,13 @@
   /* MapLegend + intel stack clearance (collapsed default; expanded via JS) */
   --bottom-intel-stack-clearance: 8.5rem;
   --intel-sidebar-width: 480px;
+  /* iOS home indicator / notch */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  /* Apple HIG / Material 최소 터치 타겟 */
+  --tap-target-min: 44px;
 }
 
 body {
@@ -22,7 +29,29 @@ body {
     radial-gradient(ellipse 38% 28% at 14% 86%, rgba(255, 0, 127, 0.025) 0%, transparent 50%),
     var(--background);
   font-family: var(--font-geist-mono), var(--font-ibm-plex-mono), "IBM Plex Mono", "JetBrains Mono", monospace;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
 }
+
+/** 터치 타겟 토큰 — FAB·칩·핸들 */
+.tap-target {
+  min-height: var(--tap-target-min);
+  min-width: var(--tap-target-min);
+}
+
+/**
+ * Hydration 전 플래시 가드.
+ * layout 인라인 스크립트가 html[data-compact]를 먼저 세팅한다.
+ */
+html[data-compact="1"] .cv-desktop-only {
+  display: none !important;
+}
+html[data-compact="0"] .cv-compact-only {
+  display: none !important;
+}
+
 
 /** 지경학 상단 nav — Pretendard */
 .font-nav-economy,
@@ -391,6 +420,7 @@ main[data-viewer="economy"] .font-en,
     max-width: none;
     height: min(52vh, 560px) !important;
     max-height: min(52vh, 560px);
+    padding-bottom: var(--safe-bottom);
     border-left: none !important;
     border-top: 1px solid rgba(125, 211, 252, 0.16);
     border-top-left-radius: 1.25rem;
@@ -518,6 +548,7 @@ main[data-viewer="economy"] .font-en,
   height: 100dvh;
   max-height: 100vh;
   max-height: 100dvh;
+  padding-bottom: var(--safe-bottom);
   transform: translateY(110%);
   visibility: hidden;
   pointer-events: none;
@@ -551,6 +582,25 @@ main[data-viewer="economy"] .font-en,
   height: 0.28rem;
   border-radius: 999px;
   background: rgba(148, 163, 184, 0.45);
+}
+
+/** 하단 고정 intel 스택 — home indicator 여유 */
+.intel-stack {
+  bottom: calc(0.75rem + var(--safe-bottom)) !important;
+}
+
+.intel-stack--fab-only {
+  bottom: calc(1rem + var(--safe-bottom)) !important;
+}
+
+.intel-stack--collapsed {
+  bottom: calc(0.75rem + var(--safe-bottom)) !important;
+}
+
+/** 시트/도크 드래그 핸들 — 시각 막대는 얇지만 탭 영역은 44px */
+.intel-drag-handle {
+  min-height: var(--tap-target-min);
+  justify-content: center;
 }
 
 .intel-stack--collapsed .intel-news-sheet__handle {

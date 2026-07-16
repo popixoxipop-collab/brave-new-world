@@ -27,6 +27,14 @@ export type StockTickerItem = {
   sparkline: number[];
 };
 
+/** 특정 사건(뉴스) 발생 시점 대비 지금까지의 가격 변동 — "사건-종목 연결" 카드용 */
+export type MarketReactionItem = {
+  symbol: string;
+  priceAt: number | null;
+  priceNow: number | null;
+  changePercentSinceEvent: number | null;
+};
+
 /**
  * Yahoo Finance — API 키 없이 동작 검증된 심볼만 (Massive 무료 미지원 아시아·원자재 대체).
  * @see `/api/stock-tickers` · `yahoo-finance2`

@@ -4,6 +4,11 @@ import { HoverHint } from "@/components/HoverHint";
 import { useLocale } from "@/contexts/LocaleContext";
 
 import {
+  OPENALEX_ATTRIBUTION_EN,
+  OPENALEX_ATTRIBUTION_KO,
+  OPENALEX_POLICY,
+} from "@/lib/licensing/openAlexPolicy";
+import {
   VIINA_ATTRIBUTION_EN,
   VIINA_ATTRIBUTION_KO,
   VIINA_POLICY,
@@ -81,6 +86,37 @@ export function MethodologySourcesPanel({ open, onClose }: MethodologySourcesPan
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
+          <section className="rounded-xl border border-violet-800/40 bg-violet-950/20 p-3">
+            <h3 className="text-sm font-medium text-violet-100">
+              OpenAlex — 학술 참고문헌 ({OPENALEX_POLICY.product})
+            </h3>
+            <p className="mt-2 text-[12px] leading-5 text-sky-100/80">{OPENALEX_ATTRIBUTION_KO}</p>
+            <p className="mt-2 text-[11px] italic leading-5 text-sky-100/60">{OPENALEX_ATTRIBUTION_EN}</p>
+            <p className="mt-3 text-[11px] leading-5 text-violet-200/75">
+              {OPENALEX_POLICY.fullName} · {OPENALEX_POLICY.licenseNote}
+            </p>
+            <p className="mt-2 text-[11px] leading-5 text-sky-100/65">
+              API:{" "}
+              <a
+                href={OPENALEX_POLICY.apiUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="underline decoration-violet-400/40 underline-offset-2 hover:text-sky-50"
+              >
+                {OPENALEX_POLICY.apiUrl}
+              </a>
+              {" · "}
+              <a
+                href={OPENALEX_POLICY.docsUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="underline decoration-violet-400/40 underline-offset-2 hover:text-sky-50"
+              >
+                docs.openalex.org
+              </a>
+            </p>
+          </section>
+
           <section className="rounded-xl border border-emerald-800/40 bg-emerald-950/20 p-3">
             <h3 className="text-sm font-medium text-emerald-100">주요 출처</h3>
             <p className="mt-1.5 text-[11px] leading-5 text-sky-100/65">

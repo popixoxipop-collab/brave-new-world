@@ -66,6 +66,35 @@ function toTickerItem(
   };
 }
 
+/**
+ * 사건(뉴스) 발생 시점 근처 종가 — "이 사건 이후 종목이 얼마나 움직였나" 계산용 앵커 가격.
+ * chart() 15분봉에서 atMs와 가장 가까운 바를 고른다. 없으면 null(호출부에서 카드 숨김 처리).
+ */
+export async function fetchPriceNearTimestamp(
+  symbol: string,
+  atMs: number,
+): Promise<number | null> {
+  try {
+    const period1 = new Date(atMs - 45 * 60 * 1000);
+    const period2 = new Date(atMs + 45 * 60 * 1000);
+    const chart = await yahooFinance.chart(symbol, { period1, period2, interval: "15m" });
+    let closest: number | null = null;
+    let closestDiff = Infinity;
+    for (const bar of chart.quotes ?? []) {
+      if (typeof bar.close !== "number" || !Number.isFinite(bar.close)) continue;
+      const barDate = bar.date instanceof Date ? bar.date : new Date(bar.date as unknown as string);
+      const diff = Math.abs(barDate.getTime() - atMs);
+      if (diff < closestDiff) {
+        closest = bar.close;
+        closestDiff = diff;
+      }
+    }
+    return closest;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchSparkline(symbol: string): Promise<number[]> {
   try {
     const chart = await yahooFinance.chart(symbol, {

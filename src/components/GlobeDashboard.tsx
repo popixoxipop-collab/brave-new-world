@@ -9,6 +9,9 @@ import { UkraineFrontLegend, UkraineFrontLegendContent } from "@/components/Ukra
 import { LegendReopenButton } from "@/components/MapOverlayLegendPanel";
 import { FeatureGuideButton, FeatureGuidePanel } from "@/components/FeatureGuidePanel";
 import { MethodologySourcesPanel, SourcesLinkButton } from "@/components/MethodologySourcesPanel";
+import { ShareViewButton } from "@/components/ShareViewButton";
+import { MobileAlertFeed } from "@/components/MobileAlertFeed";
+import { trackEvent } from "@/lib/trackClient";
 import { GdeltAlertPanel } from "@/components/GdeltAlertPanel";
 import { TelegramOsintPanel } from "@/components/TelegramOsintPanel";
 import { TzevaAdomPanel, type AirRaidFocusTarget } from "@/components/TzevaAdomPanel";
@@ -57,6 +60,17 @@ import {
   AirRaidOnboardingCoach,
   shouldOfferAirRaidCoach,
 } from "@/components/AirRaidOnboardingCoach";
+import { PeriodicBriefingParchment } from "@/components/PeriodicBriefingParchment";
+import {
+  buildBriefingFromStats,
+  buildPeriodicBriefing,
+  hasSeenPeriod,
+  markPeriodSeen,
+  resolveLampPeriod,
+  type PeriodicBriefing,
+} from "@/lib/news/periodicBriefing";
+import type { BriefingPeriodStats } from "@/lib/briefingPeriodStats";
+import { useLocalCalendarDayKey } from "@/hooks/useLocalCalendarDayKey";
 import { EntryCautionOverlay } from "@/components/EntryCautionOverlay";
 import { SoundMuteControl } from "@/components/SoundMuteControl";
 import { DomainGateOverlay } from "@/components/DomainGateOverlay";
@@ -316,6 +330,7 @@ import {
   FIRMS_FIRE_MAX_BY_TIER,
   VIEWPORT_RADIUS_BY_TIER,
   filterByViewportCenter,
+  isBboxNearView,
   isCenterInView,
   viewToBbox,
 } from "@/lib/viewportCull";
@@ -326,6 +341,7 @@ import {
 import { resolveDisputeCenter } from "@/lib/disputeCenter";
 import {
   conflictZoneToOutlineAndHatchPaths,
+  disputeGeometryBbox,
   disputeMatchesWarDiplomaticLayers,
   geometryToAccentOutlineAndHatch,
   getConflictZoneHatchColor,
@@ -411,7 +427,13 @@ import {
   TIER_LABELS,
   type ScoredEvent,
 } from "@/data/eventTiers";
-import { createEventPinElement, createFrictionPinElement } from "@/lib/locationPinMarker";
+import { createEventPinElement, createFrictionPinElement, createFrictionStageCalloutElement } from "@/lib/locationPinMarker";
+import { FrictionHistoryChrome } from "@/components/FrictionHistoryChrome";
+import {
+  frictionDeepDoc,
+  frictionParchmentParagraphs,
+  type FrictionTimelineStage,
+} from "@/data/frictionEpisodeDeep";
 import {
   NewsStreamProvider,
   IntelCompactBar,
@@ -525,12 +547,14 @@ type PulseRingPoint =
       markerId: string;
       label: string;
     }
-  | {
+      | {
       pulseKind: "choke-glow";
       id: string;
       lat: number;
       lng: number;
       glow: number;
+      /** 해역 폭에 맞춘 링 반경(deg) */
+      radiusScale: number;
       markerId: string;
     };
 
@@ -594,6 +618,17 @@ type FrictionPinHtmlMarker = {
   color: string;
 };
 
+type FrictionStageHtmlMarker = {
+  markerId: string;
+  displayKind: "friction-stage";
+  id: string;
+  lat: number;
+  lng: number;
+  label: string;
+  order: number;
+  active: boolean;
+};
+
 type HtmlOverlayMarker =
   | StaticGlobePoint
   | GlobePoint
@@ -605,7 +640,8 @@ type HtmlOverlayMarker =
   | UkraineSettlementHtmlMarker
   | NeptunHtmlMarker
   | NeptunImpactHtmlMarker
-  | FrictionPinHtmlMarker;
+  | FrictionPinHtmlMarker
+  | FrictionStageHtmlMarker;
 
 type HoverCard =
   | {
@@ -1070,6 +1106,8 @@ const PATH_MEANINGFUL_DELTA = 120;
 /** HTML 실루엣 마커는 DOM 비용이 커서 뷰포트 포인트보다 더 세게 캡 */
 const INFRA_HTML_MARKER_CAP = 72;
 const LOD_HYSTERESIS_MARGIN = 0.06;
+/** 분쟁 외교사(역사 모드) — 줌아웃해도 궤도 밖으로 튕기지 않게 상한 */
+const HISTORY_IMMERSION_MAX_ALTITUDE = 1.38;
 const LOD_TIER_ANCHOR_ALTITUDE: Record<GlobeLodTier, number> = {
   global: 1.9,
   continent: 1.36,
@@ -1388,6 +1426,9 @@ export function GlobeDashboard({
   const domainThenDetailTimerRef = useRef<number | null>(null);
   const [chromeCoachStep, setChromeCoachStep] = useState<ChromeCoachStep | null>(null);
   const [showAirRaidCoach, setShowAirRaidCoach] = useState(false);
+  const [periodicBriefing, setPeriodicBriefing] = useState<PeriodicBriefing | null>(null);
+  /** 로컬 자정에 바뀜 — 매일 등불 재점화 트리거 */
+  const calendarDayKey = useLocalCalendarDayKey();
   const battlefieldSoftZoneRef = useRef<BattlefieldZone | null>(null);
   const battlefieldManualUntilRef = useRef(0);
   const [showViewerIntro, setShowViewerIntro] = useState(false);
@@ -1836,10 +1877,14 @@ export function GlobeDashboard({
   const [theaterSidebarTab, setTheaterSidebarTab] = useState<TheaterSidebarTab>("news");
   const [regimeSelectedEpisodeId, setRegimeSelectedEpisodeId] = useState<string | null>(null);
   const [frictionEpisodeBrief, setFrictionEpisodeBrief] = useState<FrictionEpisode | null>(null);
+  const [frictionActiveStageId, setFrictionActiveStageId] = useState<string | null>(null);
   const frictionEpisodeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const historyImmersionRef = useRef(false);
 
   const activeHubId = regionNavSelection?.hubId ?? null;
   const hubFocusMode = regionNavSelection?.focusMode ?? null;
+  const historyImmersionActive = hubFocusMode === "regime";
+  historyImmersionRef.current = historyImmersionActive;
   const hubBriefDoc = useMemo(() => {
     if (!regionNavSelection || !hubBriefOpen) return null;
     return resolveHubBrief(regionNavSelection, labelLanguage);
@@ -1858,6 +1903,18 @@ export function GlobeDashboard({
       frictionEpisodeTimerRef.current = null;
     }
   }, []);
+
+  const exitHistoryImmersion = useCallback(() => {
+    clearFrictionEpisodeTimer();
+    clearHubBriefTimer();
+    setFrictionEpisodeBrief(null);
+    setRegimeSelectedEpisodeId(null);
+    setFrictionActiveStageId(null);
+    setHubBriefOpen(false);
+    setRegionNavSelection(null);
+    const controls = globeRef.current?.controls();
+    if (controls) controls.maxDistance = 720;
+  }, [clearFrictionEpisodeTimer, clearHubBriefTimer]);
 
   const closeHubBrief = useCallback(() => {
     setHubBriefOpen(false);
@@ -2506,12 +2563,17 @@ export function GlobeDashboard({
       } else {
         // 스냅샷(D1/파일) 없을 때 disputes geometry → path 폴백
         const preferDetail = disputeHatchLod === "detail";
-        const candidates = rankDisputesForDisplay(data.disputes ?? []).filter(
-          (d) =>
-            Boolean(d.geometry) &&
-            disputeMatchesWarDiplomaticLayers(d, showWarZones, showDiplomaticTension) &&
-            isCenterInView(resolveDisputeCenter(d), layerViewState, radiusDeg),
-        );
+        const candidates = rankDisputesForDisplay(data.disputes ?? []).filter((d) => {
+          if (
+            !d.geometry ||
+            !disputeMatchesWarDiplomaticLayers(d, showWarZones, showDiplomaticTension)
+          ) {
+            return false;
+          }
+          const box = disputeGeometryBbox(d.geometry);
+          if (box) return isBboxNearView(box, layerViewState, radiusDeg);
+          return isCenterInView(resolveDisputeCenter(d), layerViewState, radiusDeg);
+        });
         for (const dispute of candidates.slice(0, maxZones)) {
           const built = getCachedDisputeHatchPaths(dispute, {
             preferDetailSegments: preferDetail,
@@ -2699,7 +2761,7 @@ export function GlobeDashboard({
     const hub = (activeHubId ?? "all") as AxisHubId | "all";
     if (hubFocusMode === "arms" && activeHubId && axisArmsPayload) {
       const { pairs } = filterArmsForHub(axisArmsPayload, activeHubId);
-      return armsPairsToPaths(pairs);
+      return armsPairsToPaths(pairs, labelLanguage);
     }
     if (hubFocusMode === "regime") return [];
     if (hub === "all") return [];
@@ -2814,6 +2876,25 @@ export function GlobeDashboard({
       },
     ];
   }, [activeFrictionEpisode]);
+
+  const frictionStageMarkers = useMemo<FrictionStageHtmlMarker[]>(() => {
+    if (!activeFrictionEpisode || hubFocusMode !== "regime") return [];
+    const deep = frictionDeepDoc(activeFrictionEpisode.id);
+    if (!deep) return [];
+    return deep.stages.map((stage) => ({
+      markerId: `friction-stage-${stage.id}`,
+      displayKind: "friction-stage" as const,
+      id: stage.id,
+      lat: stage.coordinates[1],
+      lng: stage.coordinates[0],
+      order: stage.order,
+      active: stage.id === frictionActiveStageId,
+      label:
+        labelLanguage === "en"
+          ? `${stage.order}. ${stage.titleEn}`
+          : `${stage.order}. ${stage.titleKo}`,
+    }));
+  }, [activeFrictionEpisode, frictionActiveStageId, hubFocusMode, labelLanguage]);
 
   const rawGlobePaths = useMemo<TransportPath[]>(
     () => [
@@ -3019,6 +3100,7 @@ export function GlobeDashboard({
       lat: p.lat,
       lng: p.lng,
       glow: p.glow,
+      radiusScale: p.radiusScale,
       markerId: `choke-glow-${p.id}`,
     }));
   }, [showLogisticsRisk]);
@@ -3691,12 +3773,14 @@ export function GlobeDashboard({
       ...neptunHtmlMarkers,
       ...neptunImpactHtmlMarkers,
       ...frictionPinMarkers,
+      ...frictionStageMarkers,
     ];
     return markers;
   }, [
       aisHtmlMarkers,
       airportPortHtmlMarkers,
       frictionPinMarkers,
+      frictionStageMarkers,
       gdeltTagHtmlMarkers,
       globePoints,
       milHtmlMarkers,
@@ -5548,7 +5632,7 @@ export function GlobeDashboard({
           return false;
         }
         setIntelSheetOpen(false);
-        setRegionNavSelection(null);
+        if (!historyImmersionRef.current) setRegionNavSelection(null);
         setEconNavSelection(null);
         return true;
       });
@@ -5635,6 +5719,14 @@ export function GlobeDashboard({
 
       if (pov.altitude < MIN_GLOBE_ALTITUDE) {
         globe.pointOfView({ lat: pov.lat, lng: pov.lng, altitude: MIN_GLOBE_ALTITUDE }, 0);
+      } else if (
+        historyImmersionRef.current &&
+        pov.altitude > HISTORY_IMMERSION_MAX_ALTITUDE
+      ) {
+        globe.pointOfView(
+          { lat: pov.lat, lng: pov.lng, altitude: HISTORY_IMMERSION_MAX_ALTITUDE },
+          0,
+        );
       }
 
       // 드래그 중 setViewState 금지 — 대시보드 전체 리렌더가 프레임을 갉아먹음 (idle에서만 반영)
@@ -5740,6 +5832,33 @@ export function GlobeDashboard({
   },
   []);
 
+  const selectFrictionStage = useCallback(
+    (stage: FrictionTimelineStage) => {
+      setFrictionActiveStageId(stage.id);
+      flyTo(stage.coordinates[1], stage.coordinates[0], 0.72, 900, { pitch: 48, bearing: -8 });
+    },
+    [flyTo],
+  );
+
+  useEffect(() => {
+    const globe = globeRef.current;
+    if (!globe || !globeReady) return;
+    const controls = globe.controls();
+    if (!controls) return;
+    if (historyImmersionActive) {
+      controls.maxDistance = globeDistanceForAltitude(HISTORY_IMMERSION_MAX_ALTITUDE);
+      const pov = globe.pointOfView();
+      if (pov.altitude > HISTORY_IMMERSION_MAX_ALTITUDE) {
+        globe.pointOfView(
+          { lat: pov.lat, lng: pov.lng, altitude: HISTORY_IMMERSION_MAX_ALTITUDE },
+          400,
+        );
+      }
+    } else {
+      controls.maxDistance = 720;
+    }
+  }, [globeReady, historyImmersionActive]);
+
   function openIntelSheet(options?: {
     theater?: IntelTheaterFilter;
     tab?: "news" | "video" | "telegram" | "viina";
@@ -5748,7 +5867,7 @@ export function GlobeDashboard({
     altitude?: number;
   }) {
     setSelected(null);
-    setRegionNavSelection(null);
+    if (!historyImmersionRef.current) setRegionNavSelection(null);
     setIntelTheaterFilter(options?.theater ?? "all");
     setIntelSheetOpen(true);
     intelStackRef.current?.openNewsPanel(options?.theater ?? "all", options?.tab ?? "news");
@@ -6360,6 +6479,75 @@ export function GlobeDashboard({
     showTzevaAdom,
   ]);
 
+  /**
+   * 매일 등불 브리핑 — 첫입장(경고→편지→모드→세부)과 무관.
+   * 로컬 캘린더 일(dayKey)당 1회. 자정이 지나면 calendarDayKey가 바뀌어 다시 점화.
+   * 본문은 D1 집계/샘플 우선, 없으면 큐레이션 폴백.
+   */
+  useEffect(() => {
+    if (isLoading || loadError || !globeReady) return;
+    if (entryGate !== null || showModePicker || chromeCoachStep) return;
+    if (showAirRaidCoach || hubBriefOpen || frictionEpisodeBrief) return;
+    if (shouldOfferChromeCoach()) return;
+    if (!isEconomyViewer && shouldOfferAirRaidCoach()) return;
+
+    const { dayKey, tier } = resolveLampPeriod();
+    // 훅 dayKey와 동기 — 자정 직후 한 틱 어긋나면 훅 값 우선
+    const lampKey = calendarDayKey.startsWith("daily-") ? calendarDayKey : dayKey;
+
+    if (periodicBriefing?.key === lampKey) return;
+    if (hasSeenPeriod(lampKey)) return;
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        let content: PeriodicBriefing | null = null;
+        try {
+          const res = await fetch(`/api/briefing-stats?tier=${tier}`, { cache: "no-store" });
+          if (res.ok) {
+            const payload = (await res.json()) as {
+              stats?: BriefingPeriodStats | null;
+            };
+            content = buildBriefingFromStats(
+              payload.stats ?? null,
+              tier,
+              lampKey,
+              labelLanguage,
+              viewerMode,
+            );
+          }
+        } catch {
+          // fall through to curated
+        }
+        if (!content) {
+          content = buildPeriodicBriefing(viewerMode, labelLanguage);
+          if (content) content = { ...content, key: lampKey };
+        }
+        if (!cancelled && content) setPeriodicBriefing(content);
+      })();
+    }, 1400);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [
+    calendarDayKey,
+    chromeCoachStep,
+    entryGate,
+    frictionEpisodeBrief,
+    globeReady,
+    hubBriefOpen,
+    isEconomyViewer,
+    isLoading,
+    labelLanguage,
+    loadError,
+    periodicBriefing,
+    showAirRaidCoach,
+    showModePicker,
+    viewerMode,
+  ]);
+
   const layerDebugPrevRef = useRef<{
     labels: number;
     heatmaps: number;
@@ -6667,6 +6855,13 @@ export function GlobeDashboard({
       if (item.displayKind === "friction-pin") {
         return createFrictionPinElement(item.color, item.label);
       }
+      if (item.displayKind === "friction-stage") {
+        return createFrictionStageCalloutElement(item.order, item.label, item.active, () => {
+          const deep = frictionDeepDoc(activeFrictionEpisode?.id ?? "");
+          const stage = deep?.stages.find((st) => st.id === item.id);
+          if (stage) selectFrictionStage(stage);
+        });
+      }
       if (item.displayKind === "static" && isHtmlStaticKind(item.kind)) {
         return createInfraStaticBadge(
           item,
@@ -6862,6 +7057,7 @@ export function GlobeDashboard({
           hubId={activeHubId}
           deals={filterArmsForHub(axisArmsPayload, activeHubId).deals}
           citation={axisArmsPayload.citation}
+          lang={labelLanguage}
           onClose={() => {
             clearHubBriefTimer();
             setHubBriefOpen(false);
@@ -6870,7 +7066,7 @@ export function GlobeDashboard({
         />
       ) : null}
 
-      {hubFocusMode === "regime" && !hubBriefOpen && !frictionEpisodeBrief ? (
+      {hubFocusMode === "regime" && !hubBriefOpen && !regimeSelectedEpisodeId ? (
         <AxisRegimePanel
           hubId={activeHubId}
           selectedEpisodeId={regimeSelectedEpisodeId}
@@ -6885,18 +7081,29 @@ export function GlobeDashboard({
               1100,
               { pitch: episode.pitch, bearing: episode.bearing },
             );
+            const deep = frictionDeepDoc(episode.id);
+            setFrictionActiveStageId(deep?.stages[0]?.id ?? null);
             frictionEpisodeTimerRef.current = setTimeout(() => {
               frictionEpisodeTimerRef.current = null;
               setFrictionEpisodeBrief(episode);
             }, 750);
           }}
-          onClose={() => {
-            clearHubBriefTimer();
-            clearFrictionEpisodeTimer();
-            setHubBriefOpen(false);
+          onClose={exitHistoryImmersion}
+        />
+      ) : null}
+
+      {historyImmersionActive && activeFrictionEpisode && !hubBriefOpen ? (
+        <FrictionHistoryChrome
+          episode={activeFrictionEpisode}
+          lang={labelLanguage}
+          activeStageId={frictionActiveStageId}
+          onSelectStage={selectFrictionStage}
+          onExitHistory={exitHistoryImmersion}
+          onOpenBrief={() => setFrictionEpisodeBrief(activeFrictionEpisode)}
+          onBackToList={() => {
             setFrictionEpisodeBrief(null);
             setRegimeSelectedEpisodeId(null);
-            setRegionNavSelection(null);
+            setFrictionActiveStageId(null);
           }}
         />
       ) : null}
@@ -7204,7 +7411,7 @@ export function GlobeDashboard({
                     : "translate(-50%, -100%) scale(0.86)";
                   return;
                 }
-                if (el.classList.contains("friction-episode-pin")) {
+                if (el.classList.contains("friction-episode-pin") || el.classList.contains("friction-stage-callout")) {
                   el.style.transform = isVisible
                     ? "translate(-50%, -100%) scale(1)"
                     : "translate(-50%, -100%) scale(0.86)";
@@ -7676,7 +7883,7 @@ export function GlobeDashboard({
           !selected &&
           !regionNavSelection &&
           !isUkraineTheaterFocus && (
-          <div className="pointer-events-none absolute bottom-[var(--bottom-intel-stack-clearance)] left-1/2 z-20 flex -translate-x-1/2 flex-wrap items-center justify-center gap-2">
+          <div className="pointer-events-none absolute bottom-[calc(var(--bottom-intel-stack-clearance)+env(safe-area-inset-bottom,0px))] left-1/2 z-20 flex -translate-x-1/2 flex-wrap items-center justify-center gap-2">
             {showAnyDisputeOverlay && !showDisputeLegendPanel && (
               <LegendReopenButton
                 label="전쟁·외교 긴장 범례"
@@ -7866,12 +8073,13 @@ export function GlobeDashboard({
 
       {/* 데스크톱: 우상단 공습·주요전장·도움말 / 모바일: 주요전장만 우상단 */}
       <div
-        className={`pointer-events-none absolute right-3 top-3 z-[55] flex items-start justify-end gap-2 ${
+        className={`pointer-events-none absolute right-3 z-[55] flex items-start justify-end gap-2 ${
           isCompactUi ? "max-w-[calc(100vw-5.5rem)] flex-wrap" : ""
         }`}
+        style={{ top: "max(0.75rem, env(safe-area-inset-top, 0px))" }}
       >
         {!isCompactUi && !isEconomyViewer && (showNeptun || neptunAlertCount > 0 || showTzevaAdom) ? (
-          <div id="air-raid-chrome" className="pointer-events-auto flex items-start gap-2">
+          <div id="air-raid-chrome" className="cv-desktop-only pointer-events-auto flex items-start gap-2">
             {showNeptun || neptunAlertCount > 0 ? (
               <UkraineAirRaidPanel
                 alerts={neptunAlerts}
@@ -7913,20 +8121,46 @@ export function GlobeDashboard({
           />
         ) : null}
         {!isCompactUi ? (
-          <div className="pointer-events-auto flex shrink-0 items-center gap-2">
+          <div className="cv-desktop-only pointer-events-auto flex shrink-0 items-center gap-2">
             {!isEconomyViewer ? (
               <SourcesLinkButton onClick={() => setShowSourcesPanel(true)} />
             ) : null}
+            <ShareViewButton getCanvas={() => globeRef.current?.renderer().domElement ?? null} />
             <FeatureGuideButton viewerMode={viewerMode} onClick={() => setShowFeatureGuide(true)} />
           </div>
-        ) : null}
+        ) : (
+          <div className="cv-compact-only pointer-events-auto flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const next = layerPrefs.mobileHomeView === "alerts" ? "globe" : "alerts";
+                trackEvent("mobile_home_view_toggle", { to: next }, { lang: labelLanguage, viewerMode });
+                togglePref("mobileHomeView", next);
+              }}
+              aria-label={
+                layerPrefs.mobileHomeView === "alerts"
+                  ? labelLanguage === "en"
+                    ? "View map"
+                    : "지도 보기"
+                  : labelLanguage === "en"
+                    ? "View alerts"
+                    : "알림 보기"
+              }
+              aria-pressed={layerPrefs.mobileHomeView === "alerts"}
+              className="tap-target flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-sky-300/25 bg-slate-950/70 text-[15px] text-sky-100 shadow-sm transition hover:border-sky-200/45"
+            >
+              {layerPrefs.mobileHomeView === "alerts" ? "🌐" : "🔔"}
+            </button>
+            <ShareViewButton getCanvas={() => globeRef.current?.renderer().domElement ?? null} />
+          </div>
+        )}
       </div>
 
       {/* 모바일: 공습 경보는 하단 아이콘 — 상단 허브·주요전장 메뉴를 가리지 않음 */}
       {isCompactUi && !isEconomyViewer && (showNeptun || neptunAlertCount > 0 || showTzevaAdom) ? (
         <div
           id="air-raid-chrome"
-          className="pointer-events-none absolute bottom-[calc(var(--bottom-intel-stack-clearance)+0.65rem)] right-3 z-[55] flex flex-col items-end gap-2"
+          className="cv-compact-only pointer-events-none absolute bottom-[calc(var(--bottom-intel-stack-clearance)+0.65rem+env(safe-area-inset-bottom,0px))] right-3 z-[55] flex flex-col items-end gap-2"
         >
           {showNeptun || neptunAlertCount > 0 ? (
             <div className="pointer-events-auto">
@@ -8352,11 +8586,7 @@ export function GlobeDashboard({
         <ParchmentLetter
           lang={labelLanguage}
           title={frictionEpisodeBrief.title}
-          paragraphs={[
-            frictionEpisodeBrief.locationName,
-            frictionEpisodeBrief.briefing,
-            ...(frictionEpisodeBrief.note ? [frictionEpisodeBrief.note] : []),
-          ]}
+          paragraphs={frictionParchmentParagraphs(frictionEpisodeBrief, labelLanguage)}
           signOff={
             labelLanguage === "en"
               ? `${frictionEpisodeBrief.historicalYear}${
@@ -8421,6 +8651,26 @@ export function GlobeDashboard({
           lang={labelLanguage}
           placement={isCompactUi ? "above" : "below"}
           onDismiss={() => setShowAirRaidCoach(false)}
+        />
+      ) : null}
+
+      {isCompactUi && layerPrefs.mobileHomeView === "alerts" ? (
+        <MobileAlertFeed
+          onSwitchToGlobe={() => {
+            trackEvent("mobile_home_view_toggle", { to: "globe" }, { lang: labelLanguage, viewerMode });
+            togglePref("mobileHomeView", "globe");
+          }}
+        />
+      ) : null}
+
+      {periodicBriefing ? (
+        <PeriodicBriefingParchment
+          briefing={periodicBriefing}
+          lang={labelLanguage}
+          onDismiss={() => {
+            markPeriodSeen(periodicBriefing.key);
+            setPeriodicBriefing(null);
+          }}
         />
       ) : null}
       </NewsStreamProvider>

@@ -210,8 +210,8 @@ function hatchLines(
 ): { lat: number; lng: number }[][] {
   const height = Math.max(0.05, box.maxLat - box.minLat);
   const width = Math.max(0.05, box.maxLng - box.minLng);
-  // 영역 크기에 비례한 간격 — 너무 촘촘하지 않게
-  const step = Math.max(0.18, Math.min(0.55, Math.max(height, width) / 7));
+  // 영역 크기에 비례한 간격 — 큰 Iran 박스도 빗금이 너무 성기지 않게
+  const step = Math.max(0.12, Math.min(0.38, Math.max(height, width) / 10));
   const lines: { lat: number; lng: number }[][] = [];
   const pad = step * 0.15;
 

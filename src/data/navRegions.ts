@@ -278,7 +278,7 @@ export const INTERCONTINENTAL_GROUP: NavMenuGroup = {
       label: "중동",
       lat: 29.2,
       lng: 42.5,
-      altitude: 2.05,
+      altitude: 1.35,
       description: "걸프·레반트·이란 전역",
       bbox: { minLat: 10, maxLat: 42, minLng: 28, maxLng: 66 },
       subItems: [

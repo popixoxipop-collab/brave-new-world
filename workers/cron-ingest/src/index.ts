@@ -1,6 +1,7 @@
 import type { IngestEnv } from "./env";
 import {
   getFirmsMapKey,
+  insertUiEvent,
   pruneOldRows,
   readAdsbAircraft,
   readAisVessels,
@@ -20,6 +21,7 @@ import { fetchAdsbAircraft } from "./adsb";
 import { fetchFirmsForTheaters } from "./firms";
 import { fetchGdeltTensionPoints } from "./gdeltExport";
 import { fetchTelegramAlerts } from "./telegram";
+import { readBriefingStats, upsertBriefingPeriodStats } from "./briefingStats";
 
 export type { IngestEnv };
 
@@ -56,6 +58,11 @@ type IngestResult = {
     telegramDeleted?: number;
     cutoff: string;
   };
+  briefingStats?: {
+    dailyKey: string;
+    weeklyKey: string;
+    monthlyKey: string;
+  } | null;
   error: string | null;
 };
 
@@ -171,6 +178,16 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
     const hardFail =
       Boolean(mapKey) && firmsCount === 0 && firmsErrors.length > 0 && gdeltCount === 0;
 
+    let briefingStats: IngestResult["briefingStats"] = null;
+    try {
+      briefingStats = await upsertBriefingPeriodStats(env.DB);
+    } catch (error) {
+      console.warn(
+        "[ingest] briefing stats upsert skipped:",
+        error instanceof Error ? error.message : error,
+      );
+    }
+
     const result: IngestResult = {
       ok: !hardFail,
       startedAt,
@@ -193,6 +210,7 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
       aisErrors,
       adsbErrors,
       pruned,
+      briefingStats,
       error: hardFail ? firmsErrors.join("; ") || "ingest failed" : null,
     };
 
@@ -220,6 +238,7 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
         tunnelsWarm,
         disputeHatchWarm,
         ukraineHatchWarm,
+        briefingStats,
       },
     });
 
@@ -275,6 +294,15 @@ function jsonPublic(body: unknown): Response {
   });
 }
 
+/** Next.js(Vercel, D1 바인딩 없음)의 /api/track이 전달하는 이벤트만 허용 */
+const ALLOWED_TRACK_EVENTS = new Set([
+  "share_view_click",
+  "share_view_success",
+  "friction_card_share_click",
+  "friction_card_share_success",
+  "mobile_home_view_toggle",
+]);
+
 function authorizeManual(request: Request, env: IngestEnv): boolean {
   const secret = env.INGEST_CRON_SECRET?.trim();
   if (!secret) return true; // open in local/dev when secret unset
@@ -319,8 +347,84 @@ const worker = {
           gdelt: "GET /gdelt?limit=1200 (public read of D1 tension points)",
           ais: "GET /ais?category=all|military|commercial&max=250",
           adsb: "GET /adsb?mode=mil|civ&west&south&east&north&max=400",
+          briefingStats:
+            "GET /briefing-stats?key=daily-YYYY-MM-DD|weekly-YYYY-Www|monthly-YYYY-MM or ?tier=daily|weekly|monthly",
+          track: "POST /track (Bearer INGEST_CRON_SECRET, D1-less hosts like Vercel forward here)",
         },
       });
+    }
+
+    if (url.pathname === "/track" && request.method === "POST") {
+      if (!authorizeManual(request, env)) {
+        return Response.json({ error: "unauthorized" }, { status: 401 });
+      }
+      try {
+        const body = (await request.json()) as {
+          event?: string;
+          meta?: unknown;
+          viewerMode?: string;
+          lang?: string;
+        };
+        const event = typeof body.event === "string" ? body.event : "";
+        if (!ALLOWED_TRACK_EVENTS.has(event)) {
+          return Response.json({ ok: false, error: "event not allowed" }, { status: 400 });
+        }
+        await insertUiEvent(env.DB, {
+          event,
+          metaJson: body.meta ? JSON.stringify(body.meta) : null,
+          viewerMode: typeof body.viewerMode === "string" ? body.viewerMode.slice(0, 32) : null,
+          lang: typeof body.lang === "string" ? body.lang.slice(0, 8) : null,
+        });
+        return Response.json({ ok: true });
+      } catch (error) {
+        return Response.json(
+          { ok: false, error: error instanceof Error ? error.message : "track insert failed" },
+          { status: 500 },
+        );
+      }
+    }
+
+    if (url.pathname === "/briefing-stats") {
+      const key = (url.searchParams.get("key") || "").trim();
+      const tier = (url.searchParams.get("tier") || "").trim();
+      try {
+        if (key) {
+          const row = await readBriefingStats(env.DB, key);
+          return jsonPublic({
+            fetchedAt: new Date().toISOString(),
+            source: "d1-cron",
+            stats: row,
+          });
+        }
+        if (tier === "daily" || tier === "weekly" || tier === "monthly") {
+          const row = await env.DB.prepare(
+            `SELECT period_key, tier, gdelt_count, firms_count, telegram_count, news_item_count,
+                    top_gdelt_tag, top_telegram_region, detail_json, window_start, window_end, updated_at
+             FROM briefing_period_stats
+             WHERE tier = ?
+             ORDER BY updated_at DESC
+             LIMIT 1`,
+          )
+            .bind(tier)
+            .first();
+          return jsonPublic({
+            fetchedAt: new Date().toISOString(),
+            source: "d1-cron",
+            stats: row ?? null,
+          });
+        }
+        return Response.json(
+          { error: "Provide ?key= or ?tier=daily|weekly|monthly", stats: null },
+          { status: 400 },
+        );
+      } catch (error) {
+        return jsonPublic({
+          fetchedAt: new Date().toISOString(),
+          source: "d1-cron",
+          stats: null,
+          error: error instanceof Error ? error.message : "briefing-stats read failed",
+        });
+      }
     }
 
     if (url.pathname === "/firms") {

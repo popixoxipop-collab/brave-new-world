@@ -54,10 +54,11 @@ export function TheaterDropdownCoachmark({
     <div className="pointer-events-auto fixed inset-0 z-[90]" role="dialog" aria-modal="true">
       <button
         type="button"
-        className="absolute inset-0 bg-black/45"
+        className="absolute inset-0 bg-transparent"
         aria-label="dismiss"
         onClick={dismiss}
       />
+      {/* 스포트라이트 컷아웃은 아래 box-shadow가 전담 — 풀스크린 스크림과 중복 시 타겟(nav)까지 어두워짐 */}
       <div
         className="pointer-events-none absolute rounded-full border-2 border-sky-300/90 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]"
         style={{

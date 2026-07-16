@@ -184,8 +184,15 @@ export function UkraineAirRaidPanel({
         {!compact ? (
           <>
             <span className="min-w-0 flex-1 text-left">
-              <span className="block truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-red-200/80">
-                {t("brand", lang)}
+              <span className="flex items-center gap-1.5">
+                <span className="block truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-red-200/80">
+                  {t("brand", lang)}
+                </span>
+                {!hasActive && live ? (
+                  <span className="shrink-0 animate-pulse rounded border border-emerald-400/45 px-1 text-[8px] font-bold uppercase tracking-wider text-emerald-300">
+                    Live
+                  </span>
+                ) : null}
               </span>
               <span className="mt-0.5 block truncate font-medium tracking-tight">
                 {headline ? `${headline.region} · ${headline.title}` : statusLabel}

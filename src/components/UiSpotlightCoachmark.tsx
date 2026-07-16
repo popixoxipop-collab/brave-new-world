@@ -98,10 +98,12 @@ export function UiSpotlightCoachmark({
     <div className="pointer-events-auto fixed inset-0 z-[90]" role="dialog" aria-modal="true">
       <button
         type="button"
-        className="absolute inset-0 bg-black/45"
+        className="absolute inset-0 bg-transparent"
         aria-label={ctaLabel}
         onClick={onDismiss}
       />
+      {/* 스포트라이트: 이 박스의 box-shadow 하나가 화면 전체 딤 처리를 담당 —
+          별도 풀스크린 스크림을 겹치면 컷아웃 내부(=실제 nav)까지 어두워져 "가려진" 것처럼 보임 */}
       <div
         className={`pointer-events-none absolute rounded-2xl border-2 ${tone.ring} shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]`}
         style={{

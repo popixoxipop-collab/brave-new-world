@@ -66,7 +66,11 @@ export type LayerPrefs = {
   /** 미국 DFC 활성 프로젝트 기반 개발금융 공급망 */
   showUsDfcSupplyChain: boolean;
   labelLanguage: LabelLanguage;
+  /** 모바일 기본 화면 — "alerts"(수첩형 알림 리스트) | "globe"(3D 지도) */
+  mobileHomeView: MobileHomeView;
 };
+
+export type MobileHomeView = "alerts" | "globe";
 
 /** v21: 분쟁 → 전쟁구역 / 외교적 긴장 분리 */
 export const LAYER_PREFS_KEY = "geowatch-layers-v21";
@@ -121,6 +125,8 @@ export const DEFAULT_LAYER_PREFS: LayerPrefs = {
   showBriTradeConnectivity: false,
   showUsDfcSupplyChain: false,
   labelLanguage: "ko",
+  /** 모바일은 지도를 긁지 않아도 되는 알림 리스트를 기본으로 — 유저가 언제든 지도로 전환 가능 */
+  mobileHomeView: "alerts",
 };
 
 const LEGACY_LAYER_KEYS = [
@@ -145,6 +151,11 @@ const LEGACY_LAYER_KEYS = [
 function parseLabelLanguage(value: unknown): LabelLanguage {
   if (value === "en" || value === "ko") return value;
   return DEFAULT_LAYER_PREFS.labelLanguage;
+}
+
+function parseMobileHomeView(value: unknown): MobileHomeView {
+  if (value === "alerts" || value === "globe") return value;
+  return DEFAULT_LAYER_PREFS.mobileHomeView;
 }
 
 type SavedLayerPrefs = Partial<LayerPrefs> & {
@@ -189,6 +200,7 @@ function mergeSavedPrefs(parsed: SavedLayerPrefs): LayerPrefs {
           ? showRoadCityGlow
           : DEFAULT_LAYER_PREFS.showCityLabels,
     labelLanguage: parseLabelLanguage(rest.labelLanguage),
+    mobileHomeView: parseMobileHomeView(rest.mobileHomeView),
     /** UI 체크박스 제거 — 지나간 드론·미사일 궤적 강제 OFF */
     showNeptunPreviousTrails: false,
   };

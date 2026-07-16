@@ -1,0 +1,66 @@
+"use client";
+
+import { useCallback, useState } from "react";
+import { HoverHint } from "@/components/HoverHint";
+import { useLocale } from "@/contexts/LocaleContext";
+import { captureMapAsImage, shareOrDownloadImageBlob } from "@/lib/captureShareImage";
+import { trackEvent } from "@/lib/trackClient";
+
+type ShareViewButtonProps = {
+  getCanvas: () => HTMLCanvasElement | null;
+  siteName?: string;
+  className?: string;
+};
+
+/**
+ * 지금 보고 있는 지구본 화면을 워터마크(사이트명+URL) 박힌 PNG로 캡처.
+ * 모바일 등 Web Share API 지원 환경에선 공유 시트로, 아니면 다운로드로 폴백.
+ */
+export function ShareViewButton({
+  getCanvas,
+  siteName = "멋진 신세계",
+  className = "",
+}: ShareViewButtonProps) {
+  const { t, lang } = useLocale();
+  const [busy, setBusy] = useState(false);
+
+  const handleShare = useCallback(async () => {
+    if (busy) return;
+    const canvas = getCanvas();
+    if (!canvas) return;
+
+    trackEvent("share_view_click", undefined, { lang });
+    setBusy(true);
+    try {
+      const url = typeof window !== "undefined" ? window.location.host : "";
+      const blob = await captureMapAsImage(canvas, { siteName, url });
+      if (!blob) return;
+
+      const filename = `${siteName.replace(/\s+/g, "-")}-${Date.now()}.png`;
+      await shareOrDownloadImageBlob(
+        blob,
+        filename,
+        siteName,
+        lang === "en" ? `Captured from ${siteName}` : `${siteName}에서 캡처`,
+      );
+      trackEvent("share_view_success", undefined, { lang });
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, getCanvas, lang, siteName]);
+
+  return (
+    <HoverHint placement="bottom" title={t("hoverShareView")} detail={t("hoverShareViewHint")}>
+      <button
+        type="button"
+        aria-label={t("hoverShareViewAria")}
+        onClick={handleShare}
+        disabled={busy}
+        className={`flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-sky-200/15 bg-[#1e3a5f]/55 px-2.5 text-[11px] font-medium text-sky-50/90 shadow-lg backdrop-blur-md transition hover:border-sky-200/30 hover:bg-[#254875]/65 disabled:opacity-60 ${className}`}
+      >
+        <span aria-hidden>{busy ? "⏳" : "📤"}</span>
+        <span>{t("shareView")}</span>
+      </button>
+    </HoverHint>
+  );
+}
