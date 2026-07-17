@@ -1965,11 +1965,11 @@ function AnalysisPanel({
                 </>
               ) : (
                 <>
-                  <span className="font-medium text-violet-100/85">「내 키로 분석」</span>은 선택
-                  기능입니다. 모든 방문자의 AI 분석 비용을 사이트가 대신 부담하기 어렵기 때문에,
-                  개인 맞춤 해석은 본인 Anthropic API 키로만 실행됩니다. 키는 이 기기에만 저장되며,
-                  사용량은 Claude Console 청구서에 반영됩니다. 사이트 운영용 키(있는 경우)는 긴급 뉴스
-                  편집 요약에만 쓰이고 이 버튼에는 사용되지 않습니다.
+                  <span className="font-medium text-violet-100/85">「AI 분석」</span>은 서버
+                  NVIDIA Build 키 풀(step-3.5-flash)로 실행됩니다 — 본인 키 없이 작동하며,
+                  rate limit은 키 수(7)만큼 스케일합니다(429 시 다음 키로 로테이션). 비용은 서버
+                  NVIDIA 계정에서 나갑니다. 기존 「내 키로 분석」 입력란은 레거시 Anthropic 폴백이며
+                  현재 경로에서는 사용되지 않습니다.
                 </>
               )}
             </p>

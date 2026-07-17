@@ -86,7 +86,9 @@ export function UserAnthropicKeyPanel({ compact = false }: { compact?: boolean }
         onClick={() => setOpen((v) => !v)}
       >
         <span className="text-[11px] font-medium text-violet-100/90">
-          {lang === "en" ? "Your Anthropic API key (BYOK)" : "본인 Anthropic API 키 (BYOK)"}
+          {lang === "en"
+            ? "Analysis engine: NVIDIA step-3.5-flash (server keys)"
+            : "분석 엔진: NVIDIA step-3.5-flash (서버 키)"}
         </span>
         <span className="text-[10px] text-violet-300/60">
           {savedMasked
@@ -106,8 +108,8 @@ export function UserAnthropicKeyPanel({ compact = false }: { compact?: boolean }
         <div className="mt-2 space-y-2">
           <p className="text-[10px] leading-4 text-violet-200/55">
             {lang === "en"
-              ? "User analysis bills your key. Site server key (if any) is for editorial digest only — never for this button."
-              : "유저 분석 비용은 본인 키에서만 나갑니다. 사이트 서버 키는 긴급 뉴스 편집용이며 이 버튼에 쓰지 않습니다."}
+              ? "Analysis runs on a server-side NVIDIA Build key pool (step-3.5-flash) — no personal key needed. The optional field below is a legacy Anthropic fallback and is not used."
+              : "분석은 서버 NVIDIA Build 키 풀(step-3.5-flash)로 실행됩니다 — 본인 키 불필요. 아래 입력란은 레거시 Anthropic 폴백이며 사용되지 않습니다."}
           </p>
           <input
             type="password"
