@@ -876,6 +876,7 @@ const STATIC_KIND_LABELS: Record<StaticPoint["kind"], string> = {
   "logistics-hub": "핵심 물류 거점",
   "submarine-tunnel": "해저터널",
   "critical-node": "크리티컬 노드",
+  "geo-risk": "지오리스크",
 };
 
 function staticKindLabelLocal(kind: StaticPoint["kind"], lang: "ko" | "en" = "ko") {

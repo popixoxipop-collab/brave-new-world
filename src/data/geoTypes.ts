@@ -185,7 +185,9 @@ export type StaticPointKind =
   | "logistics-hub"
   | "submarine-tunnel"
   /** Critical Node Atlas (MIT) — maritime/cables/energy/financial/tech */
-  | "critical-node";
+  | "critical-node"
+  /** geo-risk-desk — 지정학 이벤트 → 포트폴리오 노출 판정 pin */
+  | "geo-risk";
 
 export type StaticPoint = {
   id: string;

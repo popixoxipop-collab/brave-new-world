@@ -83,6 +83,7 @@ export const STATIC_POINT_COLORS: Record<StaticPoint["kind"], string> = {
   "logistics-hub": "rgba(244, 63, 94, 0.92)",
   "submarine-tunnel": "rgba(125, 211, 252, 0.95)",
   "critical-node": "rgba(250, 204, 21, 0.95)",
+  "geo-risk": "rgba(239, 68, 68, 0.95)",
 };
 
 /** HTML 실루엣 마커 kinds — globe points와 이중 렌더 금지 */
@@ -143,6 +144,7 @@ export function staticPointRadius(kind: StaticPoint["kind"], altitude = 1): numb
     "logistics-hub": 0.26,
     "submarine-tunnel": 0.27,
     "critical-node": 0.3,
+    "geo-risk": 0.34,
   };
   return map[kind] * getZoomOutScale(altitude);
 }

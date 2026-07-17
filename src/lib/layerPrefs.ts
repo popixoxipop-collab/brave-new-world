@@ -22,6 +22,7 @@ export type LayerPrefs = {
   showLogisticsRisk: boolean;
   /** Critical Node Atlas — 지정학/지경학 공통 크리티컬 노드 */
   showCriticalNodes: boolean;
+  showGeoRisk: boolean;
   showMilitaryBases: boolean;
   showResources: boolean;
   showNuclearSites: boolean;
@@ -97,6 +98,7 @@ export const DEFAULT_LAYER_PREFS: LayerPrefs = {
   showPorts: false,
   showLogisticsRisk: false,
   showCriticalNodes: false,
+  showGeoRisk: false,
   showMilitaryBases: false,
   showResources: false,
   showNuclearSites: false,
