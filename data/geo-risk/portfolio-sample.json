@@ -1,0 +1,12 @@
+{
+  "asOf": "2026-07-17T00:00:00Z",
+  "source": "sample (alpaca+kis 형식 — 실제는 Finance export로 교체)",
+  "positions": [
+    { "ticker": "XOM",  "weight": 0.08, "market": "US", "name": "Exxon Mobil" },
+    { "ticker": "VLO",  "weight": 0.05, "market": "US", "name": "Valero" },
+    { "ticker": "FRO",  "weight": 0.03, "market": "US", "name": "Frontline (tanker)" },
+    { "ticker": "DAL",  "weight": 0.06, "market": "US", "name": "Delta Air Lines" },
+    { "ticker": "005930", "weight": 0.10, "market": "KR", "name": "Samsung Electronics" },
+    { "ticker": "000660", "weight": 0.07, "market": "KR", "name": "SK Hynix" }
+  ]
+}
