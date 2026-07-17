@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isApiStubMode } from "@/lib/apiStubMode";
-import { getAnthropicModel } from "@/lib/llm/anthropicEnv";
-import { callClaudeMessages } from "@/lib/llm/claudeMessages";
+import { hasNvidiaKeys, callNvidiaMessages } from "@/lib/llm/nvidiaMessages";
 import {
   buildUserAnalyzeSystem,
   buildUserAnalyzeUserMessage,
@@ -11,8 +10,6 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const USER_KEY_HEADER = "x-anthropic-api-key";
 
 /** 프로세스 메모리 IP 레이트 리밋 — 워커 재시작 시 초기화 */
 const hits = new Map<string, { count: number; resetAt: number }>();
@@ -38,21 +35,11 @@ function allowRequest(ip: string): boolean {
   return true;
 }
 
-function extractUserKey(request: NextRequest, body: Record<string, unknown>): string | null {
-  const fromHeader = request.headers.get(USER_KEY_HEADER)?.trim();
-  if (fromHeader) return fromHeader;
-  const fromBody = typeof body.apiKey === "string" ? body.apiKey.trim() : "";
-  return fromBody || null;
-}
-
 /**
  * POST /api/claude/user-analyze
  *
- * 유저 BYOK만 사용. 서버 ANTHROPIC_API_KEY 절대 사용 안 함.
- * 키는 요청에만 실리고 서버에 저장하지 않음.
- *
+ * D-NV1: 서버 NVIDIA Build 키 7개 풀 + step-3.5-flash로 분석(유저 키 불필요).
  * body: { title, source?, link?, theater?, excerpt?, lang? }
- * header: x-anthropic-api-key: sk-ant-...
  */
 export async function POST(request: NextRequest) {
   if (!allowRequest(clientIp(request))) {
@@ -98,51 +85,31 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const userKey = extractUserKey(request, body);
-  if (!userKey) {
+  // D-NV1: BYOK Anthropic → 서버 NVIDIA 키 7개 풀 + step-3.5-flash. 유저 키 불필요
+  // (rate limit은 키 수만큼 스케일, 429면 다음 키 로테이션). 유저 분석 비용은 서버 NVIDIA
+  // 계정에서 나간다(더 이상 유저 Anthropic 크레딧 안 씀).
+  if (!hasNvidiaKeys()) {
     return NextResponse.json(
-      {
-        error:
-          "본인 Anthropic API 키가 필요합니다. 분석 패널에 키를 입력하세요. (서버 키는 편집용이라 유저 분석에 쓰지 않습니다)",
-        needUserKey: true,
-      },
-      { status: 401 },
+      { error: "NVIDIA 분석 키가 서버에 설정되지 않았습니다 (NVIDIA_API_KEY_1..N)." },
+      { status: 503 },
     );
   }
 
-  if (!userKey.startsWith("sk-ant-")) {
-    return NextResponse.json(
-      { error: "Anthropic API 키 형식이 아닙니다 (sk-ant-…)." },
-      { status: 400 },
-    );
-  }
-
-  // body.apiKey 가 있었다면 응답/로그에 남기지 않도록 즉시 폐기 의도 — 변수만 사용
-  const result = await callClaudeMessages({
-    apiKey: userKey,
+  const result = await callNvidiaMessages({
     system: buildUserAnalyzeSystem(lang),
     user: buildUserAnalyzeUserMessage(input),
-    model: getAnthropicModel(),
     maxTokens: 600,
   });
 
   if (!result.ok) {
-    const userMessage = result.insufficientFunds
+    const userMessage = result.rateLimited
       ? lang === "en"
-        ? "Claude credits are exhausted. Top up your Anthropic account or try later."
-        : "Claude 크레딧이 소진되었습니다. Anthropic 콘솔에서 충전 후 다시 시도하세요."
-      : result.rateLimited
-        ? lang === "en"
-          ? "Claude is busy right now. Please try again shortly."
-          : "Claude가 지금 너무 바쁩니다. 잠시 후 다시 시도해 주세요."
-        : result.error;
+        ? "Analysis backend is busy (all NVIDIA keys rate-limited). Try again shortly."
+        : "분석 서버가 바쁩니다 (NVIDIA 키 전부 rate-limit). 잠시 후 다시 시도해 주세요."
+      : result.error;
 
     return NextResponse.json(
-      {
-        error: userMessage,
-        rateLimited: result.rateLimited,
-        insufficientFunds: result.insufficientFunds,
-      },
+      { error: userMessage, rateLimited: result.rateLimited },
       { status: result.status >= 400 && result.status < 600 ? result.status : 502 },
     );
   }
@@ -151,8 +118,8 @@ export async function POST(request: NextRequest) {
     ok: true,
     stub: false,
     text: result.text,
-    model: result.model,
-    billing: "user-byok",
+    model: result.model, // stepfun-ai/step-3.5-flash
+    billing: "server-nvidia",
     usage: {
       inputTokens: result.inputTokens,
       outputTokens: result.outputTokens,
