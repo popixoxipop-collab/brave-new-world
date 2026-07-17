@@ -492,6 +492,7 @@ import {
   type IntelTheaterFilter,
   type MapFlyTarget,
 } from "@/lib/news/theaterMap";
+import { ServerDonateChip } from "@/components/ServerDonateChip";
 import { UsCarrierFixedToggle } from "@/components/UsCarrierFixedToggle";
 import { EconomySupplyChainFixedToggle } from "@/components/EconomySupplyChainFixedToggle";
 import { carrierLabelOffsets, createUsCarrierBadge, CARRIER_MARKER_ROOT_CLASS, filterVisibleCarriers, isOperationalCarrier } from "@/lib/usCarrierMarkers";
@@ -8709,6 +8710,11 @@ export function GlobeDashboard({
             usLinkCount={usDfcSupplyPaths.length}
             chinaLinkCount={briTradePaths.length}
           />
+        ) : null}
+        {!isCompactUi ? (
+          <div className="cv-desktop-only pointer-events-auto">
+            <ServerDonateChip lang={labelLanguage} />
+          </div>
         ) : null}
       </div>
 
