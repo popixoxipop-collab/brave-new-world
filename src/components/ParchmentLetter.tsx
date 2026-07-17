@@ -106,12 +106,10 @@ export function ParchmentLetter({
   const bodyScrollRef = useRef<HTMLDivElement>(null);
   const typingSkipRef = useRef(false);
   const typingIntervalRef = useRef<number | null>(null);
-  const handStack =
-    'var(--font-letter-hand), "Gowun Batang", "Nanum Myeongjo", "Batang", serif';
-  const scriptStack =
-    'var(--font-letter-script), "Cormorant Garamond", "Garamond", "Times New Roman", serif';
-  const bodyFont = lang === "en" ? scriptStack : handStack;
-  const titleFont = handStack;
+  const parchmentStack =
+    'var(--font-letter-hand), "RIDI Batang", "Gowun Batang", "Nanum Myeongjo", "Batang", serif';
+  const bodyFont = parchmentStack;
+  const titleFont = parchmentStack;
   const resolvedBackMark = backMark ?? (lang === "en" ? BRAND_NAME.en : BRAND_NAME.ko);
   const resolvedBackSub = backSub ?? (lang === "en" ? "멋진 신세계" : "Brave New World");
 
@@ -266,7 +264,7 @@ export function ParchmentLetter({
                   <p
                     className="whitespace-pre-line pb-2 pt-2 text-right text-[1.02rem] leading-relaxed tracking-[0.04em] text-[#5a4428]"
                     style={{
-                      fontFamily: lang === "en" ? scriptStack : handStack,
+                      fontFamily: parchmentStack,
                       fontStyle: lang === "en" ? "italic" : "normal",
                       fontWeight: 400,
                     }}
@@ -310,7 +308,7 @@ export function ParchmentLetter({
               </p>
               <p
                 className="welcome-letter-back-sub"
-                style={{ fontFamily: scriptStack, fontStyle: "italic" }}
+                style={{ fontFamily: parchmentStack }}
               >
                 {resolvedBackSub}
               </p>

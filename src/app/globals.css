@@ -60,9 +60,9 @@ html[data-compact="0"] .cv-compact-only {
   letter-spacing: -0.01em;
 }
 
-/** 지경학 양피지 — Space Grotesk */
+/** 모든 양피지 필체 — RIDI Batang */
 .econ-insight-parchment {
-  font-family: var(--font-space-grotesk), "Space Grotesk", var(--font-pretendard), sans-serif;
+  font-family: var(--font-letter-hand), "RIDI Batang", "Gowun Batang", "Nanum Myeongjo", "Batang", serif;
   font-optical-sizing: auto;
   font-style: normal;
 }

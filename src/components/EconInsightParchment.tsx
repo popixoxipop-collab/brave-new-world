@@ -55,16 +55,16 @@ type WorldStatsMacro = {
 };
 
 function arrowFor(dir: MarketLinkDirection): string {
-  if (dir === "up") return "↑";
-  if (dir === "down") return "↓";
+  if (dir === "up") return "??;
+  if (dir === "down") return "??;
   return "·";
 }
 
 function riskLabel(level: EconInsightBrief["riskLevel"], lang: LabelLanguage): string {
   if (lang === "en") return `RISK · ${level}`;
-  if (level === "CRITICAL") return "위험도 · 치명";
-  if (level === "HIGH") return "위험도 · 높음";
-  return "위험도 · 안정";
+  if (level === "CRITICAL") return "?�험??· 치명";
+  if (level === "HIGH") return "?�험??· ?�음";
+  return "?�험??· ?�정";
 }
 
 function formatUsdBn(value: number | null | undefined): string | null {
@@ -82,8 +82,8 @@ function formatSignedPct(value: number | null | undefined, digits = 1): string |
 
 const TYPE_MS_PER_CHAR = 26;
 
-const SPACE_GROTESK_STACK =
-  'var(--font-space-grotesk), "Space Grotesk", var(--font-pretendard), sans-serif';
+const PARCHMENT_STACK =
+  'var(--font-letter-hand), "RIDI Batang", "Gowun Batang", "Nanum Myeongjo", "Batang", serif';
 
 export type EconInsightParchmentProps = {
   lang: LabelLanguage;
@@ -255,7 +255,7 @@ export function EconInsightParchment({
           className={`econ-insight-parchment welcome-letter-card ${
             exiting ? "welcome-letter-card--fold-exit" : "welcome-letter-card--unfold-enter"
           }`}
-          style={{ fontFamily: SPACE_GROTESK_STACK }}
+          style={{ fontFamily: PARCHMENT_STACK }}
         >
           <div className="welcome-parchment welcome-letter-face welcome-letter-face--front relative flex max-h-[min(92vh,900px)] w-full max-w-2xl flex-col overflow-hidden rounded-sm shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
             <div className="welcome-parchment-edge pointer-events-none absolute inset-0" aria-hidden />
@@ -273,14 +273,14 @@ export function EconInsightParchment({
               <h1
                 id="econ-insight-title"
                 className="welcome-letter-title shrink-0 text-center text-[1.55rem] leading-[1.45] tracking-[0.04em] text-[#3d2a18] sm:text-[1.95rem]"
-                style={{ fontFamily: SPACE_GROTESK_STACK, fontWeight: 600 }}
+                style={{ fontFamily: PARCHMENT_STACK, fontWeight: 600 }}
               >
                 {title}
               </h1>
 
               <p
                 className="mt-3 text-center text-[0.95rem] leading-relaxed tracking-[0.01em] text-[#5a4428]"
-                style={{ fontFamily: SPACE_GROTESK_STACK, fontWeight: 400 }}
+                style={{ fontFamily: PARCHMENT_STACK, fontWeight: 400 }}
               >
                 {displayBrief.impactLine}
               </p>
@@ -291,7 +291,7 @@ export function EconInsightParchment({
                     <span
                       key={link.symbol}
                       className="rounded-sm border border-[#8b6914]/35 bg-[#efe0b8]/70 px-2.5 py-1 text-[0.78rem] tracking-wide text-[#3d2a18]"
-                      style={{ fontFamily: SPACE_GROTESK_STACK, fontWeight: 500 }}
+                      style={{ fontFamily: PARCHMENT_STACK, fontWeight: 500 }}
                     >
                       {link.symbol} {arrowFor(link.direction)}
                     </span>
@@ -308,39 +308,39 @@ export function EconInsightParchment({
                 worldStats.tradePctGdp != null ||
                 worldStats.milSpendPctGdp != null) ? (
                 <div className="mt-4 rounded-sm border border-[#8b6914]/28 bg-[#f6ebcf]/55 px-3 py-2.5 text-center text-[0.82rem] leading-relaxed text-[#4a3724]">
-                  <div className="font-medium tracking-[0.04em]" style={{ fontFamily: SPACE_GROTESK_STACK }}>
+                  <div className="font-medium tracking-[0.04em]" style={{ fontFamily: PARCHMENT_STACK }}>
                     {worldStats.name ?? displayBrief.countryHint}
                     {worldStats.incomeLevel ? ` · ${worldStats.incomeLevel}` : ""} ·{" "}
-                    {lang === "en" ? "Macro pulse" : "거시 펄스"}
+                    {lang === "en" ? "Macro pulse" : "거시 ?�스"}
                   </div>
                   <div
                     className="mt-1.5 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[0.75rem]"
-                    style={{ fontFamily: SPACE_GROTESK_STACK, fontWeight: 500 }}
+                    style={{ fontFamily: PARCHMENT_STACK, fontWeight: 500 }}
                   >
                     {gdp ? <span>GDP {gdp}</span> : null}
                     {gdpPc ? (
                       <span>
-                        {lang === "en" ? "GDP/cap" : "1인당"} {gdpPc}
+                        {lang === "en" ? "GDP/cap" : "1?�당"} {gdpPc}
                       </span>
                     ) : null}
                     {growth ? (
                       <span>
-                        {lang === "en" ? "Growth" : "성장"} {growth}
+                        {lang === "en" ? "Growth" : "?�장"} {growth}
                       </span>
                     ) : null}
                     {inflation ? (
                       <span>
-                        {lang === "en" ? "CPI" : "인플레"} {inflation}
+                        {lang === "en" ? "CPI" : "?�플??} {inflation}
                       </span>
                     ) : null}
                     {unemp ? (
                       <span>
-                        {lang === "en" ? "Unemp" : "실업"} {unemp}
+                        {lang === "en" ? "Unemp" : "?�업"} {unemp}
                       </span>
                     ) : null}
                     {worldStats.population != null ? (
                       <span>
-                        {lang === "en" ? "Pop" : "인구"}{" "}
+                        {lang === "en" ? "Pop" : "?�구"}{" "}
                         {(worldStats.population / 1e6).toFixed(1)}M
                       </span>
                     ) : null}
@@ -352,13 +352,13 @@ export function EconInsightParchment({
                     ) : null}
                     {worldStats.milSpendPctGdp != null ? (
                       <span>
-                        {lang === "en" ? "Defense" : "국방"}{" "}
+                        {lang === "en" ? "Defense" : "�?��"}{" "}
                         {worldStats.milSpendPctGdp.toFixed(1)}% GDP
                       </span>
                     ) : null}
                     {worldStats.govDebtPctGdp != null ? (
                       <span>
-                        {lang === "en" ? "Debt" : "부채"}{" "}
+                        {lang === "en" ? "Debt" : "부�?}{" "}
                         {worldStats.govDebtPctGdp.toFixed(0)}% GDP
                       </span>
                     ) : null}
@@ -366,19 +366,19 @@ export function EconInsightParchment({
                   {(inflShock?.rangePp != null || growthShock?.rangePp != null) && !compact ? (
                     <div
                       className="mt-2 space-y-0.5 text-[0.72rem] leading-snug text-[#5a4428]"
-                      style={{ fontFamily: SPACE_GROTESK_STACK }}
+                      style={{ fontFamily: PARCHMENT_STACK }}
                     >
                       {inflShock?.rangePp != null ? (
                         <p>
                           {lang === "en"
-                            ? `Inflation window: ${inflShock.min?.toFixed(1)}→${inflShock.max?.toFixed(1)}% (range ${inflShock.rangePp.toFixed(1)}pp)${
+                            ? `Inflation window: ${inflShock.min?.toFixed(1)}??{inflShock.max?.toFixed(1)}% (range ${inflShock.rangePp.toFixed(1)}pp)${
                                 inflShock.deltaPp != null
                                   ? ` · YoY ${formatSignedPct(inflShock.deltaPp)}p`
                                   : ""
                               }`
-                            : `인플레 창: ${inflShock.min?.toFixed(1)}→${inflShock.max?.toFixed(1)}% (범위 ${inflShock.rangePp.toFixed(1)}%p)${
+                            : `?�플??�? ${inflShock.min?.toFixed(1)}??{inflShock.max?.toFixed(1)}% (범위 ${inflShock.rangePp.toFixed(1)}%p)${
                                 inflShock.deltaPp != null
-                                  ? ` · 전년비 ${formatSignedPct(inflShock.deltaPp)}p`
+                                  ? ` · ?�년�?${formatSignedPct(inflShock.deltaPp)}p`
                                   : ""
                               }`}
                         </p>
@@ -386,14 +386,14 @@ export function EconInsightParchment({
                       {growthShock?.rangePp != null ? (
                         <p>
                           {lang === "en"
-                            ? `Growth window: ${growthShock.min?.toFixed(1)}→${growthShock.max?.toFixed(1)}% (range ${growthShock.rangePp.toFixed(1)}pp)${
+                            ? `Growth window: ${growthShock.min?.toFixed(1)}??{growthShock.max?.toFixed(1)}% (range ${growthShock.rangePp.toFixed(1)}pp)${
                                 growthShock.deltaPp != null
                                   ? ` · YoY ${formatSignedPct(growthShock.deltaPp)}p`
                                   : ""
                               }`
-                            : `성장 창: ${growthShock.min?.toFixed(1)}→${growthShock.max?.toFixed(1)}% (범위 ${growthShock.rangePp.toFixed(1)}%p)${
+                            : `?�장 �? ${growthShock.min?.toFixed(1)}??{growthShock.max?.toFixed(1)}% (범위 ${growthShock.rangePp.toFixed(1)}%p)${
                                 growthShock.deltaPp != null
-                                  ? ` · 전년비 ${formatSignedPct(growthShock.deltaPp)}p`
+                                  ? ` · ?�년�?${formatSignedPct(growthShock.deltaPp)}p`
                                   : ""
                               }`}
                         </p>
@@ -403,15 +403,15 @@ export function EconInsightParchment({
                   {worldStats.peers && worldStats.peers.length > 0 && !compact ? (
                     <div
                       className="mt-2 flex flex-wrap justify-center gap-x-2 gap-y-1 text-[0.7rem] text-[#5a4428]"
-                      style={{ fontFamily: SPACE_GROTESK_STACK }}
+                      style={{ fontFamily: PARCHMENT_STACK }}
                     >
                       {worldStats.peers.map((p) => (
                         <span
                           key={p.id ?? p.name}
                           className="rounded-sm border border-[#8b6914]/25 bg-[#efe0b8]/55 px-1.5 py-0.5"
                         >
-                          {p.name} {formatSignedPct(p.gdpGrowthPct) ?? "—"} /{" "}
-                          {formatSignedPct(p.inflationPct) ?? "—"}
+                          {p.name} {formatSignedPct(p.gdpGrowthPct) ?? "??} /{" "}
+                          {formatSignedPct(p.inflationPct) ?? "??}
                         </span>
                       ))}
                     </div>
@@ -427,7 +427,7 @@ export function EconInsightParchment({
               <div
                 ref={bodyScrollRef}
                 className="welcome-letter-body mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain text-[1.02rem] leading-[1.9] tracking-[0.01em] text-[#3f2e1c] sm:text-[1.08rem]"
-                style={{ fontFamily: SPACE_GROTESK_STACK, fontWeight: 400 }}
+                style={{ fontFamily: PARCHMENT_STACK, fontWeight: 400 }}
                 aria-live="polite"
               >
                 {visibleParagraphs.map((p, i) => (
@@ -435,7 +435,7 @@ export function EconInsightParchment({
                     {p}
                     {!typingDone && i === visibleParagraphs.length - 1 ? (
                       <span className="parchment-type-caret" aria-hidden>
-                        ▍
+                        ??
                       </span>
                     ) : null}
                   </p>
@@ -444,9 +444,9 @@ export function EconInsightParchment({
                   <div className="space-y-3 border-t border-[#8b6914]/20 pt-3">
                     <p
                       className="text-[0.72rem] uppercase tracking-[0.18em] text-[#7a6348]"
-                      style={{ fontFamily: SPACE_GROTESK_STACK, fontWeight: 500 }}
+                      style={{ fontFamily: PARCHMENT_STACK, fontWeight: 500 }}
                     >
-                      {lang === "en" ? "Country macro · live" : "국가 거시 · 라이브"}
+                      {lang === "en" ? "Country macro · live" : "�?? 거시 · ?�이�?}
                     </p>
                     {macroNarrative.map((line, i) => (
                       <p
@@ -472,30 +472,30 @@ export function EconInsightParchment({
                 onClick={() => finish(onOpenNews)}
                 disabled={phase !== "idle"}
                 className="rounded-sm border border-[#8b6914]/35 bg-[#e8d5a8]/80 px-4 py-2.5 text-[0.92rem] tracking-[0.04em] text-[#3d2a18] transition hover:bg-[#f7ecd0] disabled:cursor-wait disabled:opacity-70"
-                style={{ fontFamily: SPACE_GROTESK_STACK, fontWeight: 500 }}
+                style={{ fontFamily: PARCHMENT_STACK, fontWeight: 500 }}
               >
                 {!typingDone
                   ? lang === "en"
                     ? "Skip typing"
-                    : "타자 건너뛰기"
+                    : "?�??건너?�기"
                   : lang === "en"
-                    ? "Fold → news panel"
-                    : "접고 뉴스 패널로"}
+                    ? "Fold ??news panel"
+                    : "?�고 ?�스 ?�널�?}
               </button>
               <button
                 type="button"
                 onClick={() => finish(onMapOnly)}
                 disabled={phase !== "idle"}
                 className="rounded-sm border border-[#8b6914]/45 bg-[#efe0b8] px-4 py-2.5 text-[0.92rem] tracking-[0.04em] text-[#3d2a18] shadow-sm transition hover:bg-[#f7ecd0] disabled:cursor-wait disabled:opacity-70"
-                style={{ fontFamily: SPACE_GROTESK_STACK, fontWeight: 500 }}
+                style={{ fontFamily: PARCHMENT_STACK, fontWeight: 500 }}
               >
                 {!typingDone
                   ? lang === "en"
                     ? "Skip typing"
-                    : "타자 건너뛰기"
+                    : "?�??건너?�기"
                   : lang === "en"
                     ? "Map only"
-                    : "지도만 남기기"}
+                    : "지?�만 ?�기�?}
               </button>
             </div>
           </div>

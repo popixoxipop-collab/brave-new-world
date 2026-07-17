@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import { Cormorant_Garamond, IBM_Plex_Mono, IBM_Plex_Sans, Space_Grotesk } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import localFont from "next/font/local";
 import { COMPACT_QUERY } from "@/hooks/compactQuery";
 import "./globals.css";
@@ -16,19 +16,10 @@ const geistMono = localFont({
   weight: "100 900",
 });
 
-/** 환영 편지지 — Griun PolSensibility 필체 */
+/** 모든 양피지 필체 — RIDI Batang */
 const letterHand = localFont({
-  src: "./fonts/Griun_PolSensibility-Rg.ttf",
+  src: "./fonts/RIDIBatang.otf",
   variable: "--font-letter-hand",
-  display: "swap",
-});
-
-/** 영문·서명 — 유려한 고전 가로체 */
-const letterScript = Cormorant_Garamond({
-  weight: ["400", "500", "600", "700"],
-  style: ["normal", "italic"],
-  subsets: ["latin"],
-  variable: "--font-letter-script",
   display: "swap",
 });
 
@@ -78,13 +69,6 @@ const ibmPlexMono = IBM_Plex_Mono({
   display: "swap",
 });
 
-/** 지경학 양피지 — Space Grotesk */
-const spaceGrotesk = Space_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-space-grotesk",
-  display: "swap",
-});
-
 /** 전쟁구역 사상자 숫자 — SB 어그로 Bold */
 const sbAgro = localFont({
   src: "./fonts/SBAgro-Bold.ttf",
@@ -130,7 +114,7 @@ export default function RootLayout({
   return (
     <html lang="ko" suppressHydrationWarning style={{ background: "#02040a" }}>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${letterHand.variable} ${letterScript.variable} ${pretendard.variable} ${gmarket.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable} ${spaceGrotesk.variable} ${sbAgro.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${letterHand.variable} ${pretendard.variable} ${gmarket.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable} ${sbAgro.variable} antialiased`}
         style={{
           background: "#02040a",
           minHeight: "100dvh",
