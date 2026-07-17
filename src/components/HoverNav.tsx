@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { getNavMenuGroups } from "@/data/econNavRegions";
 import {
   HUB_DEFINITIONS,
@@ -32,6 +32,10 @@ type HoverNavProps = {
   onQueryChange: (value: string) => void;
   searchResults: SearchPlace[];
   onSearchSelect: (place: SearchPlace) => void;
+  /** 좁은 화면 — 패딩·드롭다운 하단 슬롯(전장·프리셋) 등 모바일 전용 */
+  compact?: boolean;
+  /** compact 드롭다운 하단 슬롯 (전장·프리셋 등) */
+  compactMenuExtra?: ReactNode;
 };
 
 export function HoverNav({
@@ -43,8 +47,11 @@ export function HoverNav({
   onQueryChange,
   searchResults,
   onSearchSelect,
+  compact = false,
+  compactMenuExtra,
 }: HoverNavProps) {
   const [navOpen, setNavOpen] = useState(false);
+  const [hubMenuOpen, setHubMenuOpen] = useState(false);
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [openHubId, setOpenHubId] = useState<string | null>(null);
   const navRef = useRef<HTMLElement>(null);
@@ -56,6 +63,7 @@ export function HoverNav({
     function handleClickOutside(event: MouseEvent) {
       if (navRef.current && !navRef.current.contains(event.target as Node)) {
         setNavOpen(false);
+        setHubMenuOpen(false);
         setOpenKey(null);
         setOpenHubId(null);
       }
@@ -73,17 +81,20 @@ export function HoverNav({
     setOpenKey(null);
     setOpenHubId(null);
     setNavOpen(false);
+    setHubMenuOpen(false);
   }
 
   function handleHubNavigate(selection: NavSelection) {
     onNavigate(selection);
     setOpenHubId(null);
     setNavOpen(false);
+    setHubMenuOpen(false);
   }
 
   function handleSearchPick(place: SearchPlace) {
     onSearchSelect(place);
     setNavOpen(false);
+    setHubMenuOpen(false);
     setOpenKey(null);
     setOpenHubId(null);
   }
@@ -96,20 +107,27 @@ export function HoverNav({
     ? "bg-emerald-400/15 text-emerald-50 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.25)]"
     : "bg-sky-400/15 text-sky-50 shadow-[inset_0_0_0_1px_rgba(125,211,252,0.25)]";
 
+  const menuExpanded = isEconomy ? navOpen : hubMenuOpen;
+
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-0 z-[75] flex justify-center px-2 pt-3 sm:px-3">
+    <div
+      className={`pointer-events-none fixed inset-x-0 top-0 z-[75] flex justify-center pt-3 ${
+        compact ? "px-[3.4rem] sm:px-14" : "px-2 sm:px-3"
+      }`}
+      style={compact ? { paddingTop: "max(0.75rem, env(safe-area-inset-top, 0px))" } : undefined}
+    >
       <nav
         id="app-hover-nav"
         ref={navRef}
         className={`pointer-events-auto w-full transition-all duration-300 ease-out ${
-          isEconomy
-            ? `max-w-md sm:max-w-lg ${navOpen ? "max-w-3xl sm:max-w-4xl" : ""}`
-            : "max-w-[min(100%,16.75rem)] sm:max-w-lg md:max-w-xl"
+          compact
+            ? "max-w-full"
+            : `max-w-md sm:max-w-lg ${menuExpanded ? "max-w-3xl sm:max-w-4xl" : ""}`
         } ${isEconomy ? "hover-nav--economy font-nav-economy" : "hover-nav--conflict"}`}
       >
         <div
           className={`relative rounded-2xl border ${borderTone} ${bgTone} shadow-lg backdrop-blur-xl transition-all duration-300 ${
-            navOpen && isEconomy ? "rounded-b-none border-b-0" : ""
+            menuExpanded ? "rounded-b-none border-b-0" : ""
           }`}
         >
           <div className="flex items-center gap-1.5 px-2.5 py-1.5 sm:gap-2 sm:px-3 sm:py-2">
@@ -119,20 +137,14 @@ export function HoverNav({
             <input
               value={query}
               onChange={(event) => onQueryChange(event.target.value)}
-              onFocus={() => {
-                if (isEconomy) setNavOpen(true);
-              }}
-              onClick={() => {
-                if (isEconomy) setNavOpen(true);
-              }}
               placeholder={chrome.searchPlaceholder}
-              className={`w-full bg-transparent text-xs outline-none placeholder:opacity-35 sm:text-sm ${
+              className={`min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:opacity-35 sm:text-sm ${
                 isEconomy
                   ? "text-emerald-50/90 placeholder:text-emerald-100/35"
                   : "text-sky-50/90 placeholder:text-sky-100/35"
               }`}
             />
-            {query && (
+            {query ? (
               <button
                 type="button"
                 onClick={() => onQueryChange("")}
@@ -143,37 +155,40 @@ export function HoverNav({
               >
                 ✕
               </button>
+            ) : null}
+            {!isEconomy ? (
+              <button
+                type="button"
+                aria-expanded={hubMenuOpen}
+                aria-label="탐색 메뉴"
+                onClick={() => {
+                  setHubMenuOpen((v) => !v);
+                  setOpenHubId(null);
+                }}
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition ${
+                  hubMenuOpen
+                    ? "border-sky-300/40 bg-sky-400/20 text-sky-50"
+                    : "border-sky-200/20 bg-sky-400/10 text-sky-100/80 hover:border-sky-300/35"
+                }`}
+              >
+                <ChevronDown className={`transition ${hubMenuOpen ? "rotate-180" : ""}`} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                aria-expanded={navOpen}
+                aria-label="탐색 메뉴"
+                onClick={() => setNavOpen((v) => !v)}
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition ${
+                  navOpen
+                    ? "border-emerald-300/40 bg-emerald-400/20 text-emerald-50"
+                    : "border-emerald-200/20 bg-emerald-400/10 text-emerald-100/80 hover:border-emerald-300/35"
+                }`}
+              >
+                <ChevronDown className={`transition ${navOpen ? "rotate-180" : ""}`} />
+              </button>
             )}
           </div>
-
-          {!isEconomy ? (
-            <>
-              <div className="border-t border-sky-200/10 px-1.5 pt-1 sm:px-2 sm:pt-1.5">
-                <button
-                  type="button"
-                  onClick={() => handleHubNavigate(selectionForRegimeOverview())}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-violet-300/25 bg-violet-500/15 px-2 py-1.5 text-[11px] font-semibold tracking-wide text-violet-50 shadow-[inset_0_0_18px_rgba(139,92,246,0.08)] transition hover:border-violet-200/45 hover:bg-violet-500/25 sm:text-xs"
-                >
-                  <span className="h-1.5 w-1.5 rounded-full bg-violet-300 shadow-[0_0_8px_rgba(196,181,253,0.9)]" />
-                  반서방국 분쟁사
-                  <span className="text-[9px] font-normal text-violet-200/60">11대 현장</span>
-                </button>
-              </div>
-              <div className="grid grid-cols-4 items-stretch gap-1 px-1.5 pb-1.5 pt-1 sm:gap-1.5 sm:px-2 sm:pb-2 sm:pt-1.5">
-                {HUB_DEFINITIONS.map((hub) => (
-                  <HubDropdown
-                    key={hub.id}
-                    hub={hub}
-                    open={openHubId === hub.id}
-                    onToggle={() =>
-                      setOpenHubId((prev) => (prev === hub.id ? null : hub.id))
-                    }
-                    onNavigate={handleHubNavigate}
-                  />
-                ))}
-              </div>
-            </>
-          ) : null}
 
           {searchResults.length > 0 && (
             <div
@@ -208,6 +223,41 @@ export function HoverNav({
             </div>
           )}
         </div>
+
+        {!isEconomy && hubMenuOpen ? (
+          <div
+            className={`overflow-hidden rounded-b-2xl border ${borderTone} border-t-0 ${menuBg} shadow-xl backdrop-blur-xl`}
+          >
+            <div className="max-h-[min(70vh,28rem)] space-y-2 overflow-y-auto px-2 py-2">
+              <button
+                type="button"
+                onClick={() => handleHubNavigate(selectionForRegimeOverview())}
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-violet-300/25 bg-violet-500/15 px-2 py-2 text-[11px] font-semibold tracking-wide text-violet-50 transition hover:border-violet-200/45 hover:bg-violet-500/25"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-violet-300" />
+                반서방국 분쟁사
+                <span className="text-[9px] font-normal text-violet-200/60">11대 현장</span>
+              </button>
+              <div className={`grid gap-1.5 ${compact ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4"}`}>
+                {HUB_DEFINITIONS.map((hub) => (
+                  <HubDropdown
+                    key={hub.id}
+                    hub={hub}
+                    open={openHubId === hub.id}
+                    onToggle={() =>
+                      setOpenHubId((prev) => (prev === hub.id ? null : hub.id))
+                    }
+                    onNavigate={handleHubNavigate}
+                    compact
+                  />
+                ))}
+              </div>
+              {compact && compactMenuExtra ? (
+                <div className="space-y-2 border-t border-sky-200/10 pt-2">{compactMenuExtra}</div>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
 
         {isEconomy ? (
           <div
@@ -294,6 +344,9 @@ export function HoverNav({
                   </div>
                 ))}
               </div>
+              {compact && compactMenuExtra ? (
+                <div className="mt-3 space-y-2 border-t border-emerald-200/10 pt-3">{compactMenuExtra}</div>
+              ) : null}
             </div>
           </div>
         ) : null}
@@ -307,11 +360,13 @@ function HubDropdown({
   open,
   onToggle,
   onNavigate,
+  compact = false,
 }: {
   hub: HubDefinition;
   open: boolean;
   onToggle: () => void;
   onNavigate: (selection: NavSelection) => void;
+  compact?: boolean;
 }) {
   return (
     <div className="relative min-w-0">
@@ -319,6 +374,8 @@ function HubDropdown({
         type="button"
         onClick={onToggle}
         className={`flex w-full items-center justify-center gap-0.5 rounded-full border px-1 py-1 text-[10px] sm:gap-1 sm:px-2 sm:py-1.5 sm:text-[11px] md:text-xs transition ${
+          compact ? "px-2 py-2 text-[11px]" : ""
+        } ${
           open
             ? "border-sky-300/35 bg-sky-400/15 text-sky-50"
             : "border-sky-200/15 bg-sky-400/5 text-sky-100/85 hover:border-sky-300/30 hover:bg-sky-400/10"
@@ -335,7 +392,11 @@ function HubDropdown({
       </button>
 
       {open ? (
-        <div className="absolute left-1/2 top-full z-[80] mt-1.5 w-[min(92vw,280px)] -translate-x-1/2 rounded-xl border border-sky-200/15 bg-[#0c1a30]/95 p-2 shadow-2xl backdrop-blur-xl">
+        <div
+          className={`absolute z-[80] mt-1.5 w-[min(92vw,280px)] rounded-xl border border-sky-200/15 bg-[#0c1a30]/95 p-2 shadow-2xl backdrop-blur-xl ${
+            compact ? "left-0 top-full translate-x-0" : "left-1/2 top-full -translate-x-1/2"
+          }`}
+        >
           <button
             type="button"
             onClick={() => onNavigate(selectionForHubNetwork(hub))}
