@@ -49,7 +49,7 @@ export function loadPortfolio(json: unknown): PortfolioSnapshot {
   const rawPos = Array.isArray(obj.positions) ? obj.positions : [];
   const positions: Position[] = rawPos
     .filter((p): p is Record<string, unknown> => !!p && typeof p === "object")
-    .map((p) => ({
+    .map((p): Position => ({
       ticker: String(p.ticker ?? "").toUpperCase(),
       weight: typeof p.weight === "number" && Number.isFinite(p.weight) ? p.weight : 0,
       market: p.market === "KR" ? "KR" : "US",

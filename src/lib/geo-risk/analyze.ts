@@ -79,13 +79,16 @@ export function parseAnalysis(text: string, model: string): ExposureAnalysis {
   const exposures: Exposure[] = Array.isArray(parsed.exposures)
     ? parsed.exposures
         .filter((e): e is Record<string, unknown> => !!e && typeof e === "object")
-        .map((e) => ({
-          ticker: String(e.ticker ?? "").toUpperCase().slice(0, 8),
-          direction:
-            e.direction === "up" || e.direction === "down" ? e.direction : "watch",
-          rationale: String(e.rationale ?? "").slice(0, 280),
-          verified: e.verified === true,
-        }))
+        .map((e): Exposure => {
+          const dir: Exposure["direction"] =
+            e.direction === "up" ? "up" : e.direction === "down" ? "down" : "watch";
+          return {
+            ticker: String(e.ticker ?? "").toUpperCase().slice(0, 8),
+            direction: dir,
+            rationale: String(e.rationale ?? "").slice(0, 280),
+            verified: e.verified === true,
+          };
+        })
         .filter((e) => e.ticker.length > 0)
         .slice(0, 8)
     : [];
