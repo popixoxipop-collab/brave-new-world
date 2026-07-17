@@ -31,7 +31,7 @@ export function ServerDonateChip({ lang }: ServerDonateChipProps) {
 
   return (
     <>
-      <HoverHint placement="right" title={title} detail={detail}>
+      <HoverHint placement="top" title={title} detail={detail}>
         <button
           type="button"
           aria-label={title}
