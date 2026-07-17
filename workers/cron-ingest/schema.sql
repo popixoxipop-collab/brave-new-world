@@ -105,3 +105,34 @@ CREATE TABLE IF NOT EXISTS ingest_runs (
   error TEXT,
   detail_json TEXT
 );
+
+-- geo-risk-desk 라우터 테이블 (schema.ts riskEvents/riskAnalyses 미러)
+CREATE TABLE IF NOT EXISTS risk_events (
+  id TEXT PRIMARY KEY,
+  source TEXT NOT NULL,
+  source_ref TEXT NOT NULL,
+  event_class TEXT NOT NULL DEFAULT 'other',
+  geography TEXT,
+  severity TEXT NOT NULL DEFAULT 'L1',
+  summary TEXT NOT NULL,
+  lat REAL,
+  lon REAL,
+  corroboration_count INTEGER NOT NULL DEFAULT 1,
+  first_seen_at TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'detected'
+);
+CREATE INDEX IF NOT EXISTS idx_re_first_seen ON risk_events (first_seen_at);
+CREATE INDEX IF NOT EXISTS idx_re_status ON risk_events (status);
+CREATE INDEX IF NOT EXISTS idx_re_class ON risk_events (event_class);
+
+CREATE TABLE IF NOT EXISTS risk_analyses (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_id TEXT NOT NULL,
+  exposures_json TEXT NOT NULL,
+  portfolio_delta REAL,
+  verified INTEGER NOT NULL DEFAULT 0,
+  model TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ra_event ON risk_analyses (event_id);
+CREATE INDEX IF NOT EXISTS idx_ra_created ON risk_analyses (created_at);

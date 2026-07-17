@@ -443,6 +443,72 @@ export const ingestRuns = sqliteTable("ingest_runs", {
   detailJson: text("detail_json"),
 });
 
+/**
+ * geo-risk-desk 라우터 — 감지된 지정학 리스크 이벤트 (diff 결과).
+ * telegram_alerts 등 원본 스트림에서 라우터가 "새 이벤트"로 승격한 것만 여기 들어온다.
+ * 원본 테이블은 upsert 덮어쓰기라 first-seen을 못 잡으므로, 이 테이블이 append-only로
+ * first_seen_at을 소유한다(라우터 cursor의 진실 원천). D6: Telegram received_at diff가 소스.
+ */
+export const riskEvents = sqliteTable(
+  "risk_events",
+  {
+    /** `${source}:${sourceRef}` 예: `telegram:disclosetv/12345` */
+    id: text("id").primaryKey(),
+    /** telegram | gdelt | ais | manual */
+    source: text("source").notNull(),
+    /** 원본 스트림의 행 id (telegram_alerts.id 등) */
+    sourceRef: text("source_ref").notNull(),
+    /** chokepoint_disruption | sanction | conflict_shift | infra_attack | other */
+    eventClass: text("event_class").notNull().default("other"),
+    geography: text("geography"),
+    /** L1 | L2 | L3 (severity — L2+만 full 분석 승격) */
+    severity: text("severity").notNull().default("L1"),
+    summary: text("summary").notNull(),
+    lat: real("lat"),
+    lon: real("lon"),
+    /** 2-source corroboration 게이트: 이 이벤트를 뒷받침한 독립 소스 수 */
+    corroborationCount: integer("corroboration_count").notNull().default(1),
+    /** ★ append-only first-seen (라우터 cursor). 재관측돼도 안 바뀐다. */
+    firstSeenAt: text("first_seen_at").notNull(),
+    /** detected | analyzed | dismissed */
+    status: text("status").notNull().default("detected"),
+  },
+  (t) => ({
+    firstSeenIdx: index("idx_re_first_seen").on(t.firstSeenAt),
+    statusIdx: index("idx_re_status").on(t.status),
+    classIdx: index("idx_re_class").on(t.eventClass),
+  }),
+);
+
+/**
+ * geo-risk-desk 라우터 — Claude 방향성 판정 출력.
+ * exposures_json은 EconInsightBrief.marketLinks 계약과 동형
+ * ([{ ticker, direction: up|down|watch, rationale, verified }]) — 카드가 바로 렌더 가능.
+ * D2 Hybrid: direction/rationale는 무료 데이터 기반 real, portfolio_delta 등 정밀 숫자는
+ * 유료 MCP 전까지 mock이며 verified=false("unverified" 회색 처리)로 정직하게 구분한다.
+ */
+export const riskAnalyses = sqliteTable(
+  "risk_analyses",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    /** risk_events.id */
+    eventId: text("event_id").notNull(),
+    /** JSON: [{ ticker, direction, rationale, verified }] — marketLinks 동형 */
+    exposuresJson: text("exposures_json").notNull(),
+    /** 포트폴리오 영향 추정치 (D2: 유료 데이터 전까지 mock) */
+    portfolioDelta: real("portfolio_delta"),
+    /** grounding: exposures가 검증된 소스에서 왔는지 (false=unverified 회색) */
+    verified: integer("verified").notNull().default(0),
+    /** 판정에 쓴 모델 (예: claude-sonnet-4-6) */
+    model: text("model"),
+    createdAt: text("created_at").notNull(),
+  },
+  (t) => ({
+    eventIdx: index("idx_ra_event").on(t.eventId),
+    createdIdx: index("idx_ra_created").on(t.createdAt),
+  }),
+);
+
 export type FirmsFireRow = typeof firmsFires.$inferSelect;
 export type NewFirmsFireRow = typeof firmsFires.$inferInsert;
 export type UkraineControlPathRow = typeof ukraineControlPaths.$inferSelect;
@@ -462,3 +528,7 @@ export type BriefingPeriodStatsRow = typeof briefingPeriodStats.$inferSelect;
 export type NewBriefingPeriodStatsRow = typeof briefingPeriodStats.$inferInsert;
 export type UiEventRow = typeof uiEvents.$inferSelect;
 export type NewUiEventRow = typeof uiEvents.$inferInsert;
+export type RiskEventRow = typeof riskEvents.$inferSelect;
+export type NewRiskEventRow = typeof riskEvents.$inferInsert;
+export type RiskAnalysisRow = typeof riskAnalyses.$inferSelect;
+export type NewRiskAnalysisRow = typeof riskAnalyses.$inferInsert;
