@@ -151,6 +151,7 @@ export function useGlobeStaticLayers(options: {
   showAiDataCenters?: boolean;
   showEconomicCenters?: boolean;
   showSanctionsEntities?: boolean;
+  showGeoRisk?: boolean;
   showSpaceLaunches?: boolean;
   showIntelHotspots?: boolean;
   showConflictZones?: boolean;
@@ -177,6 +178,7 @@ export function useGlobeStaticLayers(options: {
   const [aiDataCenters, setAiDataCenters] = useState<StaticPoint[]>([]);
   const [economicCenters, setEconomicCenters] = useState<StaticPoint[]>([]);
   const [sanctionsEntities, setSanctionsEntities] = useState<StaticPoint[]>([]);
+  const [geoRiskPoints, setGeoRiskPoints] = useState<StaticPoint[]>([]);
   const [spaceLaunches, setSpaceLaunches] = useState<StaticPoint[]>([]);
   const [intelHotspots, setIntelHotspots] = useState<StaticPoint[]>([]);
   const [submarineTunnels, setSubmarineTunnels] = useState<StaticPoint[]>([]);
@@ -662,6 +664,12 @@ export function useGlobeStaticLayers(options: {
   }, [loadOnceApiPoints, options.showSanctionsEntities, reloadToken]);
 
   useEffect(() => {
+    if (options.showGeoRisk) {
+      loadOnceApiPoints("geoRisk", "/api/geo-risk/cards", setGeoRiskPoints);
+    }
+  }, [loadOnceApiPoints, options.showGeoRisk, reloadToken]);
+
+  useEffect(() => {
     if (options.showSpaceLaunches) {
       loadOnceApiPoints("spaceLaunches", "/api/space-launches", setSpaceLaunches);
     }
@@ -796,6 +804,7 @@ export function useGlobeStaticLayers(options: {
     if (options.showAiDataCenters) merged.push(...aiDataCenters);
     if (options.showEconomicCenters) merged.push(...economicCenters);
     if (options.showSanctionsEntities) merged.push(...sanctionsEntities);
+    if (options.showGeoRisk) merged.push(...geoRiskPoints);
     if (options.showSpaceLaunches) merged.push(...spaceLaunches);
     if (options.showIntelHotspots) merged.push(...intelHotspots);
     if (options.showLngTerminals) merged.push(...lngTerminals);
@@ -835,6 +844,7 @@ export function useGlobeStaticLayers(options: {
     options.showRefugeeCamps,
     options.showResources,
     options.showSanctionsEntities,
+    options.showGeoRisk,
     options.showSpaceLaunches,
     options.showSubmarineTunnels,
     options.showUcdpEvents,
@@ -843,6 +853,7 @@ export function useGlobeStaticLayers(options: {
     refugeeCamps,
     resources,
     sanctionsEntities,
+    geoRiskPoints,
     spaceLaunches,
     submarineTunnels,
     ucdpEvents,

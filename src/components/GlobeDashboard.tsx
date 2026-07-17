@@ -1830,6 +1830,7 @@ export function GlobeDashboard({
     showPorts,
     showLogisticsRisk,
     showCriticalNodes,
+    showGeoRisk,
     showMilitaryBases,
     showResources,
     showNuclearSites,
@@ -1950,6 +1951,7 @@ export function GlobeDashboard({
   const setShowPorts = (v: boolean) => togglePref("showPorts", v);
   const setShowLogisticsRisk = (v: boolean) => togglePref("showLogisticsRisk", v);
   const setShowCriticalNodes = (v: boolean) => togglePref("showCriticalNodes", v);
+  const setShowGeoRisk = (v: boolean) => togglePref("showGeoRisk", v);
   const setShowMilitaryBases = (v: boolean) => togglePref("showMilitaryBases", v);
   const setShowResources = (v: boolean) => togglePref("showResources", v);
   const setShowNuclearSites = (v: boolean) => togglePref("showNuclearSites", v);
@@ -2215,6 +2217,19 @@ export function GlobeDashboard({
       clearEconInsightTimer();
       const brief = resolveCriticalNodeBrief({ criticalNodeId });
       if (!brief) return;
+      setEconInsightBrief(brief);
+      setEconInsightCompact(compact);
+      setEconInsightOpen(true);
+      setEconNewsPanelReveal(false);
+    },
+    [clearEconInsightTimer],
+  );
+
+  // geo-risk-desk: risk pin 클릭 시 이미 손에 든 brief로 카드를 연다(resolveCriticalNodeBrief
+  // 우회 — risk:... navId는 그 레지스트리에 없음). openCriticalNodeInsight와 같은 4 setter.
+  const openRiskInsight = useCallback(
+    (brief: EconInsightBrief, compact: boolean) => {
+      clearEconInsightTimer();
       setEconInsightBrief(brief);
       setEconInsightCompact(compact);
       setEconInsightOpen(true);
@@ -2681,6 +2696,7 @@ export function GlobeDashboard({
     showPorts,
     showLogisticsRisk,
     showCriticalNodes,
+    showGeoRisk,
     showMilitaryBases,
     showResources,
     showCableLandings: showSubmarineCables,
@@ -5748,6 +5764,16 @@ export function GlobeDashboard({
             accent: "orange",
           },
           {
+            id: "geo-risk",
+            label: "지오리스크 (이벤트→포트폴리오)",
+            detail: showGeoRisk
+              ? `${visibleStaticPoints.filter((p) => p.kind === "geo-risk").length.toLocaleString()}건 · 노출판정`
+              : "꺼짐",
+            checked: layerPrefs.showGeoRisk,
+            onChange: setShowGeoRisk,
+            accent: "orange",
+          },
+          {
             id: "ais",
             label: isEconomyViewer ? "민간 선박 (AIS)" : "군용 함정 (AIS)",
             detail: showAis
@@ -7511,6 +7537,18 @@ export function GlobeDashboard({
         if (nodeId) {
           flyTo(point.lat, point.lng, 0.72, 900, { pitch: 55, bearing: -20 });
           openCriticalNodeInsight(nodeId, !isEconomyViewer);
+        }
+        return;
+      }
+      if (point.displayKind === "static" && point.kind === "geo-risk") {
+        skipNextGlobeClickRef.current = true;
+        flyTo(point.lat, point.lng, 0.72, 900, { pitch: 55, bearing: -20 });
+        // brief는 route가 meta.briefJson(string)에 담아준다 — parse 후 카드 오픈
+        try {
+          const brief = JSON.parse(String(point.meta?.briefJson ?? "")) as EconInsightBrief;
+          if (brief?.navId) openRiskInsight(brief, !isEconomyViewer);
+        } catch {
+          /* 손상된 brief는 무시 — pin은 뜨되 카드 없음 */
         }
         return;
       }

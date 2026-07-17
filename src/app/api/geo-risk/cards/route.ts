@@ -14,20 +14,27 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const max = Math.min(Number(searchParams.get("max") ?? "50") || 50, 200);
     const cards = await readRiskCards(max);
+    // loadOnceApiPoints/expandStaticPoints 호환 형식(points). brief는 meta.briefJson(string)에
+    // 담아 클릭 시 parse — StaticPoint.meta가 scalar만 허용하므로 side Map 없이 최소 배선.
+    const points = cards
+      .filter((c) => c.event.lat != null && c.event.lon != null)
+      .map((c) => ({
+        id: c.event.id,
+        kind: "geo-risk" as const,
+        name: c.brief.titleKo,
+        lat: c.event.lat as number,
+        lng: c.event.lon as number, // StaticPoint는 lng
+        meta: {
+          severity: c.event.severity,
+          eventClass: c.event.eventClass,
+          briefJson: JSON.stringify(c.brief),
+        },
+      }));
     return NextResponse.json({
       source: "d1",
       fetchedAt: new Date().toISOString(),
-      count: cards.length,
-      // 지도 pin에 필요한 좌표 + 카드 계약을 함께
-      items: cards.map((c) => ({
-        id: c.event.id,
-        lat: c.event.lat,
-        lon: c.event.lon,
-        eventClass: c.event.eventClass,
-        severity: c.event.severity,
-        createdAt: c.createdAt,
-        brief: c.brief,
-      })),
+      count: points.length,
+      points,
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "geo-risk cards error";
