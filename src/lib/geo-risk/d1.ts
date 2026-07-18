@@ -122,6 +122,63 @@ export async function readRiskCards(max = 50): Promise<
   return out;
 }
 
+/**
+ * D-GRF6(Layer A): raw 리스크 이벤트 + 노출 — Finance 신호 버스용(카드 포맷 없이).
+ *   WHY: Finance geopolitical.py가 이벤트 해상도 지경학 입력을 관측/귀속에 쓰려면 brief가
+ *        아니라 정규화된 이벤트(first_seen_at·exposures)가 필요. 카드 route는 lat/lon 있는 것만
+ *        + brief 포맷이라 부적합. 이 함수가 A/B/C 공용 데이터 버스.
+ *   COST: readRiskCards와 조인 로직 중복(작음). 카드와 별도 진화 가능해 오히려 결합도↓.
+ *   EXIT: 스키마 바뀌면 여기 select만 수정. 소비자(Finance)는 JSON 계약만 의존.
+ */
+export async function readRiskEventsRaw(max = 100): Promise<
+  Array<{
+    id: string;
+    eventClass: string;
+    severity: string;
+    geography: string | null;
+    firstSeenAt: string;
+    corroborationCount: number;
+    lat: number | null;
+    lon: number | null;
+    analyzedAt: string;
+    verified: boolean;
+    exposures: ExposureAnalysis["exposures"];
+  }>
+> {
+  const db = await getDb();
+  const events = await db
+    .select()
+    .from(riskEvents)
+    .where(eq(riskEvents.status, "analyzed"))
+    .orderBy(desc(riskEvents.firstSeenAt))
+    .limit(max);
+
+  const out = [];
+  for (const e of events) {
+    const [a] = await db
+      .select()
+      .from(riskAnalyses)
+      .where(eq(riskAnalyses.eventId, e.id))
+      .orderBy(desc(riskAnalyses.createdAt))
+      .limit(1);
+    if (!a) continue;
+    out.push({
+      id: e.id,
+      eventClass: e.eventClass,
+      severity: e.severity,
+      geography: e.geography,
+      firstSeenAt: e.firstSeenAt,
+      corroborationCount: e.corroborationCount,
+      lat: e.lat,
+      lon: e.lon,
+      analyzedAt: a.createdAt,
+      verified: a.verified === 1,
+      exposures: safeParse(a.exposuresJson),
+    });
+  }
+  return out;
+}
+
 function safeParse(json: string): ExposureAnalysis["exposures"] {
   try {
     const p = JSON.parse(json);
