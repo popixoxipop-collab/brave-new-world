@@ -99,3 +99,22 @@ chat-first UI(지도가 해자) · 범용 뉴스요약.
 1. **라이브 지정학 위 환각 금융주장** → grounding 계약을 아키텍처로 강제: 수치는 source ID 필수, 미인용은 "unverified" 회색. OSINT도 2-source corroboration.
 2. **데이터 라이선스**(adsb.fi 비상업/AIS/LSEG 재배포금지) → BYO-entitlement, 화면엔 파생분석물만. 레이어별 재배포 안전성 감사표.
 3. **신호/소음+비용** → 2단 깔때기 + chokepoint 사전 템플릿 캐시.
+
+---
+
+## Finance repo 시사점 (2026-07-18) — 결정 D-GRF1~4
+
+geo-risk가 Finance(Alpaca/KIS 모의 포트폴리오 + D-AG 알파 파이프라인)에 주는 실제 시사점.
+정본 기록: Finance repo-local `.claude/memory/geo_risk_desk_implications_2026-07-18.md`.
+
+- **D-GRF1**: geo-risk는 Finance 게이트(D-AG3: excess SR≥0.5/비용×2/DSR)로 아직 알파가 아님 —
+  방향성 판정은 unverified·백테스트 0·§13상 포지션 결정 불가. → 관측·귀속 레이어.
+- **D-GRF2 (핵심 가설)**: "geo-risk 이벤트가 vrp 슬리브 스트레스의 lead인가". Finance는 스트레스를
+  가격(VIX backwardation=사후)으로만 보는데 geo-risk는 원인(이벤트)에서 봄. lead면 진짜 저상관
+  신규 신호. 단 §13상 리드-래그 실측 전엔 가설. **실험 설계는 Fable 위임(사전등록 confirmatory)**.
+- **D-GRF3**: NVIDIA step-3.5-flash 키풀은 Finance에 즉시 이식 가능하나 §13상 관측/알림까지만.
+- **D-GRF4**: 진짜 가치 = 이벤트-포지션 attribution(사후 설명력), Tier 3 백테스트의 Finance 버전.
+- **★Shadowbroker 대비**: Shadowbroker는 AI가 "unseen correlations 발굴"(exploratory 데이터마이닝).
+  geo-risk 실험은 정반대 — 사전등록 단일 리드-래그 가설(confirmatory). exploratory 상관 발굴을
+  Finance에 대면 D-DS 선택편향/p-hacking 재발(D-AG rank-corr 4/4 음수 교훈). 이 차별이 실험 정당성.
+- **함정**: LLM 방향성 실거래(§13) / 실계좌 연결(§17·D-AG9) / mock 숫자 리포트 혼입(SVOL 갭 교훈).
