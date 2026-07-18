@@ -87,7 +87,9 @@ export function toBrief(
         c?.agreement === "disagree"
           ? " ⚠ LLM 방향과 반대"
           : c?.agreement === "unverified"
-            ? " (β 유의성 약 — 방향 미검증)"
+            ? c?.driver === "vix"
+              ? " (변동성 이벤트 — 시장β 교란, 방향 미검증)"
+              : " (β 유의성 약 — 방향 미검증)"
             : c?.agreement === "agree"
               ? " ✓ 실측 β가 방향 지지"
               : "";

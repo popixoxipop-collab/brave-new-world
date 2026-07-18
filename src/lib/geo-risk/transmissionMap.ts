@@ -86,6 +86,16 @@ export function crossCheckBeta(
   const glyph = driver === "brent" ? "油" : "VIX"; // 油=Brent(유가), VIX=변동성
   const betaStr = `${beta >= 0 ? "+" : ""}${beta.toFixed(2)}`;
 
+  // ★market-β 교란: β(VIX)는 전 종목이 음수(변동성 급등=시장 전반 하락). 즉 sign(β(VIX))는
+  //   지경학 '방향'이 아니라 시장 베타라, conflict/sanction 이벤트의 up/down을 판정 못 한다.
+  //   raw β(VIX)로 방향을 검증하면 모든 "up"이 무조건 disagree로 찍혀 오해 유발(로컬 실관측
+  //   2026-07-18 확인 — Hezbollah conflict_shift에서 XOM/LMT up이 전부 오판정). 그래서 VIX-driver는
+  //   방향 미검증(unverified)으로 두고 β는 정보용 magnitude로만 표시. chokepoint(Brent)만 방향 판정.
+  //   EXIT: 시장중립 geo-shock β(이벤트 스터디 초과수익 or 방산·금 팩터)를 측정하면 그때 방향 판정 복원.
+  if (driver === "vix") {
+    return { agreement: "unverified", driver, beta, t, expected, chipNote: `β${glyph}${betaStr}~` };
+  }
+
   if (llmDirection === "watch") {
     return { agreement: "watch", driver, beta, t, expected, chipNote: `β${glyph}${betaStr}` };
   }
