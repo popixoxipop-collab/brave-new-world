@@ -13,7 +13,16 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
-export async function POST() {
+export async function POST(request: Request) {
+  // cron 인증: INGEST_CRON_SECRET 설정 시 Bearer 일치만 허용(무단 POST로 NVIDIA 비용 유발 차단).
+  // cron-ingest worker의 warmEndpoint가 이 Bearer를 보낸다. secret 미설정(로컬 dev)이면 통과.
+  const secret = process.env.INGEST_CRON_SECRET?.trim();
+  if (secret) {
+    const auth = request.headers.get("authorization") ?? "";
+    if (auth !== `Bearer ${secret}`) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+  }
   if (!hasNvidiaKeys()) {
     return NextResponse.json({ error: "NVIDIA 키 미설정" }, { status: 503 });
   }

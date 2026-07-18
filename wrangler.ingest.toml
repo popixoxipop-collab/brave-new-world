@@ -26,6 +26,9 @@ FIRMS_MAX_PER_THEATER = "400"
 GDELT_MAX_POINTS = "250"
 # Retain window for prune (hours)
 RETENTION_HOURS = "48"
+# geo-risk-desk 라우터 진입점 — cron(*/10)이 매 사이클 POST 호출해 실 Telegram→risk_events 자동수집.
+# 배포 시 실제 app 도메인으로 교체(예: https://conflict-view.<acct>.workers.dev/api/geo-risk/run).
+GEO_RISK_RUN_URL = "http://localhost:3737/api/geo-risk/run"
 
 [[d1_databases]]
 binding = "DB"

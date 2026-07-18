@@ -44,6 +44,8 @@ export type IngestEnv = {
    * 예: https://your-app.example/api/render/ukraine-control-paths?lod=overview
    */
   UKRAINE_HATCH_WARM_URL?: string;
+  /** geo-risk-desk 라우터 사이클 진입점(POST) — 10분마다 실 Telegram→risk_events */
+  GEO_RISK_RUN_URL?: string;
   FIRMS_DAY_RANGE?: string;
   FIRMS_MAX_PER_THEATER?: string;
   GDELT_MAX_POINTS?: string;

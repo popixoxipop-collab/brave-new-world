@@ -173,6 +173,7 @@ async function runIngest(env: IngestEnv): Promise<IngestResult> {
     tunnelsWarm = await warmEndpoint(env.TUNNELS_WARM_URL, env, "tunnels");
     disputeHatchWarm = await warmEndpoint(env.DISPUTE_HATCH_WARM_URL, env, "dispute-hatch");
     ukraineHatchWarm = await warmEndpoint(env.UKRAINE_HATCH_WARM_URL, env, "ukraine-hatch");
+    await warmEndpoint(env.GEO_RISK_RUN_URL, env, "geo-risk");  // D-GRF2 이벤트 자동수집
 
     const finishedAt = new Date().toISOString();
     const hardFail =
