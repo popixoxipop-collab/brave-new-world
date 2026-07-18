@@ -70,36 +70,39 @@ describe("toBrief Stage-2 β cross-check", () => {
 });
 
 /**
- * ★market-β 교란(2026-07-18 로컬 실관측): conflict_shift/sanction은 driver=VIX인데 β(VIX)는
- * 전 종목 음수(시장 베타)라 up/down 방향을 판정 못 한다. raw로 쓰면 모든 up이 무조건 disagree로
- * 오판정 → VIX-driver는 unverified로 두고 방향 판정 안 함(chokepoint=Brent만 판정).
+ * ★conflict/sanction(VIX-driver)은 β(VIX)=시장베타라 방향 판정 불가(D-GRF7) → 시장중립
+ * geo-shock β(D-GRF8)로 판정. XOM은 geo-shock β+9.3 t=2.7(confident)→up 지지, LMT는 +3.8 t=1.3
+ * (통계 약)→방향 힌트만(unverified). β(VIX)의 거짓 disagree를 대체.
  */
 const CONFLICT_EVENT: RiskEvent = { ...HORMUZ_EVENT, id: "test-conflict", eventClass: "conflict_shift" };
 const CONFLICT_ANALYSIS: ExposureAnalysis = {
   exposures: [
     { ticker: "XOM", direction: "up", rationale: "conflict premium", verified: false },
     { ticker: "LMT", direction: "up", rationale: "defense premium", verified: false },
+    { ticker: "DAL", direction: "up", rationale: "wrong-way call", verified: false },
   ],
   portfolioDelta: null,
   verified: false,
   model: "stepfun-ai/step-3.5-flash",
 };
 
-describe("toBrief VIX-driver events are market-β confounded (not disagree)", () => {
+describe("toBrief conflict/sanction use geo-shock β (market-neutral) for direction", () => {
   const brief = toBrief(CONFLICT_EVENT, CONFLICT_ANALYSIS, null);
   const bySym = new Map(brief.marketLinks.map((m) => [m.symbol, m]));
 
-  it("flags conflict_shift exposures as unverified, never disagree", () => {
-    for (const sym of ["XOM", "LMT"]) {
-      expect(bySym.get(sym)?.betaFlag, `${sym}`).toBe("unverified");
-      expect(bySym.get(sym)?.note).toContain("~"); // 정보용 magnitude 표기
-    }
+  it("confidently supports XOM up (geo-shock β +9.3, t=2.7)", () => {
+    expect(bySym.get("XOM")?.betaFlag).toBe("agree");
+    expect(bySym.get("XOM")?.note).toContain("✓");
+    expect(bySym.get("XOM")?.note).toContain("地");
   });
 
-  it("explains market-β confounding in the body, not a false contradiction", () => {
+  it("leaves statistically weak defense (LMT, |t|<2) as direction hint only", () => {
+    expect(bySym.get("LMT")?.betaFlag).toBe("unverified");
+    expect(bySym.get("LMT")?.note).toContain("~");
+  });
+
+  it("body labels the driver as geopolitical shock (GPRD), not VIX", () => {
     const body = brief.paragraphs.join("\n");
-    expect(body).toContain("시장β 교란");
-    // 불일치 경고는 나오지 않아야(오판정 방지)
-    expect(body).not.toMatch(/LLM 판정 방향이 실측 β 부호와 반대/);
+    expect(body).toContain("지경학충격(GPRD)");
   });
 });

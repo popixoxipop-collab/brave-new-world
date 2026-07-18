@@ -79,7 +79,7 @@ export function toBrief(
   const checkedLinks = marketLinks.filter((m) => m.note);
   if (checkedLinks.length > 0) {
     const driverKo = (m: EconInsightMarketLink) =>
-      (betaChecks.get(m.symbol)?.driver ?? "brent") === "brent" ? "유가(Brent)" : "변동성(VIX)";
+      (betaChecks.get(m.symbol)?.driver ?? "brent") === "brent" ? "유가(Brent)" : "지경학충격(GPRD)";
     const lines = checkedLinks.map((m) => {
       const c = betaChecks.get(m.symbol);
       const t = c?.t != null ? ` t=${c.t.toFixed(0)}` : "";
@@ -88,7 +88,7 @@ export function toBrief(
           ? " ⚠ LLM 방향과 반대"
           : c?.agreement === "unverified"
             ? c?.driver === "vix"
-              ? " (변동성 이벤트 — 시장β 교란, 방향 미검증)"
+              ? " (geo-shock β 약 — 방향 힌트만)"
               : " (β 유의성 약 — 방향 미검증)"
             : c?.agreement === "agree"
               ? " ✓ 실측 β가 방향 지지"

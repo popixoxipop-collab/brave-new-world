@@ -44,6 +44,28 @@ export const TRANSMISSION_MAP: Record<string, AssetBetas> = {
   XLE: { brent: { beta: 0.4287, t: 37.2, r2: 0.344 }, vix: { beta: -0.0891, t: -23.2, r2: 0.169 } },
 };
 
+/**
+ * geo-shock β — 시장중립 초과수익이 지경학 충격(ΔGPRD)에 반응하는 방향(bp/σ).
+ * ★출처: measure_geo_shock_beta.py (§13, n=2264일, GPRD daily 이벤트 스터디).
+ *   β(VIX)는 시장 베타(전 종목 음수)라 conflict/sanction 방향 판정 불가 → 시장 제거 후 측정한
+ *   이 β로 방향 판정. GLD+4.3/LMT+3.8/DAL-3.8 등 경제적으로 검증됨. 단 t값이 낮아(대부분 |t|<2)
+ *   방향은 견고하나 통계적으로 약함 → |t|≥2 AND 이벤트스터디 부호일치일 때만 confident.
+ */
+interface GeoShock {
+  beta: number; // bp/σ
+  t: number;
+  es: number; // 상위10% 충격일 평균 excess(bp) — 부호 교차확인용
+}
+export const GEO_SHOCK_MAP: Record<string, GeoShock> = {
+  XOM: { beta: 9.32, t: 2.7, es: 31.45 }, CVX: { beta: 6.98, t: 2.1, es: 13.86 },
+  COP: { beta: 6.72, t: 1.5, es: 28.52 }, VLO: { beta: 3.46, t: 0.7, es: 14.3 },
+  DAL: { beta: -3.84, t: -0.8, es: -6.62 }, UAL: { beta: -5.21, t: -0.9, es: -4.19 },
+  LMT: { beta: 3.83, t: 1.3, es: 18.06 }, NOC: { beta: 4.67, t: 1.4, es: 28.34 },
+  RTX: { beta: 0.48, t: 0.1, es: 8.98 }, HAL: { beta: 4.33, t: 0.8, es: 28.69 },
+  SLB: { beta: 6.49, t: 1.3, es: 16.12 }, BKR: { beta: 7.31, t: 1.6, es: 10.31 },
+  XLE: { beta: 4.9, t: 1.5, es: 19.54 }, GLD: { beta: 4.3, t: 2.0, es: 25.75 },
+};
+
 /** 이벤트 클래스 → 어느 driver가 충격받나 (forward_scorecard.py CLASS_DRIVER 미러). */
 const CLASS_DRIVER: Record<EventClass, "brent" | "vix"> = {
   chokepoint_disruption: "brent",
@@ -77,24 +99,45 @@ export function crossCheckBeta(
   llmDirection: "up" | "down" | "watch",
 ): BetaCheck {
   const driver = CLASS_DRIVER[eventClass] ?? "brent";
+
+  // ★conflict/sanction(VIX-driver): β(VIX)는 시장 베타(전 종목 음수)라 방향 판정 불가 →
+  //   시장중립 geo-shock β(measure_geo_shock_beta.py)로 방향 판정. GLD+/LMT+/DAL- 등 경제적 검증.
+  //   단 t낮음 → |t|≥2 AND 이벤트스터디 부호일치일 때만 confident agree/disagree, 아니면 unverified.
+  //   D-GRF7이 발견한 market-β 교란을 D-GRF8 geo-shock β로 해소.
+  //   ★ TRANSMISSION_MAP보다 먼저 조회 — RTX/HAL 등 geo-shock 맵에만 있는 방산·서비스주가
+  //     Brent 맵 부재로 no-beta에 걸리지 않게(배선 순서 버그 수정).
+  if (driver === "vix") {
+    const gs = GEO_SHOCK_MAP[ticker.toUpperCase()];
+    if (!gs) {
+      return { agreement: "no-beta", driver, beta: null, t: null, expected: null, chipNote: null };
+    }
+    const gExpected: "up" | "down" = gs.beta > 0 ? "up" : "down";
+    const gBetaStr = `${gs.beta >= 0 ? "+" : ""}${gs.beta.toFixed(1)}`;
+    const confident = Math.abs(gs.t) >= 2 && Math.sign(gs.beta) === Math.sign(gs.es);
+    if (llmDirection === "watch") {
+      return { agreement: "watch", driver, beta: gs.beta, t: gs.t, expected: gExpected, chipNote: `β地${gBetaStr}` };
+    }
+    if (!confident) {
+      // 방향은 경제적으로 견고하나 통계적으로 약함 → 미검증(정보용 magnitude만).
+      return { agreement: "unverified", driver, beta: gs.beta, t: gs.t, expected: gExpected, chipNote: `β地${gBetaStr}~` };
+    }
+    const agree = llmDirection === gExpected;
+    return {
+      agreement: agree ? "agree" : "disagree",
+      driver, beta: gs.beta, t: gs.t, expected: gExpected,
+      chipNote: `β地${gBetaStr}${agree ? "✓" : "⚠"}`,
+    };
+  }
+
+  // chokepoint/infra_attack(Brent-driver): 유가 전파 β로 방향 판정.
   const a = TRANSMISSION_MAP[ticker.toUpperCase()];
   if (!a) {
     return { agreement: "no-beta", driver, beta: null, t: null, expected: null, chipNote: null };
   }
   const { beta, t } = a[driver];
   const expected: "up" | "down" = beta > 0 ? "up" : "down";
-  const glyph = driver === "brent" ? "油" : "VIX"; // 油=Brent(유가), VIX=변동성
+  const glyph = driver === "brent" ? "油" : "VIX";
   const betaStr = `${beta >= 0 ? "+" : ""}${beta.toFixed(2)}`;
-
-  // ★market-β 교란: β(VIX)는 전 종목이 음수(변동성 급등=시장 전반 하락). 즉 sign(β(VIX))는
-  //   지경학 '방향'이 아니라 시장 베타라, conflict/sanction 이벤트의 up/down을 판정 못 한다.
-  //   raw β(VIX)로 방향을 검증하면 모든 "up"이 무조건 disagree로 찍혀 오해 유발(로컬 실관측
-  //   2026-07-18 확인 — Hezbollah conflict_shift에서 XOM/LMT up이 전부 오판정). 그래서 VIX-driver는
-  //   방향 미검증(unverified)으로 두고 β는 정보용 magnitude로만 표시. chokepoint(Brent)만 방향 판정.
-  //   EXIT: 시장중립 geo-shock β(이벤트 스터디 초과수익 or 방산·금 팩터)를 측정하면 그때 방향 판정 복원.
-  if (driver === "vix") {
-    return { agreement: "unverified", driver, beta, t, expected, chipNote: `β${glyph}${betaStr}~` };
-  }
 
   if (llmDirection === "watch") {
     return { agreement: "watch", driver, beta, t, expected, chipNote: `β${glyph}${betaStr}` };
