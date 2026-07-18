@@ -290,10 +290,28 @@ export function EconInsightParchment({
                   {displayBrief.marketLinks.map((link) => (
                     <span
                       key={link.symbol}
-                      className="rounded-sm border border-[#8b6914]/35 bg-[#efe0b8]/70 px-2.5 py-1 text-[0.78rem] tracking-wide text-[#3d2a18]"
+                      className={`rounded-sm border px-2.5 py-1 text-[0.78rem] tracking-wide ${
+                        link.betaFlag === "disagree"
+                          ? "border-rose-500/50 bg-rose-100/60 text-rose-900"
+                          : link.betaFlag === "unverified"
+                            ? "border-[#8b6914]/25 bg-[#e8ddc4]/50 text-[#7a6348]"
+                            : "border-[#8b6914]/35 bg-[#efe0b8]/70 text-[#3d2a18]"
+                      }`}
                       style={{ fontFamily: PARCHMENT_STACK, fontWeight: 500 }}
+                      title={
+                        link.betaFlag === "disagree"
+                          ? "실측 β가 이 방향과 반대 — 재검토 필요"
+                          : link.betaFlag === "unverified"
+                            ? "β 유의성 약 — 방향 미검증"
+                            : link.betaFlag === "agree"
+                              ? "실측 β가 방향 지지"
+                              : undefined
+                      }
                     >
                       {link.symbol} {arrowFor(link.direction)}
+                      {link.note ? (
+                        <span className="ml-1 font-mono text-[0.68rem] opacity-80">{link.note}</span>
+                      ) : null}
                     </span>
                   ))}
                 </div>

@@ -10,6 +10,10 @@ export type MarketLinkDirection = "up" | "down" | "watch";
 export type EconInsightMarketLink = {
   symbol: string;
   direction: MarketLinkDirection;
+  /** 선택: 실측 β 교차검증 배지 (예: "β油+0.36✓"). geo-risk 카드만 채움, 정적 브리핑은 미사용. */
+  note?: string;
+  /** 선택: β가 LLM 방향과 불일치/미검증이면 UI가 회색 처리. */
+  betaFlag?: "agree" | "disagree" | "unverified";
 };
 
 export type EconInsightBrief = {

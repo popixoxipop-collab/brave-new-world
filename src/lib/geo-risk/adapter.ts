@@ -12,6 +12,7 @@
 import type { EconInsightBrief, EconInsightMarketLink, InsightRiskLevel } from "@/data/econInsightBriefs";
 import type { ExposureAnalysis, RiskEvent } from "./types";
 import type { PortfolioImpact } from "./portfolio";
+import { crossCheckBeta, TRANSMISSION_PROVENANCE, type BetaCheck } from "./transmissionMap";
 
 function riskLevelFromSeverity(sev: RiskEvent["severity"]): InsightRiskLevel {
   if (sev === "L3") return "CRITICAL";
@@ -34,11 +35,23 @@ export function toBrief(
     ...analysis.exposures.filter((e) => matchedTickers.has(e.ticker)),
     ...analysis.exposures.filter((e) => !matchedTickers.has(e.ticker)),
   ];
-  const marketLinks: EconInsightMarketLink[] = orderedExposures.map((e) => ({
-    symbol: e.ticker,
-    direction: e.direction,
-  }));
+  // Stage-2: 각 exposure에 실측 β 교차검증 배지. LLM 방향이 β 부호와 일치하는가(§13).
+  const betaChecks = new Map<string, BetaCheck>();
+  const marketLinks: EconInsightMarketLink[] = orderedExposures.map((e) => {
+    const check = crossCheckBeta(e.ticker, event.eventClass, e.direction);
+    betaChecks.set(e.ticker, check);
+    return {
+      symbol: e.ticker,
+      direction: e.direction,
+      ...(check.chipNote ? { note: check.chipNote } : {}),
+      ...(check.agreement === "agree" || check.agreement === "disagree" || check.agreement === "unverified"
+        ? { betaFlag: check.agreement }
+        : {}),
+    };
+  });
 
+  // β가 LLM 방향과 어긋나거나 미검증인 노출 — 카드에서 정직하게 드러낸다.
+  const disagreeing = orderedExposures.filter((e) => betaChecks.get(e.ticker)?.agreement === "disagree");
   const anyUnverified = analysis.exposures.some((e) => !e.verified);
   const relevancePct = impact ? Math.round(impact.relevance * 100) : 0;
   const matchCount = impact?.matched.length ?? 0;
@@ -61,6 +74,43 @@ export function toBrief(
     }
   }
   if (impact?.snapshotWarning) paragraphs.push(`※ ${impact.snapshotWarning}`);
+
+  // Stage-2 β 교차검증 섹션 — 실측 데이터가 LLM 방향을 지지/반박하는지 정직하게 표시(§13).
+  const checkedLinks = marketLinks.filter((m) => m.note);
+  if (checkedLinks.length > 0) {
+    const driverKo = (m: EconInsightMarketLink) =>
+      (betaChecks.get(m.symbol)?.driver ?? "brent") === "brent" ? "유가(Brent)" : "변동성(VIX)";
+    const lines = checkedLinks.map((m) => {
+      const c = betaChecks.get(m.symbol);
+      const t = c?.t != null ? ` t=${c.t.toFixed(0)}` : "";
+      const tag =
+        c?.agreement === "disagree"
+          ? " ⚠ LLM 방향과 반대"
+          : c?.agreement === "unverified"
+            ? " (β 유의성 약 — 방향 미검증)"
+            : c?.agreement === "agree"
+              ? " ✓ 실측 β가 방향 지지"
+              : "";
+      return `· ${m.symbol}: β(${driverKo(m)})=${(c?.beta ?? 0) >= 0 ? "+" : ""}${(c?.beta ?? 0).toFixed(2)}${t}${tag}`;
+    });
+    paragraphs.push(
+      "실측 β 교차검증 (Stage-2 transmission map) — 이벤트 충격이 각 종목을 어느 방향으로 " +
+        "미는지 과거 일간수익 회귀로 검증:\n" +
+        lines.join("\n"),
+    );
+    if (disagreeing.length > 0) {
+      paragraphs.push(
+        `※ ${disagreeing.map((e) => e.ticker).join(", ")}는 LLM 판정 방향이 실측 β 부호와 반대입니다. ` +
+          "정유·항공처럼 단순 유가 논리가 데이터로 검증되지 않는 종목 — 방향을 신뢰하기 전 재검토 필요.",
+      );
+    }
+    paragraphs.push(
+      `※ β 출처: 일간수익 OLS, n=${TRANSMISSION_PROVENANCE.nDays}일 ` +
+        `(${TRANSMISSION_PROVENANCE.start}~${TRANSMISSION_PROVENANCE.end}), Brent=${TRANSMISSION_PROVENANCE.brentSource}. ` +
+        "직관 아닌 실측치(Data-First Numerics §13).",
+    );
+  }
+
   if (anyUnverified) {
     paragraphs.push(
       "※ 이 판정은 무료 데이터 기반 방향성 추정입니다. 달러/퍼센트 정밀 수치는 검증 데이터 " +
