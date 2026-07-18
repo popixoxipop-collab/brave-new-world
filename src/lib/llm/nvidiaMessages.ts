@@ -56,9 +56,10 @@ export async function callNvidiaMessages(options: {
   }
   const model = options.model || getNvidiaModel();
   // step-3.5-flash는 reasoning 모델 — reasoning_content가 max_tokens를 먼저 소진하고 content가
-  // 그 다음이라, 요청한 답 토큰에 reasoning 버퍼를 더한다(관측: reasoning ~1500tok). 안 더하면
-  // content가 빈 채로 잘린다(out=900에서 content="" 재현). content만 사용(reasoning_content 무시).
-  const REASONING_BUFFER = 2048;
+  // 그 다음이라, 요청한 답 토큰에 reasoning 버퍼를 더한다. 안 더하면 content가 빈 채로 잘린다
+  // (out=900/3072에서 content="" 재현). 노출이 애매한 이벤트일수록 reasoning이 길어져(Syria
+  // conflict_shift가 out=3072 소진) 2048은 부족 → 4096. content만 사용(reasoning_content 무시).
+  const REASONING_BUFFER = 4096;
   const answerTokens = options.maxTokens ?? 1024;
   const maxTokens = answerTokens + REASONING_BUFFER;
   const bodyObj = {
