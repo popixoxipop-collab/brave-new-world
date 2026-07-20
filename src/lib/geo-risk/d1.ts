@@ -10,18 +10,21 @@ import type { ExposureAnalysis, RiskEvent } from "./types";
 import { toBrief } from "./adapter";
 import type { PortfolioImpact } from "./portfolio";
 
-/** cursor 이후 telegram 처리를 위한 최신 처리 시각(마지막 first_seen). 없으면 null. */
-export async function readCursor(): Promise<string | null> {
+/**
+ * 이벤트 현재 status 조회 (없으면 null). runRouterCycle이 이미 analyzed/dismissed된 이벤트의
+ * LLM 재호출을 스킵하는 데 쓴다(D-GRF11: cursor 제거 후 비용 통제를 이 체크로 이전).
+ */
+export async function getEventStatus(id: string): Promise<RiskEvent["status"] | null> {
   const db = await getDb();
   const rows = await db
-    .select({ firstSeenAt: riskEvents.firstSeenAt })
+    .select({ status: riskEvents.status })
     .from(riskEvents)
-    .orderBy(desc(riskEvents.firstSeenAt))
+    .where(eq(riskEvents.id, id))
     .limit(1);
-  return rows[0]?.firstSeenAt ?? null;
+  return (rows[0]?.status as RiskEvent["status"] | undefined) ?? null;
 }
 
-/** 라우터가 감지한 이벤트 upsert (first_seen_at은 최초만 — id 충돌 시 유지). */
+/** 라우터가 감지한 이벤트 upsert (first_seen_at·status는 최초/기존 값 유지 — id 충돌 시 안 바뀜). */
 export async function upsertRiskEvent(ev: RiskEvent): Promise<void> {
   const db = await getDb();
   await db
@@ -42,12 +45,15 @@ export async function upsertRiskEvent(ev: RiskEvent): Promise<void> {
     })
     .onConflictDoUpdate({
       target: riskEvents.id,
-      // 재관측: corroboration/severity/summary는 갱신, first_seen_at은 유지(append-only 의미론)
+      // 재관측: corroboration/severity/summary는 갱신. first_seen_at·status는 제외(append-only).
+      // ★D-GRF11: status를 여기 포함하면 매 사이클 detectEvents가 만드는 ev.status는 항상
+      //   "detected"라, 이미 analyzed된 이벤트가 재관측될 때마다 status가 도로 detected로
+      //   퇴행해 카드/Finance 조회(WHERE status='analyzed')에서 사라지는 버그가 생긴다.
+      //   status 전진은 saveAnalysis(→analyzed)/수동 dismiss만 담당.
       set: {
         corroborationCount: ev.corroborationCount,
         severity: ev.severity,
         summary: ev.summary,
-        status: ev.status,
       },
     });
 }

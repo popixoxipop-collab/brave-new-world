@@ -1,8 +1,11 @@
 /**
- * geo-risk-desk 이벤트 감지 — telegram_alerts diff → 2-source 집계 → 승격 이벤트.
+ * geo-risk-desk 이벤트 감지 — telegram 최근 메시지 → 2-source 집계 → 승격 이벤트.
  *
- * D6: geowatch 원본 스트림은 upsert 덮어쓰기라 first-seen을 못 잡는다. Telegram만
- *   received_at으로 cursor-diffable하므로 여기가 유일한 소스. cursor = 마지막 처리 시각.
+ * D6: geowatch 원본 스트림은 upsert 덮어쓰기라 first-seen을 못 잡는다. Telegram이 유일한 소스.
+ * D-GRF11(2026-07-20): 이전엔 cursor(마지막 처리 시각) 이후 알림만 받았으나, 전역 cursor가
+ *   한 사이클의 무관 버킷 승격으로 전진하면 같은 사이클의 미승격 알림이 다음 사이클엔 걸러져
+ *   영구 유실되는 버그가 있었다(재현: firstSeenAt.audit.test.ts). 지금은 매 사이클 채널당
+ *   최근 8개 전체를 받아 매번 처음부터 버킷팅한다 — 비용 통제는 router.ts의 이미-analyzed 스킵.
  * 2-source 게이트(죽음의 문제 ①): 같은 (eventClass, geography) 버킷을 뒷받침한 **서로 다른
  *   채널 수**를 corroborationCount로 집계. 단일 채널(=단일 소스)은 severity가 안 오르고,
  *   shouldPromote가 걸러 full 분석으로 안 간다. Telegram 허위정보 조작 벡터를 막는다.
@@ -22,9 +25,11 @@ export interface AlertInput {
 }
 
 /**
- * cursor 이후 알림들을 (class, geography) 버킷으로 묶고, 각 버킷을 하나의 RiskEvent로.
- * @param alerts received_at > cursor 인 telegram_alerts 행들 (호출자가 D1에서 조회)
- * @param nowIso first_seen_at 스탬프 (호출자가 주입 — 결정론/테스트 위해)
+ * 알림들을 (class, geography) 버킷으로 묶고, 각 버킷을 하나의 RiskEvent로.
+ * @param alerts 채널당 최근 8개 telegram 메시지 (호출자가 스크래핑/D1에서 조회, cursor 필터 없음)
+ * @param nowIso first_seen_at 스탬프 (호출자가 주입 — 결정론/테스트 위해). ★신규 이벤트의
+ *   first_seen_at은 실제 최이른 메시지 시각(rep.receivedAt)이 아니라 이 처리시각이다(D-GRF11
+ *   발견2, 미수정 — cron 주기만큼 조직적 지연, sourceRef에 진짜 값 복구 가능, 우선순위 낮음).
  */
 export function detectEvents(alerts: AlertInput[], nowIso: string): RiskEvent[] {
   // 1차 분류 (corr=1로) 후 버킷팅
