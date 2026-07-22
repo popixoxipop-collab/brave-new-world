@@ -12,6 +12,13 @@
  * WHY 버킷=(class,geo): 텍스트 유사도 대신 값싼 결정론적 그룹핑. 같은 초크포인트에 대한
  *   같은 종류 사건은 한 이벤트로 병합. COST: 표현 다르면 놓침(예: 다른 지명 표기).
  *   EXIT: 임베딩 유사도 클러스터링(Tier 2)로 교체.
+ * D-GRF11 발견2 수정(2026-07-23): first_seen_at을 nowIso(처리시각)가 아니라 rep.receivedAt
+ *   (버킷 내 실제 최이른 메시지 시각)으로 스탬프한다. WHY: "언제 처음 관측됐나"를 문자 그대로
+ *   지키는 값은 rep.receivedAt뿐 — nowIso는 cron이 그 사이클을 돈 시각일 뿐이라 최대 cron
+ *   주기(~10분)만큼 체계적으로 늦다. rep는 이미 계산돼 sourceRef/summary에 쓰이므로 추가 비용
+ *   없음. COST: 없음(append-only 보호로 기존 행엔 영향 없음 — d1.ts upsertRiskEvent가 재관측
+ *   시 first_seen_at을 안 건드림, D-GRF11 발견1 수정에서 확정). EXIT: 되돌리려면 아래 한 줄만
+ *   rep.receivedAt→nowIso로 되돌리면 됨(다른 로직 의존 없음).
  */
 import type { RiskEvent } from "./types";
 import { classifyText, shouldPromote } from "./classify";
@@ -24,14 +31,10 @@ export interface AlertInput {
   receivedAt: string;
 }
 
-/**
- * 알림들을 (class, geography) 버킷으로 묶고, 각 버킷을 하나의 RiskEvent로.
+/** 알림들을 (class, geography) 버킷으로 묶고, 각 버킷을 하나의 RiskEvent로.
  * @param alerts 채널당 최근 8개 telegram 메시지 (호출자가 스크래핑/D1에서 조회, cursor 필터 없음)
- * @param nowIso first_seen_at 스탬프 (호출자가 주입 — 결정론/테스트 위해). ★신규 이벤트의
- *   first_seen_at은 실제 최이른 메시지 시각(rep.receivedAt)이 아니라 이 처리시각이다(D-GRF11
- *   발견2, 미수정 — cron 주기만큼 조직적 지연, sourceRef에 진짜 값 복구 가능, 우선순위 낮음).
  */
-export function detectEvents(alerts: AlertInput[], nowIso: string): RiskEvent[] {
+export function detectEvents(alerts: AlertInput[]): RiskEvent[] {
   // 1차 분류 (corr=1로) 후 버킷팅
   const buckets = new Map<string, { alerts: AlertInput[]; channels: Set<string> }>();
   for (const a of alerts) {
@@ -67,7 +70,7 @@ export function detectEvents(alerts: AlertInput[], nowIso: string): RiskEvent[] 
       lat: c.lat,
       lon: c.lon,
       corroborationCount: corroboration,
-      firstSeenAt: nowIso,
+      firstSeenAt: rep.receivedAt, // ★실제 최이른 관측시각(D-GRF11 발견2 수정) — 처리시각 아님
       status: "detected",
     });
   }

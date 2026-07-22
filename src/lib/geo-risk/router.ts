@@ -39,7 +39,8 @@ export interface RouterDeps {
   portfolio: PortfolioSnapshot | null;
   /** Anthropic 키 */
   apiKey: string;
-  /** now (ISO) — 결정론/테스트 위해 주입 */
+  /** now (ISO) — risk_analyses.createdAt 스탬프용(결정론/테스트 위해 주입). firstSeenAt에는
+   *  더 이상 안 쓰임(D-GRF11 발견2 수정 — detectEvents가 rep.receivedAt을 직접 사용). */
   nowIso: string;
 }
 
@@ -59,7 +60,7 @@ export interface RouterResult {
 export async function runRouterCycle(deps: RouterDeps): Promise<RouterResult> {
   const errors: string[] = [];
   const alerts = await deps.fetchAlerts();
-  const events = detectEvents(alerts, deps.nowIso);
+  const events = detectEvents(alerts); // firstSeenAt은 rep.receivedAt(D-GRF11 발견2 수정, detect.ts)
 
   let detected = 0;
   let reconfirmed = 0;
