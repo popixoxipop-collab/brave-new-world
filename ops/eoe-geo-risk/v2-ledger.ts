@@ -144,56 +144,89 @@ export function recordResearchCycle(db: DatabaseSync, alerts: Alert[], observedA
 }
 
 export function latestReview(db: DatabaseSync, max=20) {
+  const fail = (state: string) =>
+    ({state,readOnlyFinance:true,canTrade:false,acceptedFinancialSignals:0,candidates:[]});
   const run=db.prepare("SELECT id,observed_at,payload,payload_sha256 FROM dgrf12_runs ORDER BY id DESC LIMIT 1")
     .get() as Record<string,unknown>|undefined;
-  if (!run) return {schemaVersion:"eoe.geo.dgrf12-p0p1p2/1",state:"NO_REVIEW_CYCLE",
-                     readOnlyFinance:true,canTrade:false,acceptedFinancialSignals:0,
-                     candidates:[]};
+  if (!run) return {
+    schemaVersion:"eoe.geo.dgrf12-p0p1p2/1",
+    ...fail("NO_REVIEW_CYCLE"),
+  };
   const payload=String(run.payload);
-  if (sha(payload)!==run.payload_sha256)
-    return {state:"SHA_INTEGRITY_FAILURE",readOnlyFinance:true,canTrade:false,
-            acceptedFinancialSignals:0,candidates:[]};
-  const data=JSON.parse(payload) as ResearchCycle;
+  if (sha(payload)!==run.payload_sha256) return fail("SHA_INTEGRITY_FAILURE");
+  let data: ResearchCycle;
+  try { data=JSON.parse(payload) as ResearchCycle; }
+  catch { return fail("SHA_INTEGRITY_FAILURE"); }
   if (data.canTrade!==false || data.acceptedFinancialSignals!==0 ||
       data.independentlyVerifiedEvents!==0 || data.issuerEvidenceCertified!==0 ||
-      data.state!=="RESEARCH_CANDIDATES_ONLY") {
-    return {state:"UNTRUSTED_REVIEW_AUTHORITY",readOnlyFinance:true,
-            canTrade:false,acceptedFinancialSignals:0,candidates:[]};
-  }
-  const limit=Math.max(1,Math.min(50,max));
-  const items=db.prepare(
-    "SELECT review_json,review_sha256 FROM dgrf12_candidate_receipts WHERE run_id=? ORDER BY candidate_id LIMIT ?"
-  ).all(Number(run.id),limit) as Array<Record<string,unknown>>;
-  const candidates=[];
-  for (const row of items) {
-    if (sha(String(row.review_json))!==row.review_sha256)
-      return {state:"SHA_INTEGRITY_FAILURE",readOnlyFinance:true,
-              canTrade:false,acceptedFinancialSignals:0,candidates:[]};
-    const obj=JSON.parse(String(row.review_json));
-    if (obj.verifiedEvent!==false || obj.eligibleForFinancialModel!==false ||
-        obj.verifiedSourceCount!==0)
-      return {state:"UNTRUSTED_REVIEW_AUTHORITY",readOnlyFinance:true,
-              canTrade:false,acceptedFinancialSignals:0,candidates:[]};
-    candidates.push(obj);
-  }
-  const rejectReasons=db.prepare(
-    "SELECT reason,COUNT(*) AS n FROM dgrf12_rejected_receipts WHERE run_id=? GROUP BY reason"
+      data.state!=="RESEARCH_CANDIDATES_ONLY" ||
+      data.readOnlyFinance!==true || data.schemaVersion!=="eoe.geo.dgrf12-p0p1p2/1")
+    return fail("UNTRUSTED_REVIEW_AUTHORITY");
+  // Verify EVERY receipt before slicing output. Otherwise callers could
+  // request max=1 and miss a tampered or deleted record on a later page.
+  const candidateRows=db.prepare(
+    "SELECT candidate_id,review_json,review_sha256 FROM dgrf12_candidate_receipts WHERE run_id=? ORDER BY rowid"
   ).all(Number(run.id)) as Array<Record<string,unknown>>;
-  const blockedReasons=db.prepare(
-    "SELECT reason_json,review_sha256 FROM dgrf12_legacy_ticker_receipts WHERE run_id=?"
+  const rejectedRows=db.prepare(
+    "SELECT id_hash,reason,text_sha256 FROM dgrf12_rejected_receipts WHERE run_id=? ORDER BY rowid"
   ).all(Number(run.id)) as Array<Record<string,unknown>>;
+  const tickerRows=db.prepare(
+    "SELECT legacy_event_sha256,ticker,reason_json,review_sha256 FROM dgrf12_legacy_ticker_receipts WHERE run_id=? ORDER BY rowid"
+  ).all(Number(run.id)) as Array<Record<string,unknown>>;
+  if (candidateRows.length>1000 || rejectedRows.length>5000 || tickerRows.length>5000)
+    return fail("SHA_INTEGRITY_FAILURE");
+  const candidates: Array<Record<string,unknown>>=[];
+  const rejected=[];
+  const legacy=[];
   const blocked:Record<string,number>={};
-  for (const r of blockedReasons) {
-    if (sha(String(r.reason_json))!==r.review_sha256)
-      return {state:"SHA_INTEGRITY_FAILURE",readOnlyFinance:true,
-              canTrade:false,acceptedFinancialSignals:0,candidates:[]};
-    const reasons=JSON.parse(String(r.reason_json)) as string[];
-    for (const reason of reasons) blocked[reason]=(blocked[reason]||0)+1;
-  }
+  try {
+    for (const row of candidateRows) {
+      if (sha(String(row.review_json))!==row.review_sha256)
+        return fail("SHA_INTEGRITY_FAILURE");
+      const c=JSON.parse(String(row.review_json));
+      if (c.candidateId!==row.candidate_id || c.verifiedEvent!==false ||
+          c.eligibleForFinancialModel!==false || c.verifiedSourceCount!==0)
+        return fail("UNTRUSTED_REVIEW_AUTHORITY");
+      candidates.push(c);
+    }
+    for (const row of rejectedRows) {
+      const idHash=String(row.id_hash),reason=String(row.reason),textHash=String(row.text_sha256);
+      if (!/^[0-9a-f]{64}$/.test(idHash) || !/^[0-9a-f]{64}$/.test(textHash))
+        return fail("SHA_INTEGRITY_FAILURE");
+      rejected.push({idHash,textHash,reason});
+    }
+    for (const row of tickerRows) {
+      const text=String(row.reason_json);
+      if (sha(text)!==row.review_sha256) return fail("SHA_INTEGRITY_FAILURE");
+      const reasonCodes=JSON.parse(text);
+      if (!Array.isArray(reasonCodes) || !reasonCodes.every((x:unknown)=>typeof x==="string"))
+        return fail("SHA_INTEGRITY_FAILURE");
+      for(const reason of reasonCodes) blocked[reason]=(blocked[reason]||0)+1;
+      legacy.push({
+        legacyEventSha256:String(row.legacy_event_sha256),
+        ticker:row.ticker == null ? null : String(row.ticker),
+        reasonCodes,approved:false,
+      });
+    }
+    const unsigned:Record<string,unknown>={...data};
+    delete unsigned.runSha256;
+    const digest=sha(JSON.stringify({
+      observedAt:String(run.observed_at),unsigned,candidates,rejected,legacy,
+    }));
+    if (digest!==data.runSha256 ||
+        data.manualReviewCandidates!==candidateRows.length ||
+        data.rejectedMentions!==rejectedRows.length ||
+        data.quarantinedLegacyExposureChecks!==tickerRows.length ||
+        data.legacyExposureBlocked!==tickerRows.length)
+      return fail("SHA_INTEGRITY_FAILURE");
+  } catch { return fail("SHA_INTEGRITY_FAILURE"); }
+  const reasons:Record<string,number>={};
+  for (const r of rejected) reasons[r.reason]=(reasons[r.reason]||0)+1;
+  const limit=Math.max(1,Math.min(50,max));
   return {
-    ...data, lastObservedAtUTC:String(run.observed_at),
-    rejectedReasonCounts:Object.fromEntries(rejectReasons.map(x=>[String(x.reason),zero(x.n)])),
+    ...data,lastObservedAtUTC:String(run.observed_at),
+    rejectedReasonCounts:reasons,
     legacyBlockedReasonCounts:blocked,
-    candidates,
+    candidates:candidates.slice(0,limit),
   };
 }
