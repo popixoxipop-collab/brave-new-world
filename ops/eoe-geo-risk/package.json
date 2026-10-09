@@ -1,0 +1,15 @@
+{
+  "name": "eoe-geo-risk-desk",
+  "private": true,
+  "type": "module",
+  "version": "0.2.0",
+  "description": "Loopback-only EOE geo-risk ingest and read-only normalized event desk",
+  "scripts": {
+    "start": "tsx desk.ts",
+    "test": "tsx --test desk.test.ts dgrf12.test.ts v2-ledger.test.ts"
+  },
+  "dependencies": {
+    "tsx": "4.20.6",
+    "fflate": "0.8.2"
+  }
+}
