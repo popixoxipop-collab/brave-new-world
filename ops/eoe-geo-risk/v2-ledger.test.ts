@@ -87,3 +87,31 @@ test("missing review table state is unknown and cannot be traded", () => {
   assert.equal(out.acceptedFinancialSignals,0);
   db.close();
 });
+
+
+test("all candidate receipts verified even when max=1 requests only first", () => {
+  const db=fixture();
+  recordResearchCycle(db,posts,"2026-10-09T04:00:00Z");
+  db.exec("UPDATE dgrf12_candidate_receipts SET review_json='{}' WHERE rowid=(SELECT MAX(rowid) FROM dgrf12_candidate_receipts);");
+  const result=latestReview(db,1);
+  assert.equal(result.state,"SHA_INTEGRITY_FAILURE");
+  assert.equal(result.acceptedFinancialSignals,0);
+  db.close();
+});
+test("deleting a rejected receipt invalidates cycle digest", () => {
+  const db=fixture();
+  recordResearchCycle(db,posts,"2026-10-09T04:00:00Z");
+  db.exec("DELETE FROM dgrf12_rejected_receipts;");
+  const result=latestReview(db);
+  assert.equal(result.state,"SHA_INTEGRITY_FAILURE");
+  assert.equal(result.canTrade,false);
+  db.close();
+});
+test("deleting a legacy issuer review invalidates cycle digest", () => {
+  const db=fixture();
+  recordResearchCycle(db,posts,"2026-10-09T04:00:00Z");
+  db.exec("DELETE FROM dgrf12_legacy_ticker_receipts WHERE rowid=(SELECT MIN(rowid) FROM dgrf12_legacy_ticker_receipts);");
+  const result=latestReview(db);
+  assert.equal(result.state,"SHA_INTEGRITY_FAILURE");
+  db.close();
+});
