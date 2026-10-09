@@ -27,10 +27,12 @@ const { runRouterCycle } = localRequire("../../src/lib/geo-risk/router.ts");
 const { parseAnalysis } = localRequire("../../src/lib/geo-risk/analyze.ts");
 const { fetchGdeltTensionPoints } = localRequire("../../workers/cron-ingest/src/gdeltExport.ts");
 const { fetchAdsbAircraft } = localRequire("../../workers/cron-ingest/src/adsb.ts");
+const { setupReviewLedger,recordResearchCycle,latestReview } = localRequire("./v2-ledger.ts");
 const STATE = path.join(DIR, "state");
-const DB_PATH = path.join(STATE, "geo-risk.sqlite3");
+const STAGING = process.env.EOE_GEO_STAGING === "1";
+const DB_PATH = path.join(STATE, STAGING ? "dgrf12-staging.sqlite3" : "geo-risk.sqlite3");
 const HOST = "127.0.0.1";
-const PORT = 38471;
+const PORT = STAGING ? 38473 : 38471;
 const PERIOD_MS = 600_000;
 const MAX_ALERT_AGE_MS = 48 * 60 * 60 * 1000;
 const MAX_ANALYSES_PER_CYCLE = 2;
@@ -51,9 +53,10 @@ db.exec([
   "CREATE TABLE IF NOT EXISTS llm_attempts (id INTEGER PRIMARY KEY AUTOINCREMENT, day_key TEXT NOT NULL, event_id TEXT NOT NULL, attempted_at TEXT NOT NULL);",
   "CREATE TABLE IF NOT EXISTS ingest_runs (id INTEGER PRIMARY KEY AUTOINCREMENT, started_at TEXT NOT NULL, finished_at TEXT NOT NULL, ok INTEGER NOT NULL, telegram_count INTEGER NOT NULL, detector_count INTEGER NOT NULL, analyzed_count INTEGER NOT NULL, model_attempts INTEGER NOT NULL, error TEXT);",
 ].join("\n"));
+setupReviewLedger(db);
 
 const USE_MLX = process.env.GEO_EOE_LLM_MODE === "mlx";
-const ENABLE_MODEL = USE_MLX;
+const ENABLE_MODEL = false; // D-GRF12 prevents unreviewed LLM events
 const LOCAL_MLX_URL = "http://127.0.0.1:38472/v1/chat/completions";
 const LOCAL_MLX_MODEL = "/Users/eoe/.cache/huggingface/hub/models--mlx-community--DeepSeek-V2-Lite-Chat-4bit-mlx/snapshots/a33a8ad64477b9ca7a65b6dc1d8c06c997f87216";
 async function callEoeMlx(opts: { system: string; user: string; maxTokens?: number }) {
@@ -140,7 +143,13 @@ async function cycle(): Promise<void> {
     }
     count = valid.length;
     if (!count) throw new Error("TELEGRAM_NO_RECENT_MESSAGES");
-    detectorCount = detectEvents(valid).length;
+    const stage = recordResearchCycle(db, valid, started);
+    detectorCount = stage.manualReviewCandidates;
+    analyzedCount = 0;
+    recentModelStatus = {state:"PAUSED_REQUIRES_V2_INDEPENDENT_EVIDENCE", legacy_drafts_quarantined:stage.quarantinedLegacyDraftEvents};
+    // The retired coarse class|geography router is no longer invoked.
+    // Continue feed collection but never create another ambiguous v1 risk row.
+    /* RETIRED_V1_BEGIN
     const day = started.slice(0, 10);
     const result = await runRouterCycle({
       fetchAlerts: async () => valid,
@@ -182,6 +191,7 @@ async function cycle(): Promise<void> {
       portfolio: null, apiKey: "", nowIso: nowIso(),
     });
     analyzedCount = result.analyzed;
+    RETIRED_V1_END */
     // Existing GDELT 15-minute export and ADS-B public-source fetchers,
     // executed on EOE without Cloudflare Worker/D1. Raw data is NOT a
     // corroborated finance event and is stored in separate local tables.
@@ -225,6 +235,23 @@ function telegramJson(limit: number) {
   };
 }
 function eventsJson(limit: number) {
+  const review = latestReview(db,limit);
+  return {
+    source: "eoe-sqlite",
+    policyVersion: "eoe.geo.identity-lineage/2",
+    reviewedCandidates: review.state === "RESEARCH_CANDIDATES_ONLY" ? review.manualReviewCandidates : null,
+    quarantinedLegacyDraftCount: asN(countRisks.get()),
+    verifiedEventCount: 0,
+    independentSourceCount: 0,
+    pipelineReadOnly: true,
+    orderCapable: false,
+    fetchedAt: nowIso(),
+    count: 0,
+    events: [],
+  };
+}
+/* LEGACY_EVENTS_SNAPSHOT_ONLY
+function oldEventsJson(limit: number) {
   const rows = selectRisks.all(limit) as DbScalarRow[];
   return {
     source: "eoe-sqlite",
@@ -247,6 +274,7 @@ function eventsJson(limit: number) {
     })),
   };
 }
+*/
 function latestJson() {
   const r = lastCompleted;
   return {
@@ -257,9 +285,10 @@ function latestJson() {
     } : null,
     telegramRows: asN(countTelegram.get()),
     gdeltRows: asN(countGdelt.get()), firmsRows: null, aisRows: null, adsbRows: asN(countAdsb.get()),
-    analyzedEventDraftRows: asN(countRisks.get()),
-    model: { mode: ENABLE_MODEL ? "EOE_LOCAL_MLX" : "DETECT_ONLY",
-             external_provider_enabled: false,
+    analyzedEventDraftRows: asN(countRisks.get()), // historic unverified v1 drafts only
+    DGRF12: (() => { const r=latestReview(db,5); const {candidates: _hidden, ...status}=r; return status; })(),
+    model: { mode: USE_MLX ? "EOE_LOCAL_MLX_AVAILABLE_BUT_GATED" : "DETECT_ONLY",
+             generation_enabled: false, external_provider_enabled: false,
              max_analyses_per_cycle: MAX_ANALYSES_PER_CYCLE,
              daily_limit: MAX_DAILY_ANALYSIS_ATTEMPTS, last_result: recentModelStatus },
     missing_local_feeds: ["FIRMS_API_KEY_MISSING", "AIS_PROVIDER_KEY_MISSING"],
@@ -281,7 +310,7 @@ const server = http.createServer((req, res) => {
   if (url.pathname === "/health") {
     json(res, 200, {
       service: "eoe-geo-risk-desk", ingestion: "TELEGRAM_GDELT_ADSB_DIRECT_EOE",
-      cron: "*/10 * * * *", endpoints: { health: true, latest: true, telegram: true, geoRiskEvents: true },
+      cron: "*/10 * * * *", endpoints: { health: true, latest: true, telegram: true, geoRiskEvents: true, geoReview: true },
       bind: HOST, read_only: true, order_capable: false, latest: latestJson().lastRun,
     });
   } else if (url.pathname === "/latest") {
@@ -289,6 +318,9 @@ const server = http.createServer((req, res) => {
   } else if (url.pathname === "/telegram") {
     const max = Math.max(1, Math.min(40, Number(url.searchParams.get("limit") || 40) || 40));
     json(res, 200, telegramJson(max));
+  } else if (url.pathname === "/api/geo-risk/review") {
+    const max = Math.max(1, Math.min(50, Number(url.searchParams.get("max") || 20) || 20));
+    json(res, 200, latestReview(db,max));
   } else if (url.pathname === "/api/geo-risk/events") {
     const max = Math.max(1, Math.min(50, Number(url.searchParams.get("max") || 50) || 50));
     json(res, 200, eventsJson(max));
@@ -300,7 +332,7 @@ server.listen(PORT, HOST, () => {
   console.log(JSON.stringify({
     event: "EOE_GEO_DESK_READY", host: HOST, port: PORT,
     source: "brave-new-world:80d398ce", storage: "LOCAL_SQLITE",
-    model_mode: ENABLE_MODEL ? "EOE_LOCAL_MLX" : "DETECT_ONLY", authority: "OBSERVATION_ONLY",
+    model_mode: USE_MLX ? "EOE_LOCAL_MLX_AVAILABLE_BUT_GATED" : "DETECT_ONLY", authority: "OBSERVATION_ONLY",
   }));
   void cycle();
 });
