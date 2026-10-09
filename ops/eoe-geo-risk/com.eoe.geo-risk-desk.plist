@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.eoe.geo-risk-desk</string>
+  <key>ProgramArguments</key><array>
+    <string>/opt/homebrew/bin/node</string>
+    <string>/Users/eoe/projects/brave-new-world-eoe-geo-20261009/ops/eoe-geo-risk/node_modules/tsx/dist/cli.mjs</string>
+    <string>/Users/eoe/projects/brave-new-world-eoe-geo-20261009/ops/eoe-geo-risk/desk.ts</string>
+  </array>
+  <key>WorkingDirectory</key><string>/Users/eoe/projects/brave-new-world-eoe-geo-20261009/ops/eoe-geo-risk</string>
+  <key>EnvironmentVariables</key><dict>
+    <key>NODE_PATH</key><string>/Users/eoe/projects/brave-new-world-eoe-geo-20261009/ops/eoe-geo-risk/node_modules</string>
+    <key>GEO_EOE_LLM_MODE</key><string>mlx</string>
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>60</integer>
+  <key>Umask</key><integer>63</integer>
+  <key>StandardOutPath</key><string>/Users/eoe/projects/brave-new-world-eoe-geo-20261009/ops/eoe-geo-risk/state/service.stdout.log</string>
+  <key>StandardErrorPath</key><string>/Users/eoe/projects/brave-new-world-eoe-geo-20261009/ops/eoe-geo-risk/state/service.stderr.log</string>
+</dict></plist>
