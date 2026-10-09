@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>Label</key><string>com.eoe.geo-risk-mlx</string>
+<key>ProgramArguments</key><array>
+  <string>/opt/homebrew/bin/mlx_lm.server</string>
+  <string>--model</string>
+  <string>/Users/eoe/.cache/huggingface/hub/models--mlx-community--DeepSeek-V2-Lite-Chat-4bit-mlx/snapshots/a33a8ad64477b9ca7a65b6dc1d8c06c997f87216</string>
+  <string>--host</string><string>127.0.0.1</string>
+  <string>--port</string><string>38472</string>
+  <string>--allowed-origins</string><string>http://127.0.0.1:38471</string>
+  <string>--max-tokens</string><string>384</string>
+  <string>--prompt-cache-size</string><string>1</string>
+  <string>--log-level</string><string>WARNING</string>
+</array>
+<key>WorkingDirectory</key><string>/Users/eoe/projects/brave-new-world-eoe-geo-20261009/ops/eoe-geo-risk</string>
+<key>RunAtLoad</key><true/>
+<key>KeepAlive</key><true/>
+<key>ThrottleInterval</key><integer>90</integer>
+<key>Umask</key><integer>63</integer>
+<key>StandardOutPath</key><string>/Users/eoe/projects/brave-new-world-eoe-geo-20261009/ops/eoe-geo-risk/state/mlx.stdout.log</string>
+<key>StandardErrorPath</key><string>/Users/eoe/projects/brave-new-world-eoe-geo-20261009/ops/eoe-geo-risk/state/mlx.stderr.log</string>
+</dict></plist>
